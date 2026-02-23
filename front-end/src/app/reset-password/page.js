@@ -1,88 +1,98 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function ResetPassword() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const token = searchParams.get("token");
+
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!token) {
+      alert("Invalid or missing reset token");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:4000/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+
+      const data = await res.json();
+      alert(data.message);
+
+      if (res.ok) router.push("/login"); // redirect to login
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-softBg">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-cover bg-center -z-20" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e')" }}></div>
+      <div className="absolute inset-0 animate-gradient-bg -z-10 opacity-70"></div>
 
-      <div className="max-w-5xl w-full bg-white rounded-3xl shadow-xl overflow-hidden md:flex">
-
-        {/* LEFT IMAGE */}
-        <div className="hidden md:flex flex-1 items-center justify-center">
-          <img src="/side.png" alt="visual" />
+      <div className="max-w-md w-full bg-white/90 backdrop-blur-md rounded-xl shadow-2xl p-10 border border-[#C87D87]/20 relative z-10">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-extrabold text-[#6B7556] mb-2 tracking-tight">Reset Password</h1>
+          <p className="text-[#C87D87] text-lg">Please enter your new password</p>
         </div>
 
-        {/* RIGHT SIDE */}
-        <div className="flex-1 p-10 md:p-14">
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <input
+            type="password"
+            placeholder="New Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-5 py-3 rounded-xl border border-[#C87D87]/30 bg-white/70 text-[#6B7556] placeholder-[#C87D87] focus:outline-none focus:border-[#C87D87] focus:ring-2 focus:ring-[#C87D87]/30 transition shadow-sm"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full px-5 py-3 rounded-xl border border-[#C87D87]/30 bg-white/70 text-[#6B7556] placeholder-[#C87D87] focus:outline-none focus:border-[#C87D87] focus:ring-2 focus:ring-[#C87D87]/30 transition shadow-sm"
+            required
+          />
 
-          {/* Top Icon */}
-          <div className="flex justify-center mb-4">
-            <img src="/graduation cap.png" alt="visual" className="w-20" />
-          </div>
-
-          {/* Title */}
-          <h1 className="text-3xl font-semibold text-primary text-center mb-2">
+          <button type="submit" className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#6B7556] to-[#556b42] hover:scale-105 transition shadow-lg hover:shadow-xl">
             Reset Password
-          </h1>
+          </button>
+        </form>
 
-          <p className="text-softGray text-center mb-8">
-            Please enter your new password
-          </p>
-
-          <form className="space-y-5">
-
-            {/* New Password */}
-            <div>
-              <label className="block text-lg font-medium text-gray-800 mb-2">
-                New Password
-              </label>
-
-              <input
-                type="password"
-                placeholder="Enter new password"
-                className="w-full px-4 py-3 rounded-xl border border-softGray/30 bg-white 
-                focus:outline-none focus:border-primary focus:ring-2 
-                focus:ring-primary/20 transition duration-200"
-              />
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-lg font-medium text-gray-800 mb-2">
-                Confirm Password
-              </label>
-
-              <input
-                type="password"
-                placeholder="Confirm password"
-                className="w-full px-4 py-3 rounded-xl border border-softGray/30 bg-white 
-                focus:outline-none focus:border-primary focus:ring-2 
-                focus:ring-primary/20 transition duration-200"
-              />
-            </div>
-
-            {/* Button */}
-            <button
-              type="submit"
-              className="w-full bg-primary hover:bg-primaryDark text-white py-3 
-              rounded-xl transition duration-300 shadow-md hover:shadow-lg"
-            >
-              Reset Password
-            </button>
-
-          </form>
-
-          <p className="text-sm text-softGray mt-6 text-center">
-            Back to{" "}
-            <Link
-              href="/login"
-              className="text-primary hover:text-primaryDark font-medium transition"
-            >
-              Sign in
-            </Link>
-          </p>
-
-        </div>
+        <p className="text-center text-[#6B7556] mt-6">
+          Back to <Link href="/login" className="text-[#C87D87] font-medium hover:text-[#6B7556] transition">Sign in</Link>
+        </p>
       </div>
+
+      <style js>{`
+        .animate-gradient-bg {
+          background: linear-gradient(-45deg, #FBEAD6, #C87D87, #6B7556, #C87D87);
+          background-size: 400% 400%;
+          animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
     </div>
   );
 }
