@@ -23,7 +23,7 @@ export default function Login() {
 
       if (res.ok) {
         alert("Login successful!");
-        router.push("/"); // redirect to homepage
+        router.push("/home"); // redirect to homepage
       } else {
         alert(data.message);
       }
