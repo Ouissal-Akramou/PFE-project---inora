@@ -1,50 +1,12 @@
-"use client";
+// src/app/page.js - TOP (keep useState/useEffect but remove navbar)
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import Link from 'next/link';
 
 export default function Home() {
-  const [user, setUser] = useState(null);
-
-  // Get user from window if available (set on login)
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.USER) {
-      setUser(window.USER);
-    }
-  }, []);
 
   return (
     <main className="font-sans">
-
-      {/* NAVBAR */}
-      <nav className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-10 py-6 text-white bg-transparent">
-        <h1 className="text-2xl font-bold tracking-widest">LOGO</h1>
-
-        <ul className="hidden md:flex gap-12 text-sm font-medium tracking-wide uppercase">
-          <li className="cursor-pointer hover:text-[#C87D87] transition">Home</li>
-          <li className="cursor-pointer hover:text-[#C87D87] transition">About</li>
-          <li className="cursor-pointer hover:text-[#C87D87] transition">Services</li>
-          <li className="cursor-pointer hover:text-[#C87D87] transition">Contact</li>
-        </ul>
-
-        {user ? (
-          <div className="flex items-center gap-4">
-            <img
-              src={user.avatar || "/default-avatar.png"}
-              alt="Profile"
-              className="w-10 h-10 rounded-full border-2 border-[#C87D87]"
-            />
-            <span className="font-medium">{user.fullName}</span>
-          </div>
-        ) : (
-          <Link
-            href="/login"
-            className="bg-gradient-to-r from-[#6B7556] to-[#556b42] px-5 py-2 rounded-md text-sm font-semibold hover:opacity-90 transition"
-          >
-            Login
-          </Link>
-        )}
-      </nav>
 
       {/* HERO */}
       <section
