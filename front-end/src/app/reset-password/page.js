@@ -1,5 +1,5 @@
 'use client';
-
+export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -7,27 +7,18 @@ import Link from 'next/link';
 export default function ResetPassword() {
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  // === States ===
-  const [token, setToken] = useState<string | null>(null); // null: loading
+  const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
 
-  // === Client-side only ===
   useEffect(() => {
     const urlToken = searchParams.get('token');
-    setToken(urlToken); // إذا ماكاينش token، token = null
+    if (urlToken) setToken(urlToken);
   }, [searchParams]);
 
-  // === Prevent SSR build crash ===
-  if (token === null) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  // === Handle form submission ===
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (password.length < 6) {
       setMessage('Password must be at least 6 characters');
@@ -38,9 +29,11 @@ export default function ResetPassword() {
     setMessage('');
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password`, {
+const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
         credentials: 'include',
         body: JSON.stringify({ token, password }),
       });
@@ -49,7 +42,9 @@ export default function ResetPassword() {
       
       if (res.ok) {
         setMessage('Password reset successfully! Redirecting to login...');
-        setTimeout(() => router.push('/login'), 2500);
+        setTimeout(() => {
+          router.push('/login');
+        }, 2500);
       } else {
         setMessage(data.message || 'Reset failed. Please try again.');
       }
@@ -60,7 +55,6 @@ export default function ResetPassword() {
     }
   }
 
-  // === Invalid token message ===
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
@@ -83,7 +77,6 @@ export default function ResetPassword() {
     );
   }
 
-  // === Reset form ===
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-cover bg-center -z-20" 
