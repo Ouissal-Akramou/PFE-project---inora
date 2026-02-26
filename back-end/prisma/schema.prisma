@@ -12,42 +12,25 @@ model User {
   fullName  String
   email     String   @unique
   password  String
-  image     String?      // profile picture optional
+  image     String?  // profile picture optional
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  events    Event[]
-  reviews   Review[]
-}
-
-model Event {
-  id        String       @id @default(uuid())
-  title     String
-  date      DateTime
-  status    EventStatus  @default(PENDING)
-
-  userId    String
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  review    Review?      // optional one review per event
+  
+  // ✅ ADD THIS - bidirectional relation
+  reviews   Review[]  // one user → many reviews
 }
 
 model Review {
-  id        String   @id @default(uuid())
-  rating    Int
-  comment   String
-  createdAt DateTime @default(now())
-
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  eventId   String   @unique
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  rating      Int      // 1-5
+  comment     String
+  approved    Boolean  @default(false)
+  featured    Boolean  @default(false)  // ✅ ADD THIS
+  gatheringId String?  
+  createdAt   DateTime @default(now())
+  
+  @@map("reviews")
 }
 
-enum EventStatus {
-  PENDING
-  CONFIRMED
-  COMPLETED
-  CANCELLED
-}

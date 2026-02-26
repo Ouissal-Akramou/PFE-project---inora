@@ -1,8 +1,40 @@
 @import "tailwindcss";
 
-@theme{
-  --color-primary: #A24A78;
-  --color-primaryDark: #8e406a;
-  --color-softGray: #929292;
-  --color-softBg: #FFFAF5;
+@theme {
+  --font-playfair: 'Playfair Display', serif;
+  --font-cormorant: 'Cormorant Garamond', serif;
+  --font-lato: 'Lato', sans-serif;
+}
+
+/* ✅ Lace background */
+body {
+  background-color: #FBEAD6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%23C87D87' fill-opacity='0.25'%3E%3Ccircle cx='40' cy='40' r='3'/%3E%3Ccircle cx='0' cy='0' r='3'/%3E%3Ccircle cx='80' cy='0' r='3'/%3E%3Ccircle cx='0' cy='80' r='3'/%3E%3Ccircle cx='80' cy='80' r='3'/%3E%3Ccircle cx='40' cy='0' r='1.5'/%3E%3Ccircle cx='40' cy='80' r='1.5'/%3E%3Ccircle cx='0' cy='40' r='1.5'/%3E%3Ccircle cx='80' cy='40' r='1.5'/%3E%3Cpath d='M40 10 Q50 20 40 30 Q30 20 40 10Z' fill='%23C87D87' fill-opacity='0.05'/%3E%3Cpath d='M40 50 Q50 60 40 70 Q30 60 40 50Z' fill='%23C87D87' fill-opacity='0.05'/%3E%3Cpath d='M10 40 Q20 50 30 40 Q20 30 10 40Z' fill='%23C87D87' fill-opacity='0.05'/%3E%3Cpath d='M50 40 Q60 50 70 40 Q60 30 50 40Z' fill='%23C87D87' fill-opacity='0.05'/%3E%3Cpath d='M20 20 L25 15 L30 20 L25 25Z' fill='none' stroke='%23C87D87' stroke-width='0.4' stroke-opacity='0.15'/%3E%3Cpath d='M50 20 L55 15 L60 20 L55 25Z' fill='none' stroke='%23C87D87' stroke-width='0.4' stroke-opacity='0.15'/%3E%3Cpath d='M20 50 L25 45 L30 50 L25 55Z' fill='none' stroke='%23C87D87' stroke-width='0.4' stroke-opacity='0.15'/%3E%3Cpath d='M50 50 L55 45 L60 50 L55 55Z' fill='none' stroke='%23C87D87' stroke-width='0.4' stroke-opacity='0.15'/%3E%3Cline x1='40' y1='10' x2='40' y2='30' stroke='%23C87D87' stroke-width='0.3' stroke-opacity='0.12'/%3E%3Cline x1='40' y1='50' x2='40' y2='70' stroke='%23C87D87' stroke-width='0.3' stroke-opacity='0.12'/%3E%3Cline x1='10' y1='40' x2='30' y2='40' stroke='%23C87D87' stroke-width='0.3' stroke-opacity='0.12'/%3E%3Cline x1='50' y1='40' x2='70' y2='40' stroke='%23C87D87' stroke-width='0.3' stroke-opacity='0.12'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  overflow-x: hidden;
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%       { transform: translateY(-20px) scale(1.05); }
+}
+
+@keyframes scrollLine {
+  0%   { opacity: 0; transform: scaleY(0); transform-origin: top; }
+  50%  { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(1); transform-origin: bottom; }
 }

@@ -1,7 +1,5 @@
 'use client';
-
-import { createContext, useContext, useEffect, useState } from 'react';
-import { api } from '../lib/apiClient';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -9,45 +7,70 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = async () => {
-    try {
-      const res = await api.get('/auth/me');
-      setUser(res.data.user);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ✅ On mount — restore session from cookie
   useEffect(() => {
-    refreshUser();
+    fetch('http://localhost:4000/api/auth/me', { credentials: 'include' })
+      .then(res => {
+        if (!res.ok) throw new Error('Not logged in');
+        return res.json();
+      })
+      .then(data => setUser(data.user || data))  // ✅ unwrap { user:{} } OR flat {}
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, []);
 
+  // ✅ login calls API + sets real user object
   const login = async (email, password) => {
-    await api.post('/auth/login', { email, password });
-    await refreshUser();  // refresh immediately
+    const res = await fetch('http://localhost:4000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw { response: { data: err } };
+    }
+    const data = await res.json();
+    console.log('LOGIN DATA:', data); // ← check this
+  setUser(data.user || data);        // ✅ sets { id, fullName, email }
+    return data;
   };
 
+  // ✅ register calls API + sets real user object
   const register = async (fullName, email, password) => {
-    await api.post('/auth/register', { fullName, email, password });
-    await refreshUser();
+    const res = await fetch('http://localhost:4000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ fullName, email, password }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw { response: { data: err } };
+    }
+    const data = await res.json();
+    setUser(data.user || data);
+    return data;
   };
 
   const logout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {}
+    await fetch('http://localhost:4000/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, refreshUser }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used inside AuthProvider');
+  return context;
 }

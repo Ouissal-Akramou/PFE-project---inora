@@ -1,28 +1,39 @@
-"use client"
-
-import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from '../context/AuthContext';
+import { Playfair_Display, Cormorant_Garamond, Lato } from 'next/font/google';
 import './globals.css';
+import { AuthProvider } from '../context/AuthContext';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const playfair = Playfair_Display({ 
+  subsets: ['latin'], 
+  variable: '--font-playfair', 
+  style: ['normal', 'italic'] 
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const cormorant = Cormorant_Garamond({ 
+  subsets: ['latin'], 
+  variable: '--font-cormorant', 
+  weight: ['300','400','600'], 
+  style: ['normal','italic'] 
 });
 
-export default function PublicLayout({ children }) {
+const lato = Lato({ 
+  subsets: ['latin'], 
+  variable: '--font-lato', 
+  weight: ['300','400'] 
+});
+
+export const metadata = {
+  title: 'Inora',
+  description: 'Elegant gatherings',
+};
+
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AuthProvider>
+      <body className={`${playfair.variable} ${cormorant.variable} ${lato.variable}`}>
+        <AuthProvider>     {/* ✅ wraps everything */}
           {children}
         </AuthProvider>
       </body>
     </html>
   );
 }
-
