@@ -5,12 +5,13 @@
   "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).",
   "license": "ISC",
   "author": "",
-  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+        "railway-start": "node .next/standalone/server.js",
+
     "lint": "eslint"
   },
   "dependencies": {

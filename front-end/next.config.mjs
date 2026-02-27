@@ -2,6 +2,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-};
+  // Add any other config options you had
+}
 
-export default nextConfig; // ila package.json "type":"module"
+export default nextConfig;
