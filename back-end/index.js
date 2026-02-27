@@ -1,4 +1,4 @@
-// index.js - Production Ready for Railway
+// index.js - Production Ready for Railway (FULLY FIXED)
 import express from 'express';
 import cors from 'cors';
 import auth from './Routes/auth.js';
@@ -83,8 +83,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', auth);
 app.use('/api/reviews', reviewRoutes);
 
-// 404 handler for undefined routes
-app.use('*', (req, res) => {
+// ✅ FIXED: 404 handler for undefined routes - removed '*' to avoid path-to-regexp error
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`
@@ -108,7 +108,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server with IPv6 support (required for Railway internal networking)
-app.listen(PORT, '::', () => {
+const server = app.listen(PORT, '::', () => {
   console.log('=================================');
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
