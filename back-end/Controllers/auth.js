@@ -4,85 +4,89 @@ import { transporter } from "../lib/mailer.js";
 import jwt from 'jsonwebtoken';
 
 export const register = async (req, res) => {
-    try {
-        const { fullName, email, password } = req.body;
-        // Check if user already exists
-        const existingUser = await prisma.user.findFirst({
-            where: { email }
-        });
-        if (existingUser) {
-            return res.status(400).json({ message: 'Email already exists' });
-        }
-        // Encrypt password
-        const hashedPassword = await bcrypt.hash(password, 10);
-        // Create new user
-        const newUser = await prisma.user.create({
-            data: {
-                fullName,
-                email,
-                password: hashedPassword
-            }
-        });
-        return res.status(201).json({
-            message: 'User created successfully',
-            user: {
-                id: newUser.id,
-                fullName: newUser.fullName,
-                email: newUser.email
-            }
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Something went wrong' });
-    }
+  try {
+    const { fullName, email, password, adminCode } = req.body;
+
+    // ✅ Determine role from admin code
+    const role = adminCode && adminCode === process.env.ADMIN_SECRET_CODE
+      ? 'admin'
+      : 'user';
+
+    const existing = await prisma.user.findFirst({ where: { email } });
+    if (existing) return res.status(400).json({ message: 'Email already exists' });
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: { fullName, email, password: hashed, role }
+    });
+
+    return res.status(201).json({
+      message: 'Registration successful',
+      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role }
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
 };
+
 
 export const login = async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {                                          // ✅ missing this
+    const { email, password, role, adminCode } = req.body;
 
-        const user = await prisma.user.findFirst({
-            where: { email }
-        });
+    const user = await prisma.user.findFirst({ where: { email } });
+    if (!user) return res.status(400).json({ message: 'Invalid email' });
 
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid email' });
-        }
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ message: 'Invalid password' });
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-
-        if (!isPasswordValid) {
-            return res.status(400).json({ message: 'Invalid password' });
-        }
-
-        const accessToken = jwt.sign(
-            { id: user.id },
-            process.env.JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-
-        // ✅ Set cookie
-        res.cookie("token", accessToken, {
-            httpOnly: true,     // prevents JS access (security)
-            secure: false,      // true in production (HTTPS)
-            sameSite: "lax",
-            maxAge: 60 * 60 * 1000 // 1 hour
-        });
-
-        return res.status(200).json({
-  message: "Login successful",
-  user: {
-    id: user.id,
-    fullName: user.fullName,
-    email: user.email,
-    role: user.role,
-  }
-});
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Something went wrong" });
+    // ✅ Role mismatch check
+    if (role && user.role !== role) {
+      return res.status(403).json({ message: `You are not registered as ${role}` });
     }
+
+    // ✅ Admin code check
+    if (role === 'admin') {
+      if (!adminCode) {
+        return res.status(403).json({ message: 'Admin code is required' });
+      }
+      if (adminCode !== process.env.ADMIN_SECRET_CODE) {
+        return res.status(403).json({ message: 'Invalid admin code' });
+      }
+    }
+
+    const accessToken = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.cookie("token", accessToken, {
+      httpOnly: true,
+      secure: false,        // ← true in production
+      sameSite: "lax",
+      maxAge: 60 * 60 * 1000
+    });
+
+    return res.status(200).json({
+      message: "Login successful",
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+      }
+    });
+
+  } catch (error) {                              // ✅ now matches correctly
+    console.error(error);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
 };
+
 
 
 
@@ -198,9 +202,15 @@ export const getMe = async (req, res) => {
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: { id: true, fullName: true, email: true }
-    });
+  where: { id: decoded.id },
+  select: { 
+    id: true, 
+    fullName: true, 
+    email: true,
+    role: true   // ✅ must be here
+  }
+});
+
     
     res.json({ user });
   } catch (error) {

@@ -13,6 +13,7 @@ model User {
   email     String   @unique
   password  String
   image     String?  // profile picture optional
+  role     String @default("user") 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
