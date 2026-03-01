@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import ActivityBookingModal from '@/components/ActivityBookingModal';
 
 const defaultReviews = [
   { id: 'default-1', user: { fullName: 'Sophie Laurent' }, rating: 5, comment: 'An absolutely enchanting experience. Every detail was curated to perfection.' },
@@ -11,8 +10,6 @@ const defaultReviews = [
 
 export default function Home() {
   const [reviews, setReviews] = useState(defaultReviews);
-  const [selectedActivity, setSelectedActivity] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:4000/api/reviews/approved', { credentials: 'include' })
@@ -82,82 +79,84 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ─── HERO ─── */}
-      <section className="relative h-screen w-full flex flex-col justify-center items-center text-center bg-gradient-to-br from-[#FBEAD6] via-[#f5ddd0] to-[#FBEAD6] overflow-hidden">
+      {/* ─── HERO (no image) ─── */}
+     {/* ─── HERO ─── */}
+<section className="relative h-screen w-full flex flex-col justify-center items-center text-center bg-gradient-to-br from-[#FBEAD6] via-[#f5ddd0] to-[#FBEAD6] overflow-hidden">
 
-        {/* Animated radial glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(200,125,135,0.55)_0%,transparent_25%)] animate-pulse" />
+  {/* Animated radial glow */}
+  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(200,125,135,0.55)_0%,transparent_25%)] animate-pulse" />
 
-        {/* Floating petal shapes */}
-        <div className="absolute top-20 left-16 w-32 h-32 rounded-full bg-[#C87D87]/5 animate-[float_6s_ease-in-out_infinite]" />
-        <div className="absolute bottom-32 right-20 w-48 h-48 rounded-full bg-[#6B7556]/5 animate-[float_8s_ease-in-out_infinite_2s]" />
-        <div className="absolute top-1/3 right-12 w-20 h-20 rounded-full bg-[#C87D87]/6 animate-[float_7s_ease-in-out_infinite_1s]" />
-        <div className="absolute bottom-20 left-24 w-24 h-24 rounded-full bg-[#6B7556]/5 animate-[float_9s_ease-in-out_infinite_3s]" />
+  {/* Floating petal shapes */}
+  <div className="absolute top-20 left-16 w-32 h-32 rounded-full bg-[#C87D87]/5 animate-[float_6s_ease-in-out_infinite]" />
+  <div className="absolute bottom-32 right-20 w-48 h-48 rounded-full bg-[#6B7556]/5 animate-[float_8s_ease-in-out_infinite_2s]" />
+  <div className="absolute top-1/3 right-12 w-20 h-20 rounded-full bg-[#C87D87]/6 animate-[float_7s_ease-in-out_infinite_1s]" />
+  <div className="absolute bottom-20 left-24 w-24 h-24 rounded-full bg-[#6B7556]/5 animate-[float_9s_ease-in-out_infinite_3s]" />
 
-        {/* Top ornamental line */}
-        <div className="absolute top-28 left-1/2 -translate-x-1/2 flex items-center gap-3">
-          <div className="w-24 h-px bg-gradient-to-r from-transparent to-[#C87D87]/40" />
-          <span className="text-[#C87D87]/40 text-xs">✦</span>
-          <div className="w-24 h-px bg-gradient-to-l from-transparent to-[#C87D87]/40" />
-        </div>
+  {/* Top ornamental line */}
+  <div className="absolute top-28 left-1/2 -translate-x-1/2 flex items-center gap-3">
+    <div className="w-24 h-px bg-gradient-to-r from-transparent to-[#C87D87]/40" />
+    <span className="text-[#C87D87]/40 text-xs">✦</span>
+    <div className="w-24 h-px bg-gradient-to-l from-transparent to-[#C87D87]/40" />
+  </div>
 
-        {/* MAIN CONTENT */}
-        <div className="relative z-10 max-w-4xl px-6">
-          {/* Eyebrow */}
-          <p
-            className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] tracking-[0.35em] uppercase text-sm mb-4 opacity-0 animate-[fadeInDown_1s_ease_0.2s_forwards]"
-          >
-            — Bespoke Outdoor Experiences —
-          </p>
+  {/* MAIN CONTENT */}
+  <div className="relative z-10 max-w-4xl px-6">
+    {/* Eyebrow */}
+    <p
+      className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] tracking-[0.35em] uppercase text-sm mb-4 opacity-0 animate-[fadeInDown_1s_ease_0.2s_forwards]"
+    >
+      — Bespoke Outdoor Experiences —
+    </p>
 
-          {/* Main title */}
-          <h1
-            className="font-['Playfair_Display',serif] italic font-bold text-[clamp(3rem,7vw,5.5rem)] text-[#3a3027] leading-[1.15] mb-2 opacity-0 animate-[fadeInUp_1s_ease_0.5s_forwards]"
-          >
-            Exceptional
-          </h1>
-          <h1
-            className="font-['Playfair_Display',serif] italic font-bold text-[clamp(3rem,7vw,5.5rem)] text-[#C87D87] leading-[1.15] mb-4 opacity-0 animate-[fadeInUp_1s_ease_0.7s_forwards]"
-          >
-            Outdoor Experiences
-          </h1>
+    {/* Main title */}
+    <h1
+      className="font-['Playfair_Display',serif] italic font-bold text-[clamp(3rem,7vw,5.5rem)] text-[#3a3027] leading-[1.15] mb-2 opacity-0 animate-[fadeInUp_1s_ease_0.5s_forwards]"
+    >
+      Exceptional
+    </h1>
+    <h1
+      className="font-['Playfair_Display',serif] italic font-bold text-[clamp(3rem,7vw,5.5rem)] text-[#C87D87] leading-[1.15] mb-4 opacity-0 animate-[fadeInUp_1s_ease_0.7s_forwards]"
+    >
+      Outdoor Experiences
+    </h1>
 
-          {/* Divider */}
-          <div
-            className="flex items-center justify-center gap-3 mb-4 opacity-0 animate-[fadeIn_1s_ease_1s_forwards]"
-          >
-            <div className="w-12 h-px bg-[#C87D87]/40" />
-            <span className="text-[#C87D87]/60 text-xs">✦</span>
-            <div className="w-12 h-px bg-[#C87D87]/40" />
-          </div>
+    {/* Divider */}
+    <div
+      className="flex items-center justify-center gap-3 mb-4 opacity-0 animate-[fadeIn_1s_ease_1s_forwards]"
+    >
+      <div className="w-12 h-px bg-[#C87D87]/40" />
+      <span className="text-[#C87D87]/60 text-xs">✦</span>
+      <div className="w-12 h-px bg-[#C87D87]/40" />
+    </div>
 
-          {/* Subtitle */}
-          <p
-            className="font-['Cormorant_Garamond',serif] text-2xl text-[#7a6a5a] mb-4 max-w-2xl mx-auto leading-relaxed opacity-0 animate-[fadeIn_1s_ease_1.1s_forwards]"
-          >
-            Crafting unforgettable moments.<br />Tailored events, designed to perfection.
-          </p>
+    {/* Subtitle */}
+    <p
+      className="font-['Cormorant_Garamond',serif] text-2xl text-[#7a6a5a] mb-4 max-w-2xl mx-auto leading-relaxed opacity-0 animate-[fadeIn_1s_ease_1.1s_forwards]"
+    >
+      Crafting unforgettable moments.<br />Tailored events, designed to perfection.
+    </p>
 
-          {/* CTA */}
-          <div className="flex items-center justify-center gap-5 opacity-0 animate-[fadeInUp_1s_ease_1.3s_forwards]">
-            <button className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.18em] uppercase border border-[#C87D87] text-[#C87D87] px-8 py-2.5 bg-transparent hover:bg-[#C87D87] hover:text-white transition-all duration-300 cursor-pointer">
-              Get Started
-            </button>
-            <Link
-              href="#about"
-              className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.15em] uppercase text-[#6B7556] border-b border-[#6B7556]/40 pb-0.5 hover:border-[#6B7556] transition-all duration-300"
-            >
-              Learn More →
-            </Link>
-          </div>
-        </div>
+    {/* CTA */}
+   <div className="flex items-center justify-center gap-5 opacity-0 animate-[fadeInUp_1s_ease_1.3s_forwards]">
+  <button className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.18em] uppercase border border-[#C87D87] text-[#C87D87] px-8 py-2.5 bg-transparent hover:bg-[#C87D87] hover:text-white transition-all duration-300 cursor-pointer">
+    Get Started
+  </button>
+  <Link
+    href="#about"
+    className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.15em] uppercase text-[#6B7556] border-b border-[#6B7556]/40 pb-0.5 hover:border-[#6B7556] transition-all duration-300"
+  >
+    Learn More →
+  </Link>
+</div>
+  </div>
 
-        {/* Bottom scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0 animate-[fadeIn_1s_ease_1.8s_forwards]">
-          <span className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#C87D87]/50">Scroll</span>
-          <div className="w-px h-10 bg-gradient-to-b from-[#C87D87]/40 to-transparent animate-[scrollLine_2s_ease-in-out_infinite]" />
-        </div>
-      </section>
+  {/* Bottom scroll indicator */}
+  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0 animate-[fadeIn_1s_ease_1.8s_forwards]">
+    <span className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#C87D87]/50">Scroll</span>
+    <div className="w-px h-10 bg-gradient-to-b from-[#C87D87]/40 to-transparent animate-[scrollLine_2s_ease-in-out_infinite]" />
+  </div>
+</section>
+
 
       {/* ─── ABOUT (no background) ─── */}
       <section className="py-32 px-8 md:px-20 bg-transparent">
@@ -215,37 +214,18 @@ export default function Home() {
         </div>
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {[
-            { 
-              img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', 
-              title: 'Beach Adventure', 
-              desc: 'Experience the sun, sand, and sea with curated beach activities.' 
-            },
-            { 
-              img: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470', 
-              title: 'Mountain Hiking', 
-              desc: 'Adventure through scenic trails and breathtaking mountain views.' 
-            },
-            { 
-              img: 'https://images.unsplash.com/photo-1516569427665-f3e2cfb17356', 
-              title: 'Garden Event', 
-              desc: 'Relax in beautifully designed gardens and host memorable gatherings.' 
-            },
-          ].map((activity, i) => (
-            <div 
-              key={i} 
-              onClick={() => {
-                setSelectedActivity(activity);
-                setIsModalOpen(true);
-              }}
-              className="bg-white/50 border border-[#C87D87]/20 overflow-hidden hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(200,125,135,0.2)] transition-all duration-300 cursor-pointer"
-            >
+            { img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', title: 'Beach Adventure', desc: 'Experience the sun, sand, and sea with curated beach activities.' },
+            { img: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470', title: 'Mountain Hiking', desc: 'Adventure through scenic trails and breathtaking mountain views.' },
+            { img: 'https://images.unsplash.com/photo-1516569427665-f3e2cfb17356', title: 'Garden Event', desc: 'Relax in beautifully designed gardens and host memorable gatherings.' },
+          ].map((a, i) => (
+            <div key={i} className="bg-white/50 border border-[#C87D87]/20 overflow-hidden hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(200,125,135,0.2)] transition-all duration-300 cursor-pointer">
               <div className="overflow-hidden h-56">
-                <img src={activity.img} alt={activity.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                <img src={a.img} alt={a.title} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
               </div>
               <div className="p-6">
-                <h3 className="font-['Playfair_Display',serif] italic text-xl text-[#3a3027] mb-2">{activity.title}</h3>
+                <h3 className="font-['Playfair_Display',serif] italic text-xl text-[#3a3027] mb-2">{a.title}</h3>
                 <div className="w-7 h-px bg-[#C87D87] mb-3" />
-                <p className="text-sm text-[#7a6a5a] leading-relaxed">{activity.desc}</p>
+                <p className="text-sm text-[#7a6a5a] leading-relaxed">{a.desc}</p>
               </div>
             </div>
           ))}
@@ -323,13 +303,6 @@ export default function Home() {
           © {new Date().getFullYear()} L'Élégance. All rights reserved.
         </p>
       </footer>
-
-      {/* Modal de réservation */}
-      <ActivityBookingModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        activity={selectedActivity} 
-      />
 
     </main>
   );
