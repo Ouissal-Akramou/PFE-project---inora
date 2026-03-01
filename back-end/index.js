@@ -5,6 +5,7 @@ import auth from './Routes/auth.js';
 import cookieParser from 'cookie-parser';
 import reviewRoutes from './Routes/reviews.js';
 import dotenv from 'dotenv';
+const HOST = '0.0.0.0';
 
 // Load environment variables
 dotenv.config();
