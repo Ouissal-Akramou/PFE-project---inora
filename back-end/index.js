@@ -4,8 +4,8 @@ import cors from 'cors';
 import auth from './Routes/auth.js';
 import cookieParser from 'cookie-parser';
 import reviewRoutes from './Routes/reviews.js';
+import profile from './Routes/profile.js';
 import dotenv from 'dotenv';
-const HOST = '0.0.0.0';
 
 // Load environment variables
 dotenv.config();
@@ -47,8 +47,8 @@ app.use(cors({
     }
   },
   credentials: true, // Important for cookies/sessions
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Merged: added PATCH
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], // Merged: added X-Requested-With
   exposedHeaders: ['Set-Cookie'],
   optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 }));
@@ -57,6 +57,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+app.use('/uploads', express.static('uploads'));
 
 // Request logging middleware (optional but helpful for debugging)
 app.use((req, res, next) => {
@@ -83,6 +84,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/auth', auth);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/profile', profile);
 
 // ✅ FIXED: 404 handler for undefined routes - removed '*' to avoid path-to-regexp error
 app.use((req, res) => {
@@ -127,4 +129,4 @@ process.on('SIGTERM', () => {
   });
 });
 
-export default app; 
+export default app;

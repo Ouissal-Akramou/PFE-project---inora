@@ -204,10 +204,12 @@ export const getMe = async (req, res) => {
     const user = await prisma.user.findUnique({
   where: { id: decoded.id },
   select: { 
-    id: true, 
-    fullName: true, 
-    email: true,
-    role: true   // ✅ must be here
+      id:        true,
+      fullName:  true,
+      email:     true,
+      role:      true,
+      avatarUrl: true,  // ✅ make sure this is here
+      createdAt: true,  // ✅ must be here
   }
 });
 

@@ -8,20 +8,21 @@ export default function SignUp() {
   const router = useRouter();
   const { register, loading } = useAuth();
   const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
+  const [adminCode, setAdminCode] = useState('');
+  const [showAdminCode, setShowAdminCode] = useState(false);
   const [error, setError] = useState('');
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (form.password !== form.confirmPassword) return setError('Passwords do not match');
-    if (form.password.length < 6) return setError('Password must be at least 6 characters');
-    try {
-      await register(form.fullName, form.email, form.password);
-      router.refresh();
-      router.push('/');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-    }
+ async function handleSubmit(e) {
+  e.preventDefault();
+  if (form.password !== form.confirmPassword) return setError('Passwords do not match');
+  if (form.password.length < 6) return setError('Password must be at least 6 characters');
+  try {
+    await register(form.fullName, form.email, form.password, adminCode || undefined);
+    router.push('/login'); // ✅ always redirect to login after registration
+  } catch (err) {
+    setError(err.response?.data?.message || 'Registration failed');
   }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-[#FBEAD6] relative overflow-hidden">
@@ -103,15 +104,63 @@ export default function SignUp() {
               />
             </div>
           ))}
+
+          {/* ✅ OPTIONAL ADMIN CODE */}
+          <div>
+            <button
+              type="button"
+              onClick={() => { setShowAdminCode(!showAdminCode); setAdminCode(''); }}
+              className="w-full flex items-center justify-center gap-2 py-2 font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/40 hover:text-[#C87D87] transition-colors duration-300"
+            >
+              <div className="flex-1 h-px bg-[#C87D87]/15" />
+              <span>{showAdminCode ? '— cancel admin registration —' : '+ register as admin?'}</span>
+              <div className="flex-1 h-px bg-[#C87D87]/15" />
+            </button>
+
+            {showAdminCode && (
+              <div className="mt-3 animate-[fadeInUp_0.3s_ease_forwards]">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex-1 h-px bg-[#C87D87]/20" />
+                  <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.2em] uppercase text-[#C87D87]/50">
+                    Admin Verification
+                  </span>
+                  <div className="flex-1 h-px bg-[#C87D87]/20" />
+                </div>
+
+                <label className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.18em] uppercase text-[#7a6a5a] block mb-1.5">
+                  Admin Code
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter your admin code"
+                  value={adminCode}
+                  onChange={e => setAdminCode(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#C87D87]/5 border border-[#C87D87]/30 focus:border-[#C87D87]/60 focus:outline-none font-['Cormorant_Garamond',serif] italic text-base text-[#3a3027] placeholder:text-[#7a6a5a]/40 transition-colors duration-300"
+                />
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-[#C87D87]/40 mt-1.5 text-center">
+                  — Provided by your organization —
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Submit */}
+        {/* Submit — color changes if admin code is entered */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full mt-7 font-['Cormorant_Garamond',serif] text-sm tracking-[0.22em] uppercase text-white bg-[#6B7556] border border-[#6B7556] py-3 hover:bg-[#C87D87] hover:border-[#C87D87] transition-all duration-300 disabled:opacity-50"
+          className={`w-full mt-7 font-['Cormorant_Garamond',serif] text-sm tracking-[0.22em] uppercase text-white border py-3 transition-all duration-300 disabled:opacity-50 ${
+            showAdminCode && adminCode
+              ? 'bg-[#C87D87] border-[#C87D87] hover:bg-[#6B7556] hover:border-[#6B7556]'
+              : 'bg-[#6B7556] border-[#6B7556] hover:bg-[#C87D87] hover:border-[#C87D87]'
+          }`}
         >
-          {loading ? '— Creating —' : 'Create Account'}
+          {loading
+            ? '— Creating —'
+            : showAdminCode && adminCode
+              ? 'Create Admin Account'
+              : 'Create Account'
+          }
         </button>
 
         {/* Footer */}

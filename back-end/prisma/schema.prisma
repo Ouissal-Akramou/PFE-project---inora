@@ -7,31 +7,63 @@ datasource db {
   provider = "postgresql"
 }
 
+// schema.prisma
 model User {
-  id        String   @id @default(uuid())
-  fullName  String
-  email     String   @unique
-  password  String
-  image     String?  // profile picture optional
-  role     String @default("user") 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // ✅ ADD THIS - bidirectional relation
-  reviews   Review[]  // one user → many reviews
+  id                String             @id @default(cuid())
+  fullName          String
+  email             String             @unique
+  password          String
+  role              String             @default("member")
+  suspended         Boolean            @default(false)
+  avatarUrl         String?
+  createdAt         DateTime           @default(now())
+  gatheringRequests GatheringRequest[]
+  drafts            Draft[]
+  reviews           Review[]
+}
+
+model GatheringRequest {
+  id              String    @id @default(cuid())
+  userId          String
+  occasion        String
+  activity        String
+  guestCount      Int
+  preferredDate   DateTime
+  alternateDate   DateTime?
+  location        String
+  duration        String
+  specialRequests String?
+  status          String    @default("pending")
+  // pending | confirmed | in_progress | completed | cancelled
+  totalPrice      Float?
+  advanceAmount   Float?
+  advancePaid     Boolean   @default(false)
+  remainingPaid   Boolean   @default(false)
+  advancePaidAt   DateTime?
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review          Review?
+}
+
+model Draft {
+  id          String   @id @default(cuid())
+  userId      String
+  formData    Json
+  lastSavedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Review {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  rating      Int      // 1-5
-  comment     String
-  approved    Boolean  @default(false)
-  featured    Boolean  @default(false)  // ✅ ADD THIS
-  gatheringId String?  
-  createdAt   DateTime @default(now())
-  
-  @@map("reviews")
+  id                 String           @id @default(cuid())
+  userId             String
+  gatheringRequestId String?          @unique
+  comment            String
+  rating             Int
+  approved           Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gatheringRequest   GatheringRequest? @relation(fields: [gatheringRequestId], references: [id])
 }
+
 

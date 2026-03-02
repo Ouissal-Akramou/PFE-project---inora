@@ -4,46 +4,49 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ On mount — restore session from cookie
   useEffect(() => {
     fetch('http://localhost:4000/api/auth/me', { credentials: 'include' })
       .then(res => {
         if (!res.ok) throw new Error('Not logged in');
         return res.json();
       })
-      .then(data => setUser(data.user || data))  // ✅ unwrap { user:{} } OR flat {}
+      .then(data => setUser(data.user || data))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
-  // ✅ login calls API + sets real user object
-  const login = async (email, password) => {
+  const login = async (email, password, selectedRole, adminCode) => {
     const res = await fetch('http://localhost:4000/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email, password,
+        role: selectedRole,
+        adminCode: adminCode || undefined,
+      }),
     });
     if (!res.ok) {
       const err = await res.json();
       throw { response: { data: err } };
     }
     const data = await res.json();
-    console.log('LOGIN DATA:', data); // ← check this
-  setUser(data.user || data);        // ✅ sets { id, fullName, email }
+    setUser(data.user || data);
     return data;
   };
 
-  // ✅ register calls API + sets real user object
-  const register = async (fullName, email, password) => {
+  const register = async (fullName, email, password, adminCode) => {
     const res = await fetch('http://localhost:4000/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ fullName, email, password }),
+      body: JSON.stringify({
+        fullName, email, password,
+        adminCode: adminCode || undefined,
+      }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -56,14 +59,14 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     await fetch('http://localhost:4000/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
+      method: 'POST', credentials: 'include',
     });
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    // ✅ setUser now exposed so any page can update user state
+    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
