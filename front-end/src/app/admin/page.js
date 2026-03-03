@@ -9,11 +9,14 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('reviews');
   const [approvedReviews, setApprovedReviews] = useState([]);
   const [pendingReviews, setPendingReviews] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
   const [pageReady, setPageReady] = useState(false);
 
   useEffect(() => {
     fetchReviews();
+    fetchBookings();
     setTimeout(() => setPageReady(true), 100);
   }, []);
 
@@ -40,6 +43,21 @@ export default function Admin() {
     }
   };
 
+  const fetchBookings = async () => {
+    try {
+      const res = await fetch('http://localhost:4000/api/bookings', {
+        credentials: 'include'
+      });
+      const data = await res.json();
+      setBookings(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error);
+      setBookings([]);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
   const approveReview = async (id) => {
     await fetch(`http://localhost:4000/api/reviews/${id}/approve`, { method: 'PATCH', credentials: 'include' });
     fetchReviews();
@@ -58,6 +76,15 @@ export default function Admin() {
       id: 'reviews', label: 'Reviews', sub: 'Testimonials',
       badge: pendingReviews.length,
       icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+    },
+    {
+      id: 'bookings', 
+      label: 'Réservations', 
+      sub: 'Demandes clients',
+      badge: bookings.length,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
     },
     {
       id: 'users', label: 'Members', sub: 'Users & admins',
@@ -338,6 +365,111 @@ export default function Admin() {
 
           {/* ── CONTENT AREA ── */}
           <div className="flex-1 p-12">
+
+            {/* ══ BOOKINGS TAB ══ */}
+            {activeTab === 'bookings' && (
+              <div className="space-y-8 animate-[fadeUp_0.5s_ease_forwards]">
+                <div className="flex items-center gap-5 mb-8">
+                  <div className="relative">
+                    <div className="w-px h-12 bg-gradient-to-b from-transparent via-[#C87D87] to-transparent" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[#C87D87] rotate-45" />
+                  </div>
+                  <div>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/50 text-[0.6rem] tracking-[0.3em] uppercase">
+                      Demandes de réservation
+                    </p>
+                    <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027]">
+                      Toutes les demandes
+                      <span className="ml-2 text-[#C87D87] font-['Cormorant_Garamond',serif] text-base not-italic">({bookings.length})</span>
+                    </h3>
+                  </div>
+                  <div className="flex-1 flex items-center gap-3">
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#C87D87]/20 to-transparent" />
+                    <span className="text-[#C87D87]/20 text-[0.4rem]">✦</span>
+                  </div>
+                </div>
+
+                {bookingsLoading ? (
+                  <div className="flex justify-center py-20">
+                    <div className="w-10 h-10 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin" />
+                  </div>
+                ) : bookings.length === 0 ? (
+                  <div className="relative border border-dashed border-[#C87D87]/20 p-16 text-center bg-white/30">
+                    <div className="absolute top-2 left-2 w-4 h-4 pointer-events-none border-t border-l border-[#C87D87]/20" />
+                    <div className="absolute bottom-2 right-2 w-4 h-4 pointer-events-none border-b border-r border-[#C87D87]/20" />
+                    <p className="font-['Cormorant_Garamond',serif] italic text-xl text-[#C87D87]/30">
+                      — Aucune réservation pour le moment —
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6">
+                    {bookings.map((booking, i) => (
+                      <div key={booking.id || i}
+                        className="relative bg-white/75 border border-[#C87D87]/15 p-7 card-hover animate-[fadeUp_0.5s_ease_forwards] group overflow-hidden">
+                        
+                        {/* Lace corners */}
+                        <div className="absolute top-2 left-2 w-5 h-5 pointer-events-none">
+                          <div className="absolute top-0 left-0 w-full h-px bg-[#C87D87]/30" />
+                          <div className="absolute top-0 left-0 w-px h-full bg-[#C87D87]/30" />
+                          <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-[#C87D87]/40" />
+                        </div>
+                        <div className="absolute top-2 right-2 w-5 h-5 pointer-events-none">
+                          <div className="absolute top-0 right-0 w-full h-px bg-[#C87D87]/30" />
+                          <div className="absolute top-0 right-0 w-px h-full bg-[#C87D87]/30" />
+                          <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-[#C87D87]/40" />
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <p className="font-['Playfair_Display',serif] italic text-lg text-[#6B7556] mb-3">
+                              {booking.fullName || 'Nom non spécifié'}
+                            </p>
+                            <div className="space-y-2 text-sm">
+                              <p className="flex items-center gap-2">
+                                <span className="text-[#C87D87] w-24">Email:</span>
+                                <span className="text-[#3a3027]">{booking.email || '-'}</span>
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <span className="text-[#C87D87] w-24">Téléphone:</span>
+                                <span className="text-[#3a3027]">{booking.phone || '-'}</span>
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <span className="text-[#C87D87] w-24">Activité:</span>
+                                <span className="text-[#3a3027]">{booking.activity || booking.activityType || '-'}</span>
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <span className="text-[#C87D87] w-24">Participants:</span>
+                                <span className="text-[#3a3027]">{booking.participants || '1'}</span>
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <span className="text-[#C87D87] w-24">Date:</span>
+                                <span className="text-[#3a3027]">{booking.date ? new Date(booking.date).toLocaleDateString('fr-FR') : '-'}</span>
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <span className="text-[#C87D87] w-24">Horaire:</span>
+                                <span className="text-[#3a3027]">{booking.timeSlot || '-'}</span>
+                              </p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-['Playfair_Display',serif] italic text-sm text-[#C87D87] mb-2">Demandes spéciales</p>
+                            <p className="font-['Cormorant_Garamond',serif] text-sm text-[#5a4a3a]/80 leading-relaxed p-4 bg-[#FBEAD6]/30 border border-[#C87D87]/10">
+                              {booking.specialRequests || 'Aucune demande spéciale'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end mt-4 pt-4 border-t border-[#C87D87]/10">
+                          <span className="text-xs text-[#C87D87]/50">
+                            Reçu le {new Date(booking.createdAt || booking.submittedAt || Date.now()).toLocaleDateString('fr-FR')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ══ REVIEWS TAB ══ */}
             {activeTab === 'reviews' && (

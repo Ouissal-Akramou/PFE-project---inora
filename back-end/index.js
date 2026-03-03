@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import reviewRoutes from './Routes/reviews.js';
 import profile from './Routes/profile.js';
 import dotenv from 'dotenv';
+import bookingRoutes from './Routes/booking.js';
 
 // Load environment variables
 dotenv.config();
@@ -24,7 +25,7 @@ app.use(cors({
     
     // Allowed origins list
     const allowedOrigins = [
-      'http://localhost:3000',
+      'https://pleasant-enthusiasm-production-0c41.up.railway.app',
       'http://localhost:3001',
       FRONTEND_URL,
       /\.railway\.app$/,  // Any Railway app domain
@@ -85,6 +86,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', auth);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/profile', profile);
+app.use('/api/bookings', bookingRoutes);
 
 // ✅ FIXED: 404 handler for undefined routes - removed '*' to avoid path-to-regexp error
 app.use((req, res) => {
