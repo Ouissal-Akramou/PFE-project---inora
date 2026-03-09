@@ -1,6 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import ActivityBookingModal from '@/components/ActivityBookingModal';
 
 const defaultReviews = [
   { id: 'default-1', user: { fullName: 'Sophie Laurent' },  rating: 5, comment: 'Inora turned a simple afternoon into the most meaningful gathering I have ever attended. Every detail was thoughtful and beautiful.' },
@@ -20,7 +23,12 @@ function useInView(threshold = 0.15) {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [reviews, setReviews] = useState(defaultReviews);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
   const [activitiesRef, activitiesIn] = useInView(0.1);
   const [processRef,    processIn]    = useInView(0.1);
   const [reviewsRef,    reviewsIn]    = useInView(0.1);
@@ -32,6 +40,15 @@ export default function Home() {
       .then(data => setReviews(Array.isArray(data) && data.length > 0 ? data : defaultReviews))
       .catch(() => setReviews(defaultReviews));
   }, []);
+
+  const handleActivityClick = (activity) => {
+    if (!user) {
+      router.push('/sign-up');
+      return;
+    }
+    setSelectedActivity(activity);
+    setIsModalOpen(true);
+  };
 
   return (
     <main className="text-[#3a3027] overflow-x-hidden relative bg-[#FBEAD6]">
@@ -309,7 +326,8 @@ export default function Home() {
               { img:'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261', tag:'03', title:'Pottery Workshop', desc:'Shape and sculpt in an intimate setting. Grounding, joyful, and deeply satisfying when shared with people you love.',    accent:'#C87D87', delay:'delay-5' },
             ].map((a, i) => (
               <div key={i}
-                className={`group relative bg-white/80 backdrop-blur-sm border border-[#C87D87]/14 rounded-2xl overflow-hidden card-hover reveal-scale ${a.delay} ${activitiesIn ? 'in-view' : ''}`}
+                onClick={() => handleActivityClick(a)}
+                className={`group relative bg-white/80 backdrop-blur-sm border border-[#C87D87]/14 rounded-2xl overflow-hidden card-hover reveal-scale ${a.delay} ${activitiesIn ? 'in-view' : ''} cursor-pointer`}
                 style={activitiesIn ? { animation:`cardGlow .9s ease ${0.1+i*0.15}s` } : {}}>
                 <div className="absolute inset-0 rounded-2xl border border-[#C87D87]/8 pointer-events-none"/>
                 <div className="absolute inset-[4px] rounded-xl border border-[#C87D87]/5 pointer-events-none"/>
@@ -521,6 +539,13 @@ export default function Home() {
         </div>
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/40 to-transparent"/>
       </footer>
+
+      {/* Modal de réservation */}
+      <ActivityBookingModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        activity={selectedActivity} 
+      />
 
     </main>
   );

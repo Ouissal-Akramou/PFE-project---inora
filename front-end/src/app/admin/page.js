@@ -7,20 +7,31 @@ export default function Admin() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const [activeTab,       setActiveTab]       = useState('reviews');
+  const [activeTab, setActiveTab] = useState('reviews');
   const [approvedReviews, setApprovedReviews] = useState([]);
-  const [pendingReviews,  setPendingReviews]  = useState([]);
-  const [loading,         setLoading]         = useState(true);
-  const [pageReady,       setPageReady]       = useState(false);
+  const [pendingReviews, setPendingReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pageReady, setPageReady] = useState(false);
 
-  const [users,         setUsers]         = useState([]);
-  const [userSearch,    setUserSearch]    = useState('');
-  const [usersLoading,  setUsersLoading]  = useState(false);
-  const [roleFilter,    setRoleFilter]    = useState('all'); // ✅ new
+  // Users state
+  const [users, setUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [roleFilter, setRoleFilter] = useState('all');
+
+  // Bookings state
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [unreadBookings, setUnreadBookings] = useState([]);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+
+  // ✅ تعريف displayName هنا باش يكون متاح فكل الكومبوننت
+  const displayName = user?.fullName ?? user?.name ?? 'Admin';
 
   useEffect(() => {
     fetchReviews();
     fetchUsers();
+    fetchBookings();
     setTimeout(() => setPageReady(true), 100);
   }, []);
 
@@ -29,16 +40,17 @@ export default function Admin() {
     router.push('/');
   };
 
+  // ========== REVIEWS ==========
   const fetchReviews = async () => {
     try {
       const [approvedRes, pendingRes] = await Promise.all([
         fetch('http://localhost:4000/api/reviews/approved', { credentials: 'include' }),
-        fetch('http://localhost:4000/api/reviews/pending',  { credentials: 'include' }),
+        fetch('http://localhost:4000/api/reviews/pending', { credentials: 'include' }),
       ]);
       const approved = await approvedRes.json();
-      const pending  = await pendingRes.json();
+      const pending = await pendingRes.json();
       setApprovedReviews(Array.isArray(approved) ? approved : []);
-      setPendingReviews(Array.isArray(pending)   ? pending  : []);
+      setPendingReviews(Array.isArray(pending) ? pending : []);
     } catch {
       setApprovedReviews([]);
       setPendingReviews([]);
@@ -58,6 +70,7 @@ export default function Admin() {
     fetchReviews();
   };
 
+  // ========== USERS ==========
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
@@ -70,17 +83,96 @@ export default function Admin() {
 
   const toggleSuspend = async (id, suspended) => {
     await fetch(`http://localhost:4000/api/auth/admin/users/${id}/suspend`, {
-      method:      'PATCH',
+      method: 'PATCH',
       credentials: 'include',
-      headers:     { 'Content-Type': 'application/json' },
-      body:        JSON.stringify({ suspended: !suspended })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ suspended: !suspended })
     });
     fetchUsers();
   };
 
-  const displayName = user?.fullName ?? user?.name ?? 'Admin';
+  // ========== BOOKINGS ==========
+  const fetchBookings = async () => {
+    try {
+      const res = await fetch('http://localhost:4000/api/bookings', {
+        credentials: 'include'
+      });
+      const data = await res.json();
+      setBookings(Array.isArray(data) ? data : []);
 
-  // ✅ filter by search + role
+      // نجيبو لائحة الحجوزات لي قريناها (ID)
+      const readBookings = JSON.parse(localStorage.getItem('readBookings') || '[]');
+
+      // الحجوزات الجدد هوما لي ماشي موجودين فـ readBookings
+      const newUnread = Array.isArray(data)
+        ? data.filter(b => !readBookings.includes(b.id))
+        : [];
+
+      setUnreadBookings(newUnread);
+
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error);
+      setBookings([]);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  // منين كدير "Marquer comme lu"
+  const markAsRead = (bookingId) => {
+    // نجيبو لائحة الحجوزات لي قريناها
+    const readBookings = JSON.parse(localStorage.getItem('readBookings') || '[]');
+
+    // نزيدو الـ ID الجديد
+    if (!readBookings.includes(bookingId)) {
+      readBookings.push(bookingId);
+      localStorage.setItem('readBookings', JSON.stringify(readBookings));
+    }
+
+    // نحيدو من unreadBookings
+    setUnreadBookings(prev => prev.filter(b => b.id !== bookingId));
+  };
+
+  // منين كدير "Tout marquer comme lu"
+  const markAllAsRead = () => {
+    // نجيبو لائحة الحجوزات لي قريناها
+    const readBookings = JSON.parse(localStorage.getItem('readBookings') || '[]');
+
+    // نزيدو كل الحجوزات لي ماقريناهمش
+    unreadBookings.forEach(booking => {
+      if (!readBookings.includes(booking.id)) {
+        readBookings.push(booking.id);
+      }
+    });
+
+    localStorage.setItem('readBookings', JSON.stringify(readBookings));
+    setUnreadBookings([]);
+  };
+
+  // دالة تجميع الحجوزات حسب المستخدم
+  const groupBookingsByUser = () => {
+    const grouped = {};
+
+    bookings.forEach(booking => {
+      const email = booking.email;
+      if (!grouped[email]) {
+        grouped[email] = {
+          user: users.find(u => u.email === email) || null,
+          bookings: [],
+          count: 0
+        };
+      }
+      grouped[email].bookings.push(booking);
+      grouped[email].count++;
+    });
+
+    return grouped;
+  };
+
+  // تصفية الحجوزات حسب ما يختار المسؤول
+  const displayedBookings = showUnreadOnly ? unreadBookings : bookings;
+
+  // Filter users
   const filteredUsers = users.filter(u => {
     const matchesSearch =
       u.fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -94,6 +186,15 @@ export default function Admin() {
       id: 'reviews', label: 'Reviews', sub: 'Testimonials',
       badge: pendingReviews.length,
       icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+    },
+    {
+      id: 'bookings',
+      label: 'Réservations',
+      sub: 'Demandes clients',
+      badge: unreadBookings.length,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
     },
     {
       id: 'users', label: 'Members', sub: 'Users & admins',
@@ -138,13 +239,19 @@ export default function Admin() {
           transform: translateY(-3px);
           box-shadow: 0 16px 48px rgba(200,125,135,0.16);
         }
+        .unread-badge {
+          animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
+        }
       `}</style>
 
       <div className={`min-h-screen flex transition-opacity duration-700 ${pageReady ? 'opacity-100' : 'opacity-0'}`}>
 
-        {/* ══════════════════════════════
-            SIDEBAR
-        ══════════════════════════════ */}
+        {/* SIDEBAR */}
         <aside className="lace-sidebar fixed top-0 left-0 h-full w-72 z-40 flex flex-col"
           style={{ boxShadow: '6px 0 50px rgba(107,117,86,0.3)' }}>
 
@@ -164,12 +271,8 @@ export default function Admin() {
               <div className="absolute top-2 right-2 w-3 h-3 border-t border-r border-[#C87D87]/60" />
             </div>
             <div className="text-center">
-              <p className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] tracking-[0.35em] uppercase text-[#C87D87]/60 mb-1">
-                — Admin Panel —
-              </p>
-              <h1 className="font-['Playfair_Display',serif] italic text-4xl text-[#FBEAD6] tracking-wide">
-                Inora
-              </h1>
+              <p className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] tracking-[0.35em] uppercase text-[#C87D87]/60 mb-1">— Admin Panel —</p>
+              <h1 className="font-['Playfair_Display',serif] italic text-4xl text-[#FBEAD6] tracking-wide">Inora</h1>
               <div className="flex items-center justify-center gap-2 mt-2">
                 <div className="w-8 h-px bg-[#C87D87]/40" />
                 <span className="text-[#C87D87]/40 text-[0.45rem]">✦</span>
@@ -202,17 +305,18 @@ export default function Admin() {
 
           {/* NAV */}
           <nav className="flex-1 px-4 space-y-1">
-            <p className="px-4 mb-3 font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-[0.35em] uppercase text-[#FBEAD6]/20">
-              Menu
-            </p>
+            <p className="px-4 mb-3 font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-[0.35em] uppercase text-[#FBEAD6]/20">Menu</p>
             {navItems.map((item, i) => (
-              <button key={item.id} onClick={() => setActiveTab(item.id)}
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
                 style={{ animationDelay: `${i * 60}ms` }}
                 className={`w-full flex items-center gap-3 px-5 py-3.5 transition-all duration-400 relative group ${
                   activeTab === item.id
                     ? 'bg-[#FBEAD6]/12 border border-[#C87D87]/30'
                     : 'border border-transparent hover:border-[#FBEAD6]/10 hover:bg-[#FBEAD6]/6'
-                }`}>
+                }`}
+              >
                 {activeTab === item.id && (
                   <div className="absolute inset-0 bg-gradient-to-r from-[#C87D87]/8 via-transparent to-transparent" />
                 )}
@@ -232,7 +336,7 @@ export default function Admin() {
                   <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#FBEAD6]/20 mt-0.5">{item.sub}</p>
                 </div>
                 {item.badge > 0 && (
-                  <span className="relative z-10 min-w-[1.3rem] h-5 px-1.5 bg-[#C87D87] flex items-center justify-center font-['Cormorant_Garamond',serif] text-[0.55rem] text-white animate-pulse">
+                  <span className={`relative z-10 min-w-[1.3rem] h-5 px-1.5 ${item.id === 'bookings' ? 'bg-red-500 animate-pulse' : 'bg-[#C87D87]'} flex items-center justify-center font-['Cormorant_Garamond',serif] text-[0.55rem] text-white`}>
                     {item.badge}
                   </span>
                 )}
@@ -251,12 +355,16 @@ export default function Admin() {
           <div className="px-4 pb-3">
             <button onClick={handleLogout}
               className="w-full flex items-center gap-3 px-5 py-3.5 border border-transparent hover:border-[#C87D87]/25 hover:bg-[#C87D87]/10 transition-all duration-300 group">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FBEAD6]/25 group-hover:text-[#C87D87] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FBEAD6]/25 group-hover:text-[#C87D87] transition-colors duration-300 group-hover:translate-x-0.5 transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
               <div className="text-left">
-                <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#FBEAD6]/30 group-hover:text-[#FBEAD6]/70 transition-colors">Sign Out</p>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#FBEAD6]/15 group-hover:text-[#FBEAD6]/30 transition-colors">End your session</p>
+                <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#FBEAD6]/30 group-hover:text-[#FBEAD6]/70 transition-colors">
+                  Sign Out
+                </p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#FBEAD6]/15 group-hover:text-[#FBEAD6]/30 transition-colors">
+                  End your session
+                </p>
               </div>
             </button>
           </div>
@@ -282,9 +390,7 @@ export default function Admin() {
           <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/60 to-transparent" />
         </aside>
 
-        {/* ══════════════════════════════
-            MAIN
-        ══════════════════════════════ */}
+        {/* MAIN */}
         <main className="lace-bg ml-72 flex-1 min-h-screen flex flex-col">
 
           {/* TOP BAR */}
@@ -330,7 +436,7 @@ export default function Admin() {
                 </div>
               </div>
               <div className="w-px h-8 bg-gradient-to-b from-transparent via-[#C87D87]/20 to-transparent" />
-              <button onClick={() => { fetchReviews(); fetchUsers(); }}
+              <button onClick={() => { fetchReviews(); fetchUsers(); fetchBookings(); }}
                 className="relative font-['Cormorant_Garamond',serif] text-[0.65rem] tracking-[0.22em] uppercase text-[#6B7556] border border-[#6B7556]/30 px-5 py-2 hover:bg-[#6B7556] hover:text-white transition-all duration-500 group overflow-hidden">
                 <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l border-[#6B7556]/40 group-hover:border-white/30 transition-colors" />
                 <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r border-[#6B7556]/40 group-hover:border-white/30 transition-colors" />
@@ -349,9 +455,9 @@ export default function Admin() {
 
                 <div className="grid grid-cols-3 gap-5">
                   {[
-                    { label: 'Total',        value: approvedReviews.length + pendingReviews.length, color: '#3a3027', border: 'border-[#C87D87]/15', bg: 'bg-white/50' },
-                    { label: 'Live on Site', value: approvedReviews.length,  color: '#6B7556', border: 'border-[#6B7556]/20', bg: 'bg-[#6B7556]/5' },
-                    { label: 'Pending',      value: pendingReviews.length,   color: '#C87D87', border: 'border-[#C87D87]/20', bg: 'bg-[#C87D87]/5' },
+                    { label: 'Total', value: approvedReviews.length + pendingReviews.length, color: '#3a3027', border: 'border-[#C87D87]/15', bg: 'bg-white/50' },
+                    { label: 'Live on Site', value: approvedReviews.length, color: '#6B7556', border: 'border-[#6B7556]/20', bg: 'bg-[#6B7556]/5' },
+                    { label: 'Pending', value: pendingReviews.length, color: '#C87D87', border: 'border-[#C87D87]/20', bg: 'bg-[#C87D87]/5' },
                   ].map((stat, i) => (
                     <div key={stat.label} style={{ animationDelay: `${i * 80}ms` }}
                       className={`relative ${stat.bg} border ${stat.border} p-6 card-hover animate-[fadeUp_0.5s_ease_forwards]`}>
@@ -531,11 +637,228 @@ export default function Admin() {
               </div>
             )}
 
+            {/* ══ BOOKINGS TAB ══ */}
+            {activeTab === 'bookings' && (
+              <div className="space-y-8 animate-[fadeUp_0.5s_ease_forwards]">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-5">
+                    <div className="relative">
+                      <div className="w-px h-12 bg-gradient-to-b from-transparent via-[#C87D87] to-transparent" />
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[#C87D87] rotate-45" />
+                    </div>
+                    <div>
+                      <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/50 text-[0.6rem] tracking-[0.3em] uppercase">
+                        Demandes de réservation
+                      </p>
+                      <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027]">
+                        Toutes les demandes
+                        <span className="ml-2 text-[#C87D87] font-['Cormorant_Garamond',serif] text-base not-italic">({bookings.length})</span>
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* أزرار التحكم في الإشعارات */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowUnreadOnly(!showUnreadOnly)}
+                      className={`px-4 py-2 rounded-lg text-sm font-['Cormorant_Garamond',serif] tracking-wider transition-all ${
+                        showUnreadOnly 
+                          ? 'bg-[#C87D87] text-white' 
+                          : 'bg-white/50 border border-[#C87D87]/30 text-[#3a3027]'
+                      }`}
+                    >
+                      {showUnreadOnly ? 'Toutes les réservations' : `Nouvelles (${unreadBookings.length})`}
+                    </button>
+
+                    {unreadBookings.length > 0 && (
+                      <button
+                        onClick={markAllAsRead}
+                        className="px-4 py-2 bg-green-600/20 text-green-700 border border-green-600/30 rounded-lg text-sm font-['Cormorant_Garamond',serif] hover:bg-green-600/30 transition-all"
+                      >
+                        ✓ Tout marquer comme lu
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {bookingsLoading ? (
+                  <div className="flex justify-center py-20">
+                    <div className="w-10 h-10 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin" />
+                  </div>
+                ) : displayedBookings.length === 0 ? (
+                  <div className="relative border border-dashed border-[#C87D87]/20 p-16 text-center bg-white/30">
+                    <div className="absolute top-2 left-2 w-4 h-4 pointer-events-none border-t border-l border-[#C87D87]/20" />
+                    <div className="absolute bottom-2 right-2 w-4 h-4 pointer-events-none border-b border-r border-[#C87D87]/20" />
+                    <p className="font-['Cormorant_Garamond',serif] italic text-xl text-[#C87D87]/30">
+                      {showUnreadOnly ? '— Aucune nouvelle réservation —' : '— Aucune réservation pour le moment —'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6">
+                    {Object.entries(groupBookingsByUser()).map(([email, data]) => {
+                      const userBookings = showUnreadOnly 
+                        ? data.bookings.filter(b => unreadBookings.some(ub => ub.id === b.id))
+                        : data.bookings;
+                      
+                      if (userBookings.length === 0) return null;
+                      
+                      // Trier les réservations par date (la plus récente d'abord)
+                      const sortedBookings = [...userBookings].sort((a, b) => 
+                        new Date(b.createdAt || b.submittedAt || 0) - new Date(a.createdAt || a.submittedAt || 0)
+                      );
+                      
+                      return (
+                        <div key={email} className="relative bg-white/75 border border-[#C87D87]/15 p-7 card-hover animate-[fadeUp_0.5s_ease_forwards] group overflow-hidden">
+                          
+                          {/* Lace corners */}
+                          <div className="absolute top-2 left-2 w-5 h-5 pointer-events-none">
+                            <div className="absolute top-0 left-0 w-full h-px bg-[#C87D87]/30" />
+                            <div className="absolute top-0 left-0 w-px h-full bg-[#C87D87]/30" />
+                            <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-[#C87D87]/40" />
+                          </div>
+                          <div className="absolute top-2 right-2 w-5 h-5 pointer-events-none">
+                            <div className="absolute top-0 right-0 w-full h-px bg-[#C87D87]/30" />
+                            <div className="absolute top-0 right-0 w-px h-full bg-[#C87D87]/30" />
+                            <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-[#C87D87]/40" />
+                          </div>
+
+                          {/* En-tête avec informations utilisateur et compteur */}
+                          <div className="mb-6 pb-4 border-b border-[#C87D87]/10">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#C87D87] to-[#6B7556] flex items-center justify-center text-white font-['Playfair_Display',serif] font-bold text-lg">
+                                  {data.user?.fullName?.charAt(0).toUpperCase() || email.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="font-['Playfair_Display',serif] italic text-xl text-[#6B7556]">
+                                    {data.user?.fullName || 'Utilisateur non inscrit'}
+                                  </p>
+                                  <p className="font-['Cormorant_Garamond',serif] text-sm text-[#7a6a5a]/70">{email}</p>
+                                </div>
+                              </div>
+                              
+                              {/* Badge du nombre total de réservations */}
+                              <div className="text-center">
+                                <div className="text-3xl font-['Playfair_Display',serif] italic text-[#C87D87]">
+                                  {data.count}
+                                </div>
+                                <p className="font-['Cormorant_Garamond',serif] text-xs uppercase tracking-wider text-[#7a6a5a]/50">
+                                  Réservation{data.count > 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Statut utilisateur */}
+                            {data.user && (
+                              <div className="mt-3 flex gap-2">
+                                <span className={`px-3 py-1 rounded-full text-xs font-['Cormorant_Garamond',serif] ${
+                                  data.user.suspended 
+                                    ? 'bg-red-100 text-red-600 border border-red-300'
+                                    : 'bg-green-100 text-green-600 border border-green-300'
+                                }`}>
+                                  {data.user.suspended ? 'Suspendu' : 'Actif'}
+                                </span>
+                                <span className={`px-3 py-1 rounded-full text-xs font-['Cormorant_Garamond',serif] ${
+                                  data.user.role === 'admin'
+                                    ? 'bg-[#6B7556]/20 text-[#6B7556] border border-[#6B7556]/30'
+                                    : 'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/25'
+                                }`}>
+                                  {data.user.role === 'admin' ? 'Admin' : 'Membre'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Liste de toutes les réservations de l'utilisateur */}
+                          <div className="space-y-4">
+                            {sortedBookings.map((booking, idx) => {
+                              const isUnread = unreadBookings.some(b => b.id === booking.id);
+                              
+                              return (
+                                <div key={booking.id || `${email}-${idx}`}
+                                  className={`relative p-4 ${isUnread ? 'bg-red-50/50 border-l-4 border-l-red-400' : 'bg-[#FBEAD6]/20'} border border-[#C87D87]/10 rounded-lg`}>
+                                  
+                                  {/* علامة غير مقروءة */}
+                                  {isUnread && (
+                                    <div className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                                  )}
+                                  
+                                  {/* Numéro de réservation */}
+                                  <div className="absolute top-2 left-2 text-[0.6rem] font-['Cormorant_Garamond',serif] text-[#C87D87]/40">
+                                    #{idx + 1}
+                                  </div>
+
+                                  <div className="grid md:grid-cols-2 gap-4 mt-4">
+                                    <div className="space-y-2 text-sm">
+                                      <p className="flex items-center gap-2">
+                                        <span className="text-[#C87D87] w-24">Activité:</span>
+                                        <span className="text-[#3a3027] font-medium">{booking.activity || booking.activityType || '-'}</span>
+                                      </p>
+                                      <p className="flex items-center gap-2">
+                                        <span className="text-[#C87D87] w-24">Participants:</span>
+                                        <span className="text-[#3a3027]">{booking.participants || '1'}</span>
+                                      </p>
+                                      <p className="flex items-center gap-2">
+                                        <span className="text-[#C87D87] w-24">Date:</span>
+                                        <span className="text-[#3a3027]">{booking.date ? new Date(booking.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
+                                      </p>
+                                      <p className="flex items-center gap-2">
+                                        <span className="text-[#C87D87] w-24">Horaire:</span>
+                                        <span className="text-[#3a3027]">{booking.timeSlot || '-'}</span>
+                                      </p>
+                                      <p className="flex items-center gap-2">
+                                        <span className="text-[#C87D87] w-24">Téléphone:</span>
+                                        <span className="text-[#3a3027]">{booking.phone || '-'}</span>
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="font-['Playfair_Display',serif] italic text-sm text-[#C87D87] mb-2">Demandes spéciales</p>
+                                      <p className="font-['Cormorant_Garamond',serif] text-sm text-[#5a4a3a]/80 leading-relaxed p-3 bg-white/50 border border-[#C87D87]/10 rounded">
+                                        {booking.specialRequests || 'Aucune demande spéciale'}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-[#C87D87]/10">
+                                    <span className="text-xs text-[#C87D87]/50 flex items-center gap-2">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      {new Date(booking.createdAt || booking.submittedAt || Date.now()).toLocaleDateString('fr-FR', { 
+                                        hour: '2-digit', 
+                                        minute: '2-digit',
+                                        day: 'numeric', 
+                                        month: 'short', 
+                                        year: 'numeric' 
+                                      })}
+                                    </span>
+                                    
+                                    {/* زر تعليم كمقروء */}
+                                    {isUnread && (
+                                      <button
+                                        onClick={() => markAsRead(booking.id)}
+                                        className="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors font-['Cormorant_Garamond',serif]"
+                                      >
+                                        ✓ Marquer comme lu
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ══ USERS TAB ══ */}
             {activeTab === 'users' && (
               <div style={{ animation: 'fadeUp .4s ease forwards' }}>
 
-                {/* header */}
                 <div className="mb-8">
                   <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-xs tracking-[.3em] uppercase mb-1">Members</p>
                   <h2 className="font-['Playfair_Display',serif] italic text-3xl text-[#3a3027]">All Users</h2>
@@ -546,10 +869,7 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* ✅ search + role filter pills + count */}
                 <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
-
-                  {/* search */}
                   <div className="relative flex-1 min-w-[180px] max-w-xs">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#7a6a5a]/40 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
@@ -562,7 +882,6 @@ export default function Admin() {
                     />
                   </div>
 
-                  {/* ✅ role filter pills */}
                   <div className="flex items-center gap-1.5">
                     {[
                       { value: 'all',   label: 'All'     },
@@ -589,83 +908,91 @@ export default function Admin() {
                     ))}
                   </div>
 
-                  {/* count */}
                   <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/60 text-sm flex-shrink-0">
                     {filteredUsers.length} shown
                   </span>
                 </div>
 
-                {/* table */}
                 {usersLoading ? (
                   <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/50 text-sm text-center py-12">Loading…</p>
                 ) : (
                   <div className="border border-[#C87D87]/15 rounded-2xl overflow-hidden bg-white/40">
 
-                    {/* table header */}
                     <div className="grid grid-cols-[1fr_1.4fr_80px_80px_80px_100px] gap-4 px-5 py-3 bg-[#C87D87]/6 border-b border-[#C87D87]/12">
                       {['Name', 'Email', 'Role', 'Bookings', 'Reviews', 'Action'].map(h => (
                         <p key={h} className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[.25em] uppercase text-[#7a6a5a]/60">{h}</p>
                       ))}
                     </div>
 
-                    {/* rows */}
-                    {filteredUsers.map((u, i) => (
-                      <div key={u.id}
-                        className={`grid grid-cols-[1fr_1.4fr_80px_80px_80px_100px] gap-4 px-5 py-4 items-center border-b border-[#C87D87]/8 last:border-0 transition-colors duration-200 hover:bg-[#C87D87]/4 ${u.suspended ? 'opacity-50' : ''}`}
-                        style={{ animation: `fadeUp .3s ease ${i * 40}ms both` }}>
+                    {filteredUsers.map((u, i) => {
+                      // Compter les réservations pour cet utilisateur
+                      const userBookingsCount = bookings.filter(b => 
+                        b.email?.toLowerCase() === u.email?.toLowerCase()
+                      ).length;
 
-                        {/* avatar + name */}
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-['Playfair_Display',serif] text-xs flex-shrink-0 bg-gradient-to-br ${
-                            u.role === 'admin' ? 'from-[#6B7556]/90 to-[#3a3027]/80' : 'from-[#C87D87]/80 to-[#6B7556]/80'
-                          }`}>
-                            {u.fullName.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{u.fullName}</p>
-                            <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/50">
-                              {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </p>
-                          </div>
-                        </div>
+                      // Vérifier si l'utilisateur a des réservations
+                      const hasBookings = userBookingsCount > 0;
+                      
+                      return (
+                        <div key={u.id}
+                          className={`grid grid-cols-[1fr_1.4fr_80px_80px_80px_100px] gap-4 px-5 py-4 items-center border-b border-[#C87D87]/8 last:border-0 transition-colors duration-200 hover:bg-[#C87D87]/4 ${u.suspended ? 'opacity-50' : ''}`}
+                          style={{ animation: `fadeUp .3s ease ${i * 40}ms both` }}>
 
-                        {/* email */}
-                        <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/70 truncate">{u.email}</p>
-
-                        {/* role badge */}
-                        <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[0.6rem] font-['Cormorant_Garamond',serif] tracking-[.15em] uppercase w-fit ${
-                          u.role === 'admin'
-                            ? 'bg-[#6B7556]/15 text-[#6B7556] border border-[#6B7556]/30'
-                            : 'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/25'
-                        }`}>
-                          {u.role}
-                        </span>
-
-                        {/* bookings */}
-                        <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027] text-center">
-                          {u._count?.gatheringRequests ?? 0}
-                        </p>
-
-                        {/* reviews */}
-                        <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027] text-center">
-                          {u._count?.reviews ?? 0}
-                        </p>
-
-                        {/* suspend / restore */}
-                        {u.role !== 'admin' ? (
-                          <button onClick={() => toggleSuspend(u.id, u.suspended)}
-                            className={`font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[.18em] uppercase px-3 py-1.5 rounded-lg border transition-all duration-200 w-fit ${
-                              u.suspended
-                                ? 'text-[#6B7556] border-[#6B7556]/40 hover:bg-[#6B7556]/10'
-                                : 'text-[#C87D87] border-[#C87D87]/40 hover:bg-[#C87D87]/10'
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-['Playfair_Display',serif] text-xs flex-shrink-0 bg-gradient-to-br ${
+                              u.role === 'admin' ? 'from-[#6B7556]/90 to-[#3a3027]/80' : 'from-[#C87D87]/80 to-[#6B7556]/80'
                             }`}>
-                            {u.suspended ? 'Restore' : 'Suspend'}
-                          </button>
-                        ) : (
-                          <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/30">—</span>
-                        )}
-                      </div>
-                    ))}
+                              {u.fullName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{u.fullName}</p>
+                              <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/50">
+                                {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                            </div>
+                          </div>
+
+                          <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/70 truncate">{u.email}</p>
+
+                          <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[0.6rem] font-['Cormorant_Garamond',serif] tracking-[.15em] uppercase w-fit ${
+                            u.role === 'admin'
+                              ? 'bg-[#6B7556]/15 text-[#6B7556] border border-[#6B7556]/30'
+                              : 'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/25'
+                          }`}>
+                            {u.role}
+                          </span>
+
+                          {/* عمود Bookings avec compteur et icône */}
+                          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027] text-center flex items-center justify-center gap-1">
+                            {hasBookings ? (
+                              <>
+                                <span className="text-green-600">✅</span>
+                                <span className="font-bold">{userBookingsCount}</span>
+                              </>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </p>
+
+                          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027] text-center">
+                            {u._count?.reviews ?? 0}
+                          </p>
+
+                          {u.role !== 'admin' ? (
+                            <button onClick={() => toggleSuspend(u.id, u.suspended)}
+                              className={`font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[.18em] uppercase px-3 py-1.5 rounded-lg border transition-all duration-200 w-fit ${
+                                u.suspended
+                                  ? 'text-[#6B7556] border-[#6B7556]/40 hover:bg-[#6B7556]/10'
+                                  : 'text-[#C87D87] border-[#C87D87]/40 hover:bg-[#C87D87]/10'
+                              }`}>
+                              {u.suspended ? 'Restore' : 'Suspend'}
+                            </button>
+                          ) : (
+                            <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/30">—</span>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     {filteredUsers.length === 0 && (
                       <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/45 text-sm text-center py-10">
@@ -747,7 +1074,6 @@ export default function Admin() {
                 </div>
               </div>
             )}
-
           </div>
         </main>
       </div>

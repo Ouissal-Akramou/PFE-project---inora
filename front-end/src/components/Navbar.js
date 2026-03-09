@@ -8,13 +8,14 @@ import { useState, useEffect, useRef } from 'react';
 export default function Navbar() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
-  const [scrolled,     setScrolled]     = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const dropdownRef = useRef(null);
 
-  const isAdmin     = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
   const displayName = user?.fullName ?? user?.full_name ?? user?.name ?? user?.email ?? '?';
-  const avatarUrl   = user?.avatarUrl ?? null;
+  const avatarUrl = user?.avatarUrl ?? null;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -36,6 +37,11 @@ export default function Navbar() {
     setDropdownOpen(false);
     await logout();
     router.push('/');
+  };
+
+  const handlePaymentClick = () => {
+    setDropdownOpen(false);
+    setShowPaymentModal(true);
   };
 
   if (loading) return null;
@@ -276,6 +282,21 @@ export default function Navbar() {
                       </div>
                     </button>
                   )}
+                  
+                  {/* ✅ NOUVEAU : Payment Option - Visible pour tous les utilisateurs connectés */}
+                  <button 
+                    onClick={handlePaymentClick}
+                    className="w-full flex items-center gap-3 px-5 py-3 hover:bg-[#C87D87]/8 transition-colors group"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]/60 group-hover:text-[#C87D87] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                    </svg>
+                    <div className="text-left">
+                      <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.15em] uppercase text-[#3a3027] group-hover:text-[#C87D87] transition-colors">Payment</p>
+                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-[#7a6a5a]">Manage your payments</p>
+                    </div>
+                  </button>
+
                   {isAdmin && (
                     <Link href="/admin" onClick={() => setDropdownOpen(false)}
                       className="w-full flex items-center gap-3 px-5 py-3 hover:bg-[#C87D87]/8 transition-colors group">
@@ -285,6 +306,7 @@ export default function Navbar() {
                       <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.15em] uppercase text-[#3a3027] group-hover:text-[#C87D87] transition-colors">Admin Panel</p>
                     </Link>
                   )}
+                  
                   {!isAdmin && (
                     <Link href="/account" onClick={() => setDropdownOpen(false)}
                       className="w-full flex items-center gap-3 px-5 py-3 hover:bg-[#C87D87]/8 transition-colors group">
@@ -295,7 +317,9 @@ export default function Navbar() {
                       <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.15em] uppercase text-[#3a3027] group-hover:text-[#C87D87] transition-colors">Settings</p>
                     </Link>
                   )}
+                  
                   <div className="mx-5 my-1 h-px bg-[#C87D87]/10" />
+                  
                   <button onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-5 py-3 hover:bg-[#C87D87]/8 transition-colors group">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]/60 group-hover:text-[#C87D87] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -337,6 +361,162 @@ export default function Navbar() {
 
       {/* ── BOTTOM ORNAMENTAL LINE ── */}
       <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/40 to-transparent" />
+
+      {/* ✅ NOUVEAU : Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+          {/* Overlay */}
+          <div 
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setShowPaymentModal(false)}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative bg-[#FBEAD6] max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-[#FBEAD6] z-10 border-b border-[#C87D87]/20 px-6 py-4 flex justify-between items-center">
+              <h2 className="font-['Playfair_Display',serif] italic text-xl text-[#3a3027]">Payment Methods</h2>
+              <button 
+                onClick={() => setShowPaymentModal(false)}
+                className="text-[#C87D87] hover:text-[#6B7556] transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="p-6">
+              {/* Saved Cards */}
+              <div className="mb-8">
+                <h3 className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.2em] uppercase text-[#C87D87] mb-4">Saved Cards</h3>
+                <div className="space-y-3">
+                  {/* Card 1 */}
+                  <div className="flex items-center justify-between p-4 border border-[#C87D87]/20 bg-white/60">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-6 bg-gradient-to-r from-[#C87D87] to-[#6B7556] rounded"></div>
+                      <div>
+                        <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027]">•••• •••• •••• 4242</p>
+                        <p className="font-['Cormorant_Garamond',serif] text-xs text-[#7a6a5a]">Expires 12/25</p>
+                      </div>
+                    </div>
+                    <span className="text-[#6B7556] text-xs border border-[#6B7556]/30 px-2 py-1">Default</span>
+                  </div>
+                  
+                  {/* Card 2 */}
+                  <div className="flex items-center justify-between p-4 border border-[#C87D87]/20 bg-white/60">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-6 bg-gradient-to-r from-[#6B7556] to-[#C87D87] rounded"></div>
+                      <div>
+                        <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027]">•••• •••• •••• 8888</p>
+                        <p className="font-['Cormorant_Garamond',serif] text-xs text-[#7a6a5a]">Expires 06/24</p>
+                      </div>
+                    </div>
+                    <button className="text-[#C87D87] text-xs hover:text-[#6B7556] transition-colors">
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Add New Card */}
+              <div className="mb-8">
+                <h3 className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.2em] uppercase text-[#C87D87] mb-4">Add New Card</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-['Cormorant_Garamond',serif] text-xs uppercase tracking-[0.15em] text-[#3a3027] mb-2">
+                      Card Number
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="1234 5678 9012 3456"
+                      className="w-full bg-white/80 border border-[#C87D87]/30 px-4 py-3 text-sm text-[#3a3027] placeholder-[#C87D87]/40 focus:outline-none focus:border-[#C87D87] transition-colors"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-['Cormorant_Garamond',serif] text-xs uppercase tracking-[0.15em] text-[#3a3027] mb-2">
+                        Expiry Date
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="MM/YY"
+                        className="w-full bg-white/80 border border-[#C87D87]/30 px-4 py-3 text-sm text-[#3a3027] placeholder-[#C87D87]/40 focus:outline-none focus:border-[#C87D87] transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-['Cormorant_Garamond',serif] text-xs uppercase tracking-[0.15em] text-[#3a3027] mb-2">
+                        CVC
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="123"
+                        className="w-full bg-white/80 border border-[#C87D87]/30 px-4 py-3 text-sm text-[#3a3027] placeholder-[#C87D87]/40 focus:outline-none focus:border-[#C87D87] transition-colors"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block font-['Cormorant_Garamond',serif] text-xs uppercase tracking-[0.15em] text-[#3a3027] mb-2">
+                      Cardholder Name
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="John Doe"
+                      className="w-full bg-white/80 border border-[#C87D87]/30 px-4 py-3 text-sm text-[#3a3027] placeholder-[#C87D87]/40 focus:outline-none focus:border-[#C87D87] transition-colors"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="defaultCard" className="accent-[#C87D87]" />
+                    <label htmlFor="defaultCard" className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027]">
+                      Set as default payment method
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Payment History */}
+              <div className="mb-8">
+                <h3 className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.2em] uppercase text-[#C87D87] mb-4">Recent Transactions</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between py-2 border-b border-[#C87D87]/10">
+                    <div>
+                      <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027]">Beach Adventure</p>
+                      <p className="font-['Cormorant_Garamond',serif] text-xs text-[#7a6a5a]">Mar 15, 2024</p>
+                    </div>
+                    <span className="font-['Playfair_Display',serif] text-sm text-[#6B7556]">$299.00</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-[#C87D87]/10">
+                    <div>
+                      <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027]">Mountain Hiking</p>
+                      <p className="font-['Cormorant_Garamond',serif] text-xs text-[#7a6a5a]">Feb 28, 2024</p>
+                    </div>
+                    <span className="font-['Playfair_Display',serif] text-sm text-[#6B7556]">$149.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-[#FBEAD6] border-t border-[#C87D87]/20 px-6 py-4 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowPaymentModal(false)}
+                className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.15em] uppercase text-[#C87D87] border border-[#C87D87] px-6 py-2 hover:bg-[#C87D87] hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.15em] uppercase text-white bg-[#C87D87] px-6 py-2 hover:bg-[#6B7556] transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </nav>
   );

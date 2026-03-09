@@ -81,8 +81,8 @@ export default function Login() {
             <circle r="28" fill="none" stroke="#FBEAD6" strokeWidth="0.7" strokeOpacity="0.35" strokeDasharray="3 5"/>
             <circle r="20" fill="none" stroke="#FBEAD6" strokeWidth="0.55" strokeOpacity="0.30"/>
             <circle r="12" fill="none" stroke="#FBEAD6" strokeWidth="0.45" strokeOpacity="0.25"/>
-            {[0,30,60,90,120,150,180,210,240,270,300,330].map((a,j)=><line key={j} x1={Math.cos(a*Math.PI/180)*5} y1={Math.sin(a*Math.PI/180)*5} x2={Math.cos(a*Math.PI/180)*28} y2={Math.sin(a*Math.PI/180)*28} stroke="#FBEAD6" strokeWidth="0.4" strokeOpacity="0.28"/>)}
-            {[0,45,90,135,180,225,270,315].map((a,j)=><ellipse key={j} cx={Math.cos(a*Math.PI/180)*23} cy={Math.sin(a*Math.PI/180)*23} rx="3.2" ry="1.4" transform={`rotate(${a} ${Math.cos(a*Math.PI/180)*23} ${Math.sin(a*Math.PI/180)*23})`} fill="#FBEAD6" fillOpacity="0.30"/>)}
+                        {[0,30,60,90,120,150,180,210,240,270,300,330].map((a,j)=><line key={j} x1={Math.cos(a*Math.PI/180)*5} y1={Math.sin(a*Math.PI/180)*5} x2={Math.cos(a*Math.PI/180)*28} y2={Math.sin(a*Math.PI/180)*28} stroke="#FBEAD6" strokeWidth="0.4" strokeOpacity="0.28"/>)}
+
             <rect x="-3.5" y="-3.5" width="7" height="7" transform="rotate(45)" fill="none" stroke="#FBEAD6" strokeWidth="0.6" strokeOpacity="0.45"/>
             <circle r="1.5" fill="#FBEAD6" fillOpacity="0.45"/>
           </g>
