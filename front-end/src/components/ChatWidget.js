@@ -89,10 +89,10 @@ export default function ChatWidget() {
         readAt:    new Date().toISOString(),
       }]);
     }
-  }, [convo]);*/
+  }, [convo]);
 
   // ✅ fetch unread count from backend on mount
- /* const fetchUnreadCount = async () => {
+  const fetchUnreadCount = async () => {
     const res = await fetch('http://localhost:4000/api/chat/conversations/my', {
       credentials: 'include'
     });
@@ -202,7 +202,6 @@ export default function ChatWidget() {
             <div className="absolute inset-[5px] rounded-xl border border-[#C87D87]/6 pointer-events-none z-10"/>
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#C87D87] to-transparent z-10"/>
 
-           
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#C87D87]/15 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div>
@@ -229,7 +228,6 @@ export default function ChatWidget() {
               </div>
             </div>
 
-            
             <div className="flex border-b border-[#C87D87]/12 flex-shrink-0">
               {['current', 'history'].map(t => (
                 <button key={t} onClick={() => setTab(t)}
@@ -243,7 +241,6 @@ export default function ChatWidget() {
               ))}
             </div>
 
-            
             {tab === 'history' && (
               <div className="flex-1 overflow-y-auto" style={{ animation:'fadeIn .2s ease forwards' }}>
                 {history.length === 0 && (
@@ -262,7 +259,6 @@ export default function ChatWidget() {
                         <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">
                           {c.subject || 'General inquiry'}
                         </p>
-                       
                         {c._count?.messages > 0 && (
                           <span className="min-w-[1.1rem] h-[1.1rem] rounded-full bg-[#C87D87] flex items-center justify-center text-white text-[0.5rem] font-bold flex-shrink-0 px-1">
                             {c._count.messages > 9 ? '9+' : c._count.messages}
@@ -285,7 +281,6 @@ export default function ChatWidget() {
               </div>
             )}
 
-           
             {tab === 'current' && (
               <>
                 {!convo ? (
@@ -336,7 +331,6 @@ export default function ChatWidget() {
                         );
                       })}
 
-                      
                       {isTyping && (
                         <div className="flex items-center gap-1.5 px-4 py-2.5 bg-white/80 border border-[#C87D87]/18 rounded-2xl rounded-bl-sm w-fit shadow-sm"
                           style={{ animation:'slideIn .2s ease forwards' }}>
@@ -349,7 +343,6 @@ export default function ChatWidget() {
                       <div ref={bottomRef}/>
                     </div>
 
-                    
                     <div className="flex-shrink-0 border-t border-[#C87D87]/12 px-4 pt-3 pb-2">
                       <form onSubmit={sendMessage} className="flex items-end gap-2">
                         <div className="flex-1 relative">
@@ -386,10 +379,9 @@ export default function ChatWidget() {
               </>
             )}
           </div>
-        )}*/
+        )}
 
-        
-        /*<button onClick={() => setOpen(o => !o)}
+        <button onClick={() => setOpen(o => !o)}
           className="w-14 h-14 rounded-2xl bg-[#C87D87] hover:bg-[#a85e6a] text-white flex items-center justify-center
             shadow-[0_8px_28px_rgba(200,125,135,0.45)] hover:shadow-[0_12px_36px_rgba(200,125,135,0.55)]
             transition-all duration-300 hover:-translate-y-0.5 active:scale-95 relative">
@@ -402,7 +394,6 @@ export default function ChatWidget() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/>
             </svg>
           )}
-          
           {unread > 0 && !open && (
             <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-[#6B7556] border-2 border-white flex items-center justify-center text-white text-[0.5rem] font-bold px-1">
               {unread > 9 ? '9+' : unread}
@@ -412,4 +403,5 @@ export default function ChatWidget() {
       </div>
     </>
   );
-}*/
+}
+*/

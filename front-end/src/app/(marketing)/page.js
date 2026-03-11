@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import ReviewCarousel from '@/components/ReviewCarousel';
 import ActivityBookingModal from '@/components/ActivityBookingModal';
 
 const defaultReviews = [
@@ -25,20 +26,26 @@ function useInView(threshold = 0.15) {
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
-  const [reviews, setReviews] = useState(defaultReviews);
+
+  const [reviews,     setReviews]     = useState([]);       // ✅ starts empty
   const [selectedActivity, setSelectedActivity] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [isModalOpen,      setIsModalOpen]      = useState(false);
+
   const [activitiesRef, activitiesIn] = useInView(0.1);
   const [processRef,    processIn]    = useInView(0.1);
   const [reviewsRef,    reviewsIn]    = useInView(0.1);
   const [footerRef,     footerIn]     = useInView(0.1);
 
+  // ✅ always show defaults + any approved real reviews merged together
+  const allReviews = reviews.length > 0
+    ? [...defaultReviews, ...reviews]
+    : defaultReviews;
+
   useEffect(() => {
-    fetch('http://localhost:4000/api/reviews/approved', { credentials: 'include' })
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reviews/approved`, { credentials: 'include' })
       .then(res => res.json())
-      .then(data => setReviews(Array.isArray(data) && data.length > 0 ? data : defaultReviews))
-      .catch(() => setReviews(defaultReviews));
+      .then(data => setReviews(Array.isArray(data) ? data : []))  // ✅ never replaces defaults
+      .catch(() => setReviews([]));
   }, []);
 
   const handleActivityClick = (activity) => {
@@ -422,66 +429,35 @@ export default function Home() {
       </div>
 
       {/* ══ REVIEWS ══ */}
-      <section ref={reviewsRef} className="py-20 px-8 md:px-24 bg-[#FBEAD6]">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
-            <div className={`reveal-left ${reviewsIn ? 'in-view' : ''}`}>
-              <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-sm tracking-[.35em] uppercase mb-2">Voices from Our Circles</p>
-              <h2 className="font-['Playfair_Display',serif] italic text-[clamp(2.2rem,3.8vw,3.4rem)] text-[#3a3027] leading-tight">
-                What Our <span className="text-[#6B7556]">Guests Say</span>
-              </h2>
-              <div className="flex items-center gap-3 mt-4">
-                <div className="h-px bg-[#C87D87]"
-                  style={{ width: reviewsIn ? '3rem' : '0', opacity: reviewsIn ? 1 : 0, transition:'width .7s ease .3s, opacity .7s ease .3s' }}/>
-                <div className={`w-2 h-2 rotate-45 bg-[#C87D87]/50 transition-all duration-700 delay-500 ${reviewsIn?'opacity-100':'opacity-0'}`}/>
-              </div>
-            </div>
-            <p className={`font-['Cormorant_Garamond',serif] italic text-[#7a6a5a] text-lg max-w-xs md:text-right leading-relaxed reveal-right delay-2 ${reviewsIn ? 'in-view' : ''}`}>
-              Every gathering tells a story.<br/>Here are a few of theirs.
-            </p>
-          </div>
+<section ref={reviewsRef} className="py-20 px-8 md:px-24 bg-[#FBEAD6] overflow-hidden">
+  <style>{`
+    @keyframes carouselSlide { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+  `}</style>
+  <div className="max-w-6xl mx-auto">
 
-          {reviews.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {reviews.map((review, i) => (
-                <div key={review.id}
-                  className={`relative bg-white/80 backdrop-blur-sm border border-[#C87D87]/14 rounded-2xl p-7 card-hover reveal-scale delay-${i+1} ${reviewsIn ? 'in-view' : ''} ${i === 1 ? 'md:mt-6' : ''}`}
-                  style={reviewsIn ? { animation:`cardGlow .9s ease ${0.1+i*0.15}s` } : {}}>
-                  <div className="absolute inset-0 rounded-2xl border border-[#C87D87]/8 pointer-events-none"/>
-                  <div className="absolute inset-[4px] rounded-xl border border-[#C87D87]/5 pointer-events-none"/>
-                  <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#C87D87]/40 to-transparent"/>
-                  {/* quote mark drops in */}
-                  <div className="font-['Playfair_Display',serif] text-[4rem] text-[#C87D87]/15 leading-none mb-1 -mt-2 select-none"
-                    style={{ animation: reviewsIn ? `fadeInUp .5s ease ${0.2+i*0.12}s both` : 'none' }}>"</div>
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[1.05rem] text-[#5a4a3a] leading-[1.75] mb-5">{review.comment}</p>
-                  <div className="flex items-center justify-between pt-4 border-t border-[#C87D87]/12">
-                    <div className="flex items-center gap-3">
-                      {/* avatar pops in */}
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B7556] to-[#C87D87] flex items-center justify-center text-white font-['Playfair_Display',serif] text-sm shadow-sm"
-                        style={{ animation: reviewsIn ? `scaleIn .4s cubic-bezier(.4,0,.2,1) ${0.35+i*0.12}s both` : 'none' }}>
-                        {review.user.fullName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] tracking-wide leading-none">{review.user.fullName}</p>
-                        <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/70 mt-0.5">Inora Guest</p>
-                      </div>
-                    </div>
-                    {/* stars slide in from right */}
-                    <span className="text-[#C87D87] text-xs tracking-widest"
-                      style={{ animation: reviewsIn ? `slideInRight .5s ease ${0.4+i*0.12}s both` : 'none' }}>
-                      {'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="font-['Cormorant_Garamond',serif] italic text-xl text-[#C87D87]/60 text-center py-12">
-              No reviews yet. Be the first to share your experience.
-            </p>
-          )}
+    {/* heading — unchanged */}
+    <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
+      <div className={`reveal-left ${reviewsIn ? 'in-view' : ''}`}>
+        <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-sm tracking-[.35em] uppercase mb-2">Voices from Our Circles</p>
+        <h2 className="font-['Playfair_Display',serif] italic text-[clamp(2.2rem,3.8vw,3.4rem)] text-[#3a3027] leading-tight">
+          What Our <span className="text-[#6B7556]">Guests Say</span>
+        </h2>
+        <div className="flex items-center gap-3 mt-4">
+          <div className="h-px bg-[#C87D87]"
+            style={{ width: reviewsIn ? '3rem' : '0', opacity: reviewsIn ? 1 : 0, transition:'width .7s ease .3s, opacity .7s ease .3s' }}/>
+          <div className={`w-2 h-2 rotate-45 bg-[#C87D87]/50 transition-all duration-700 delay-500 ${reviewsIn?'opacity-100':'opacity-0'}`}/>
         </div>
-      </section>
+      </div>
+      <p className={`font-['Cormorant_Garamond',serif] italic text-[#7a6a5a] text-lg max-w-xs md:text-right leading-relaxed reveal-right delay-2 ${reviewsIn ? 'in-view' : ''}`}>
+        Every gathering tells a story.<br/>Here are a few of theirs.
+      </p>
+    </div>
+
+    {/* ── CAROUSEL ── */}
+    <ReviewCarousel reviews={allReviews} reviewsIn={reviewsIn} />
+  </div>
+</section>
+
 
       {/* ══ FOOTER ══ */}
       <footer ref={footerRef} className="relative text-white overflow-hidden" style={{ background:'linear-gradient(135deg,#6B7556 0%,#5a6347 100%)' }}>
