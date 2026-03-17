@@ -1,9 +1,10 @@
-/*'use client';
+'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { io }      from 'socket.io-client';
 
-const socket = io('http://localhost:4000', {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const socket = io(API_URL, {
   withCredentials: true,
   autoConnect:     false
 });
@@ -69,14 +70,12 @@ export default function AdminChatWidget() {
 
     socket.on('stop_typing', () => setIsTyping(false));
 
-    // ✅ real-time claim updates from other admins
     socket.on('convo_claimed', ({ convoId, adminId, adminName }) => {
       setConvos(prev => prev.map(c =>
         c.id === convoId
           ? { ...c, claimedBy: { id: adminId, fullName: adminName } }
           : c
       ));
-      // ✅ update active pane header if this convo is open
       setActive(prev =>
         prev?.id === convoId
           ? { ...prev, claimedBy: { id: adminId, fullName: adminName } }
@@ -108,7 +107,7 @@ export default function AdminChatWidget() {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
 
   const fetchConvos = async () => {
-    const res = await fetch('http://localhost:4000/api/chat/admin/conversations', {
+    const res = await fetch(`${API_URL}/api/chat/admin/conversations`, {
       credentials: 'include'
     });
     if (!res.ok) return;
@@ -123,7 +122,7 @@ export default function AdminChatWidget() {
     setShowQuick(false);
     setMessages([]);
     const res = await fetch(
-      `http://localhost:4000/api/chat/conversations/${convo.id}/messages`,
+      `${API_URL}/api/chat/conversations/${convo.id}/messages`,
       { credentials: 'include' }
     );
     if (!res.ok) return;
@@ -132,9 +131,8 @@ export default function AdminChatWidget() {
     fetchConvos();
   };
 
-  // ✅ claim a conversation
   const claimConvo = async (id) => {
-    const res = await fetch(`http://localhost:4000/api/chat/admin/conversations/${id}/claim`, {
+    const res = await fetch(`${API_URL}/api/chat/admin/conversations/${id}/claim`, {
       method: 'PATCH', credentials: 'include'
     });
     if (res.status === 409) {
@@ -146,9 +144,8 @@ export default function AdminChatWidget() {
     fetchConvos();
   };
 
-  // ✅ unclaim a conversation
   const unclaimConvo = async (id) => {
-    await fetch(`http://localhost:4000/api/chat/admin/conversations/${id}/unclaim`, {
+    await fetch(`${API_URL}/api/chat/admin/conversations/${id}/unclaim`, {
       method: 'PATCH', credentials: 'include'
     });
     setActive(prev => prev?.id === id ? { ...prev, claimedBy: null } : prev);
@@ -172,7 +169,7 @@ export default function AdminChatWidget() {
     setInput('');
     setShowQuick(false);
     socket.emit('stop_typing', { convoId: active.id, userId: user.id });
-    await fetch(`http://localhost:4000/api/chat/conversations/${active.id}/messages`, {
+    await fetch(`${API_URL}/api/chat/conversations/${active.id}/messages`, {
       method:      'POST',
       credentials: 'include',
       headers:     { 'Content-Type': 'application/json' },
@@ -188,7 +185,7 @@ export default function AdminChatWidget() {
   };
 
   const closeConvo = async (id) => {
-    await fetch(`http://localhost:4000/api/chat/admin/conversations/${id}/close`, {
+    await fetch(`${API_URL}/api/chat/admin/conversations/${id}/close`, {
       method: 'PATCH', credentials: 'include'
     });
     setConvos(prev => prev.filter(c => c.id !== id));
@@ -344,7 +341,6 @@ export default function AdminChatWidget() {
                           Claim
                         </button>
                       ) : (
-                        // ✅ claimed by another admin — show who owns it
                         <span className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/30 text-xs px-3 py-1.5 border border-[#FBEAD6]/10 rounded-lg">
                           {active.claimedBy.fullName}
                         </span>
@@ -490,4 +486,3 @@ export default function AdminChatWidget() {
     </>
   );
 }
-*/

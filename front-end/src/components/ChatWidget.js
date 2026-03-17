@@ -1,9 +1,10 @@
-/*'use client';
+'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { io }      from 'socket.io-client';
 
-const socket = io('http://localhost:4000', {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const socket = io(API_URL, {
   withCredentials: true,
   autoConnect:     false
 });
@@ -19,7 +20,7 @@ export default function ChatWidget() {
   const [input,      setInput]      = useState('');
   const [subject,    setSubject]    = useState('');
   const [loading,    setLoading]    = useState(false);
-  const [unread,     setUnread]     = useState(0); // ✅ number instead of boolean
+  const [unread,     setUnread]     = useState(0);
   const [isTyping,   setIsTyping]   = useState(false);
   const bottomRef    = useRef(null);
   const typingTimer  = useRef(null);
@@ -29,7 +30,6 @@ export default function ChatWidget() {
   useEffect(() => { openRef.current  = open;  }, [open]);
   useEffect(() => { convoRef.current = convo; }, [convo]);
 
-  // ✅ show count in tab title
   useEffect(() => {
     document.title = unread > 0 ? `(${unread}) Inora` : 'Inora';
   }, [unread]);
@@ -38,14 +38,14 @@ export default function ChatWidget() {
     if (!user || user.role === 'admin') return;
     socket.connect();
     socket.emit('join', user.id);
-    fetchUnreadCount(); // ✅ load unread count on login/page load
+    fetchUnreadCount();
 
     socket.on('new_message', (msg) => {
       if (convoRef.current?.id === msg.conversationId) {
         setMessages(prev => [...prev, msg]);
       }
       if (!openRef.current) {
-        setUnread(n => n + 1); // ✅ increment
+        setUnread(n => n + 1);
         const chime = new Audio('/sounds/chime.wav');
         chime.volume = 0.5;
         chime.play().catch(() => {});
@@ -68,7 +68,7 @@ export default function ChatWidget() {
     };
   }, [user]);
 
-  useEffect(() => { if (open) setUnread(0); }, [open]); // ✅ reset to 0
+  useEffect(() => { if (open) setUnread(0); }, [open]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -91,9 +91,8 @@ export default function ChatWidget() {
     }
   }, [convo]);
 
-  // ✅ fetch unread count from backend on mount
   const fetchUnreadCount = async () => {
-    const res = await fetch('http://localhost:4000/api/chat/conversations/my', {
+    const res = await fetch(`${API_URL}/api/chat/conversations/my`, {
       credentials: 'include'
     });
     if (!res.ok) return;
@@ -103,7 +102,7 @@ export default function ChatWidget() {
   };
 
   const fetchHistory = async () => {
-    const res = await fetch('http://localhost:4000/api/chat/conversations/my', {
+    const res = await fetch(`${API_URL}/api/chat/conversations/my`, {
       credentials: 'include'
     });
     if (res.ok) setHistory(await res.json());
@@ -112,7 +111,7 @@ export default function ChatWidget() {
   const startConvo = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/chat/conversations', {
+      const res = await fetch(`${API_URL}/api/chat/conversations`, {
         method:      'POST',
         credentials: 'include',
         headers:     { 'Content-Type': 'application/json' },
@@ -122,7 +121,7 @@ export default function ChatWidget() {
       const data = await res.json();
       setConvo(data);
       const mRes = await fetch(
-        `http://localhost:4000/api/chat/conversations/${data.id}/messages`,
+        `${API_URL}/api/chat/conversations/${data.id}/messages`,
         { credentials: 'include' }
       );
       if (!mRes.ok) return;
@@ -138,13 +137,12 @@ export default function ChatWidget() {
     setTab('current');
     setMessages([]);
     const res = await fetch(
-      `http://localhost:4000/api/chat/conversations/${c.id}/messages`,
+      `${API_URL}/api/chat/conversations/${c.id}/messages`,
       { credentials: 'include' }
     );
     if (!res.ok) return;
     const data = await res.json();
     setMessages(Array.isArray(data) ? data : (data.messages ?? []));
-    // ✅ refresh unread count after reading a conversation
     fetchUnreadCount();
   };
 
@@ -164,7 +162,7 @@ export default function ChatWidget() {
     const body = input.trim();
     setInput('');
     socket.emit('stop_typing', { convoId: convo.id, userId: user.id });
-    await fetch(`http://localhost:4000/api/chat/conversations/${convo.id}/messages`, {
+    await fetch(`${API_URL}/api/chat/conversations/${convo.id}/messages`, {
       method:      'POST',
       credentials: 'include',
       headers:     { 'Content-Type': 'application/json' },
@@ -404,4 +402,3 @@ export default function ChatWidget() {
     </>
   );
 }
-*/
