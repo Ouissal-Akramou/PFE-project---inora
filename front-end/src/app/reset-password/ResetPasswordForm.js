@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react'; // ✅ AJOUT : Importer Suspense
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function ResetPassword() {
+// ✅ NOUVEAU : Composant qui utilise useSearchParams
+function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [token, setToken] = useState('');
@@ -12,6 +13,8 @@ export default function ResetPassword() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'; // ✅ AJOUT
 
   useEffect(() => {
     const urlToken = searchParams.get('token');
@@ -29,7 +32,7 @@ export default function ResetPassword() {
     setMessage('');
 
     try {
-      const res = await fetch('http://localhost:4000/api/auth/reset-password', {
+      const res = await fetch(`${API_URL}/api/auth/reset-password`, { // ✅ CORRIGÉ
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json' 
@@ -160,5 +163,27 @@ export default function ResetPassword() {
         }
       `}</style>
     </div>
+  );
+}
+
+// ✅ PAGE PRINCIPALE avec Suspense
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center px-4"
+        style={{ background: 'linear-gradient(-45deg, #FBEAD6, #C87D87, #6B7556, #C87D87)' }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-12 h-12">
+            <div className="absolute inset-0 rounded-full border border-[#FBEAD6]/20"/>
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#FBEAD6] animate-spin"/>
+          </div>
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/70 tracking-[0.35em] text-xs uppercase">
+            Chargement...
+          </p>
+        </div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
