@@ -207,7 +207,7 @@ export const getAdminUsers = async (req, res) => {
         createdAt: true,
         _count: {
           select: {
-            gatheringRequests: true,
+bookings:      true,
             reviews:           true,
             conversations:     true,
           }

@@ -221,7 +221,6 @@ export default function AdminChatWidget() {
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#C87D87] to-transparent z-10"/>
             <div className="absolute inset-0 rounded-2xl border border-[#FBEAD6]/10 pointer-events-none z-10"/>
 
-           
             <div className="w-60 flex-shrink-0 border-r border-[#FBEAD6]/12 flex flex-col">
 
               <div className="px-4 py-4 border-b border-[#FBEAD6]/12 flex-shrink-0">
@@ -236,7 +235,6 @@ export default function AdminChatWidget() {
                 </h3>
               </div>
 
-              
               <div className="px-3 py-2.5 border-b border-[#FBEAD6]/8 flex-shrink-0">
                 <div className="relative">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-[#FBEAD6]/30 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -289,7 +287,6 @@ export default function AdminChatWidget() {
                         <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/40 text-xs truncate mt-0.5">
                           {c.subject || c.messages?.[0]?.body || 'New conversation'}
                         </p>
-                        
                         <p className={`font-['Cormorant_Garamond',serif] italic text-[0.55rem] mt-0.5 ${
                           claimedByMe    ? 'text-[#6B7556]' :
                           claimedByOther ? 'text-[#FBEAD6]/35' :
@@ -306,7 +303,6 @@ export default function AdminChatWidget() {
               </div>
             </div>
 
-            
             <div className="flex-1 flex flex-col min-w-0">
               {!active ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -321,7 +317,6 @@ export default function AdminChatWidget() {
                 </div>
               ) : (
                 <>
-                  
                   <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#FBEAD6]/12 flex-shrink-0">
                     <div>
                       <div className="flex items-center gap-2">
@@ -338,7 +333,6 @@ export default function AdminChatWidget() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      
                       {active.claimedBy?.id === user.id ? (
                         <button onClick={() => unclaimConvo(active.id)}
                           className="font-['Cormorant_Garamond',serif] text-xs tracking-[.18em] uppercase text-[#FBEAD6]/50 border border-[#FBEAD6]/20 px-3 py-1.5 rounded-lg hover:bg-[#FBEAD6]/8 transition-all duration-200">
@@ -363,7 +357,6 @@ export default function AdminChatWidget() {
                     </div>
                   </div>
 
-                  
                   <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
                     {messages.length === 0 && (
                       <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/28 text-xs text-center mt-8">
@@ -399,7 +392,6 @@ export default function AdminChatWidget() {
                       );
                     })}
 
-                    
                     {isTyping && (
                       <div className="flex items-center gap-1.5 px-4 py-2.5 bg-[#FBEAD6]/90 rounded-2xl rounded-bl-sm w-fit shadow-sm"
                         style={{ animation:'slideIn .2s ease forwards' }}>
@@ -414,7 +406,6 @@ export default function AdminChatWidget() {
                     <div ref={bottomRef}/>
                   </div>
 
-                  
                   {showQuick && (
                     <div className="px-4 pb-2 flex flex-wrap gap-1.5 flex-shrink-0 border-t border-[#FBEAD6]/8 pt-2"
                       style={{ animation:'fadeIn .15s ease forwards' }}>
@@ -428,7 +419,6 @@ export default function AdminChatWidget() {
                     </div>
                   )}
 
-                  
                   <div className="flex-shrink-0 border-t border-[#FBEAD6]/12 px-4 pt-3 pb-2">
                     <form onSubmit={send} className="flex items-end gap-2">
                       <button type="button" onClick={() => setShowQuick(s => !s)}
@@ -474,7 +464,6 @@ export default function AdminChatWidget() {
               )}
             </div>
 
-            
             <button onClick={() => setOpen(false)}
               className="absolute top-3 right-3 z-20 w-7 h-7 rounded-lg flex items-center justify-center text-[#FBEAD6]/40 hover:text-[#FBEAD6] hover:bg-[#FBEAD6]/10 transition-all duration-200">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -484,7 +473,6 @@ export default function AdminChatWidget() {
           </div>
         )}
 
-       
         <button onClick={() => setOpen(o => !o)}
           className="w-14 h-14 rounded-2xl bg-[#6B7556] hover:bg-[#4a5240] text-[#FBEAD6] flex items-center justify-center
             shadow-[0_8px_28px_rgba(107,117,86,0.45)] hover:shadow-[0_12px_36px_rgba(107,117,86,0.55)]
@@ -501,4 +489,5 @@ export default function AdminChatWidget() {
       </div>
     </>
   );
-}*/
+}
+*/

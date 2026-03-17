@@ -34,8 +34,8 @@ export default function RootLayout({ children }) {
       <body className={`${playfair.variable} ${cormorant.variable} ${lato.variable}`}>
         <AuthProvider>
           {children}
-          {/*<ChatWidget />       
-          <AdminChatWidget /> */}
+          {/*<ChatWidget />
+          <AdminChatWidget />*/}
         </AuthProvider>
       </body>
     </html>

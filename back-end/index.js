@@ -5,14 +5,17 @@ import { Server } from 'socket.io';
 import cron from 'node-cron';                  
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import paymentRoutes from './Routes/payment.js';
+import 'dotenv/config';
 
 // Routes
 import auth from './Routes/auth.js';
 import reviewRoutes from './Routes/reviews.js';
 import profile from './Routes/profile.js';
 import bookingRoutes from './Routes/booking.js';
-// import chat from './Routes/chat.js';        
+import notificationsRouter from './Routes/notifications.js';
+import paymentRoutes from './Routes/payment.js';
+
+//import chat from './Routes/chat.js';        
 
 // Prisma for chat features
 import { prisma } from './lib/prisma.js';      
@@ -110,7 +113,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
-app.use('/api/payment', paymentRoutes);
+//app.use('/api/payment', paymentRoutes);
 
 // Request logging
 app.use((req, res, next) => {
@@ -133,12 +136,17 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+
+
+
 // API Routes 
 app.use('/api/auth', auth);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/profile', profile);
 app.use('/api/bookings', bookingRoutes);
-// app.use('/api/chat', chat);  // ← uncomment when chat route is ready
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/payments', paymentRoutes);
+//app.use('/api/chat', chat);  // ← uncomment when chat route is ready
 
 // 404 handler
 app.use((req, res) => {

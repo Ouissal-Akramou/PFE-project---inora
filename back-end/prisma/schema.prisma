@@ -22,35 +22,13 @@ model User {
   suspended         Boolean            @default(false)
   avatarUrl         String?
   createdAt         DateTime           @default(now())
-  gatheringRequests GatheringRequest[]
   drafts            Draft[]
   reviews           Review[]
-  // ✅ From Hasna's code (chat features)
   conversations     Conversation[]     @relation("UserConversations")
   claimedConvos     Conversation[]     @relation("ClaimedConversations")
   sentMessages      Message[]          @relation("SentMessages")
-}
-
-model GatheringRequest {
-  id              String    @id @default(cuid())
-  userId          String
-  occasion        String
-  activity        String
-  guestCount      Int
-  preferredDate   DateTime
-  alternateDate   DateTime?
-  location        String
-  duration        String
-  specialRequests String?
-  status          String    @default("pending")
-  totalPrice      Float?
-  advanceAmount   Float?
-  advancePaid     Boolean   @default(false)
-  remainingPaid   Boolean   @default(false)
-  advancePaidAt   DateTime?
-  createdAt       DateTime  @default(now())
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  review          Review?
+  bookings          Booking[]
+  notifications     Notification[]
 }
 
 model Draft {
@@ -63,35 +41,36 @@ model Draft {
 }
 
 model Review {
-  id                 String            @id @default(cuid())
-  userId             String
-  gatheringRequestId String?           @unique
-  comment            String
-  rating             Int
-  approved           Boolean           @default(false)
-  createdAt          DateTime          @default(now())
-  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gatheringRequest   GatheringRequest? @relation(fields: [gatheringRequestId], references: [id])
+  id        String   @id @default(cuid())
+  userId    String
+  bookingId Int?     @unique   // ← was gatheringRequestId String?
+  comment   String
+  rating    Int
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 }
 
-// ✅ From Hasna's code (chat features)
+// ✅ Changed Int → String cuid() to match all other models
 model Conversation {
-  id           Int       @id @default(autoincrement())
-  userId       String
-  user         User      @relation("UserConversations", fields: [userId], references: [id])
-  subject      String?
-  status       Status    @default(OPEN)
-  claimedById  String?
-  claimedBy    User?     @relation("ClaimedConversations", fields: [claimedById], references: [id])
-  messages     Message[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation("UserConversations", fields: [userId], references: [id])
+  subject     String?
+  status      Status    @default(OPEN)
+  claimedById String?
+  claimedBy   User?     @relation("ClaimedConversations", fields: [claimedById], references: [id])
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
-// ✅ From Hasna's code (chat features)
+// ✅ Changed Int → String cuid() + conversationId String
 model Message {
-  id             Int          @id @default(autoincrement())
-  conversationId Int
+  id             String       @id @default(cuid())
+  conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderId       String
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
@@ -100,21 +79,40 @@ model Message {
   readAt         DateTime?
 }
 
-// ✅ From your code (booking feature)
 model Booking {
-  id               String   @id @default(cuid())
+  id               Int       @id @default(autoincrement())
   fullName         String
   email            String
   phone            String
-  activity         String?
-  participants     Int      @default(1)
+  activity         String
+  participants     Int       @default(1)
   date             DateTime?
   timeSlot         String?
   allergies        String?
   specialRequests  String?
   additionalNotes  String?
-  preferredContact String   @default("telephone")
+  preferredContact String    @default("telephone")
   activityTheme    String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  status           String    @default("pending")
+  userId           String?
+  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  paymentStatus    String    @default("PENDING")
+  advancePaid      Float?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+  notifications    Notification[]
+  review           Review?  
+}
+
+model Notification {
+  id        String   @id @default(cuid())  // ✅ changed to cuid for consistency
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingId Int?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import ActivityBookingModal from '@/components/ActivityBookingModal';
+import ReviewCarousel from '@/components/ReviewCarousel';
 
 const defaultReviews = [
   { id: 'default-1', user: { fullName: 'Sophie Laurent' },  rating: 5, comment: 'Inora turned a simple afternoon into the most meaningful gathering I have ever attended. Every detail was thoughtful and beautiful.' },
@@ -25,20 +25,23 @@ function useInView(threshold = 0.15) {
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
-  const [reviews, setReviews] = useState(defaultReviews);
-  const [selectedActivity, setSelectedActivity] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
+  const [reviews, setReviews] = useState([]);
+
   const [activitiesRef, activitiesIn] = useInView(0.1);
   const [processRef,    processIn]    = useInView(0.1);
   const [reviewsRef,    reviewsIn]    = useInView(0.1);
   const [footerRef,     footerIn]     = useInView(0.1);
 
+  const allReviews = reviews.length > 0
+    ? [...defaultReviews, ...reviews]
+    : defaultReviews;
+
   useEffect(() => {
-    fetch('http://localhost:4000/api/reviews/approved', { credentials: 'include' })
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reviews/approved`, { credentials: 'include' })
       .then(res => res.json())
-      .then(data => setReviews(Array.isArray(data) && data.length > 0 ? data : defaultReviews))
-      .catch(() => setReviews(defaultReviews));
+      .then(data => setReviews(Array.isArray(data) ? data : []))
+      .catch(() => setReviews([]));
   }, []);
 
   const handleActivityClick = (activity) => {
@@ -46,23 +49,21 @@ export default function Home() {
       router.push('/sign-up');
       return;
     }
-    setSelectedActivity(activity);
-    setIsModalOpen(true);
+    // Navigate to the booking page, passing activity title as a slug
+    const slug = activity.title.toLowerCase().replace(/\s+/g, '-');
+    router.push(`/book/${slug}`);
   };
 
   return (
     <main className="text-[#3a3027] overflow-x-hidden relative bg-[#FBEAD6]">
 
       <style>{`
-        /* ── entrance ── */
         @keyframes fadeInUp   { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn     { from{opacity:0} to{opacity:1} }
         @keyframes slideInLeft  { from{opacity:0;transform:translateX(-40px)} to{opacity:1;transform:translateX(0)} }
         @keyframes slideInRight { from{opacity:0;transform:translateX(40px)}  to{opacity:1;transform:translateX(0)} }
         @keyframes scaleIn    { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
         @keyframes countUp    { from{opacity:0;transform:translateY(12px) scale(.85)} to{opacity:1;transform:translateY(0) scale(1)} }
-
-        /* ── ambient ── */
         @keyframes float      { 0%,100%{transform:translateY(0)}     50%{transform:translateY(-16px)} }
         @keyframes scrollLine { 0%,100%{opacity:0;transform:scaleY(0)} 50%{opacity:1;transform:scaleY(1)} }
         @keyframes shimmer    { from{background-position:-200% center} to{background-position:200% center} }
@@ -70,37 +71,22 @@ export default function Home() {
         @keyframes auraPulse  { 0%,100%{opacity:.72;transform:translate(-50%,-50%) scale(1);filter:blur(6px)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.13);filter:blur(10px)} }
         @keyframes lacePulse  { 0%,100%{opacity:.5} 50%{opacity:.95} }
         @keyframes floatOrb   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)} }
-
-        /* ── section divider line draw ── */
         @keyframes drawLine   { from{width:0;opacity:0} to{width:3rem;opacity:1} }
-
-        /* ── card shimmer on enter ── */
         @keyframes cardGlow   { 0%{box-shadow:0 0 0 rgba(200,125,135,0)} 60%{box-shadow:0 8px 32px rgba(200,125,135,0.18)} 100%{box-shadow:0 8px 32px rgba(200,125,135,0)} }
-
-        /* ── stagger reveal helpers ── */
         .reveal-left  { opacity:0; transform:translateX(-36px); transition:opacity .75s ease, transform .75s ease; }
         .reveal-right { opacity:0; transform:translateX(36px);  transition:opacity .75s ease, transform .75s ease; }
         .reveal-up    { opacity:0; transform:translateY(30px);  transition:opacity .7s ease,  transform .7s ease; }
         .reveal-fade  { opacity:0;                              transition:opacity .9s ease; }
         .reveal-scale { opacity:0; transform:scale(0.93);       transition:opacity .7s ease,  transform .7s ease; }
         .in-view      { opacity:1 !important; transform:none !important; }
-
         .delay-1{transition-delay:.08s} .delay-2{transition-delay:.18s} .delay-3{transition-delay:.28s}
         .delay-4{transition-delay:.38s} .delay-5{transition-delay:.48s} .delay-6{transition-delay:.58s}
-
-        /* ── hover lift ── */
         .card-hover { transition:transform .35s ease, box-shadow .35s ease; }
         .card-hover:hover { transform:translateY(-6px); box-shadow:0 28px 56px rgba(58,48,39,0.13); }
-
-        /* ── process card hover accent ── */
         .step-card { transition:transform .35s ease, box-shadow .35s ease, background .35s ease; }
         .step-card:hover { transform:translateY(-6px); box-shadow:0 24px 48px rgba(58,48,39,0.18); }
-
-        /* ── img zoom ── */
         .img-zoom img { transition:transform .8s cubic-bezier(.4,0,.2,1); }
         .img-zoom:hover img { transform:scale(1.07); }
-
-        /* ── underline link ── */
         .link-line { position:relative; }
         .link-line::after { content:''; position:absolute; left:0; bottom:-1px; width:0; height:1px; background:#C87D87; transition:width .3s ease; }
         .link-line:hover::after { width:100%; }
@@ -112,7 +98,6 @@ export default function Home() {
         <div className="absolute inset-[13px] border border-[#C87D87]/12"/>
         <div className="absolute inset-[21px] border border-[#C87D87]/7"/>
         <div className="absolute inset-[28px] border border-[#C87D87]/4"/>
-
         {[{pos:'top-3 left-3',rot:'rotate-0'},{pos:'top-3 right-3',rot:'rotate-90'},{pos:'bottom-3 right-3',rot:'rotate-180'},{pos:'bottom-3 left-3',rot:'-rotate-90'}].map(({pos,rot},i)=>(
           <div key={i} className={`absolute ${pos} w-28 h-28`}>
             <svg width="112" height="112" viewBox="0 0 112 112" fill="none" className={rot}>
@@ -140,8 +125,6 @@ export default function Home() {
             </svg>
           </div>
         ))}
-
-        {/* top centre ornament */}
         <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center animate-[lacePulse_4s_ease-in-out_infinite]">
           <div className="w-28 h-px bg-gradient-to-r from-transparent to-[#C87D87]/30"/>
           <svg width="88" height="16" viewBox="0 0 88 16" fill="none">
@@ -163,8 +146,6 @@ export default function Home() {
           </svg>
           <div className="w-28 h-px bg-gradient-to-l from-transparent to-[#C87D87]/30"/>
         </div>
-
-        {/* bottom centre ornament */}
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center animate-[lacePulse_4s_ease-in-out_infinite_.9s]">
           <div className="w-28 h-px bg-gradient-to-r from-transparent to-[#C87D87]/30"/>
           <svg width="88" height="16" viewBox="0 0 88 16" fill="none">
@@ -180,8 +161,6 @@ export default function Home() {
           </svg>
           <div className="w-28 h-px bg-gradient-to-l from-transparent to-[#C87D87]/30"/>
         </div>
-
-        {/* left + right ornaments */}
         {['left-3','right-3'].map((side,si)=>(
           <div key={si} className={`absolute ${side} top-1/2 -translate-y-1/2 flex flex-col items-center animate-[lacePulse_4s_ease-in-out_infinite_${1.8+si*0.9}s]`}>
             <div className="h-24 w-px bg-gradient-to-b from-transparent to-[#C87D87]/25"/>
@@ -210,8 +189,6 @@ export default function Home() {
         <div className="absolute bottom-16 left-20 w-32 h-32 rounded-full bg-[#6B7556]/5 blur-3xl animate-[float_9s_ease-in-out_infinite_2s] pointer-events-none"/>
 
         <div className="relative z-10 max-w-7xl mx-auto px-10 md:px-20 h-full flex flex-col md:flex-row items-center gap-16 py-16">
-
-          {/* LEFT */}
           <div className="flex-1 flex flex-col items-start text-left">
             <div className="flex items-center gap-3 mb-6 opacity-0 animate-[fadeIn_.8s_ease_.2s_forwards]">
               <div className="w-8 h-px bg-[#C87D87]"/>
@@ -242,8 +219,6 @@ export default function Home() {
                 See Activities <span>→</span>
               </Link>
             </div>
-
-            {/* stats — staggered countUp */}
             <div className="flex items-center gap-8 opacity-0 animate-[fadeIn_1s_ease_1.3s_forwards]">
               {[{num:'12',label:'Guests Max'},{num:'3',label:'Crafts Available'},{num:'∞',label:'Memories Made'}].map((s,i)=>(
                 <div key={i} className="flex items-center gap-3">
@@ -257,7 +232,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* RIGHT */}
           <div className="flex-1 relative hidden md:flex justify-center items-center opacity-0 animate-[scaleIn_1.1s_cubic-bezier(.4,0,.2,1)_.6s_forwards]">
             <div className="relative w-[360px] h-[460px] overflow-hidden rounded-2xl shadow-[0_32px_64px_rgba(58,48,39,0.18)] border border-[#C87D87]/18 img-zoom">
               <img src="https://images.unsplash.com/photo-1505236738411-6d0a1e5b00c5" alt="Inora gathering" className="w-full h-full object-cover"/>
@@ -298,15 +272,12 @@ export default function Home() {
       {/* ══ ACTIVITIES ══ */}
       <section id="activities" ref={activitiesRef} className="py-20 px-8 md:px-24 bg-[#FBEAD6]">
         <div className="max-w-6xl mx-auto">
-
-          {/* section header */}
           <div className="grid md:grid-cols-2 gap-8 items-end mb-12">
             <div className={`reveal-left ${activitiesIn ? 'in-view' : ''}`}>
               <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-sm tracking-[.35em] uppercase mb-2">Craft Your Experience</p>
               <h2 className="font-['Playfair_Display',serif] italic text-[clamp(2.2rem,3.8vw,3.4rem)] text-[#3a3027] leading-[1.15]">
                 Choose Your<br/><span className="text-[#6B7556]">Activity</span>
               </h2>
-              {/* animated underline */}
               <div className="flex items-center gap-3 mt-4">
                 <div className="h-px bg-[#C87D87]"
                   style={{ width: activitiesIn ? '3rem' : '0', opacity: activitiesIn ? 1 : 0, transition:'width .7s ease .3s, opacity .7s ease .3s' }}/>
@@ -318,12 +289,11 @@ export default function Home() {
             </p>
           </div>
 
-          {/* cards */}
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { img:'https://images.unsplash.com/photo-1612278675615-7b093b07772d', tag:'01', title:'Crochet Circle',   desc:'Gather around yarn and quiet conversation. A slow, meditative craft that brings warmth to any setting.',                   accent:'#C87D87', delay:'delay-1' },
-              { img:'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b', tag:'02', title:'Painting Session', desc:'Express freely on canvas surrounded by curated ambience. No experience needed — only the desire to create together.',  accent:'#6B7556', delay:'delay-3' },
-              { img:'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261', tag:'03', title:'Pottery Workshop', desc:'Shape and sculpt in an intimate setting. Grounding, joyful, and deeply satisfying when shared with people you love.',    accent:'#C87D87', delay:'delay-5' },
+              { img:'https://images.unsplash.com/photo-1612278675615-7b093b07772d', tag:'01', title:'Crochet Circle',   desc:'Gather around yarn and quiet conversation. A slow, meditative craft that brings warmth to any setting.',                  accent:'#C87D87', delay:'delay-1' },
+              { img:'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b', tag:'02', title:'Painting Session', desc:'Express freely on canvas surrounded by curated ambience. No experience needed — only the desire to create together.', accent:'#6B7556', delay:'delay-3' },
+              { img:'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261', tag:'03', title:'Pottery Workshop', desc:'Shape and sculpt in an intimate setting. Grounding, joyful, and deeply satisfying when shared with people you love.',   accent:'#C87D87', delay:'delay-5' },
             ].map((a, i) => (
               <div key={i}
                 onClick={() => handleActivityClick(a)}
@@ -335,7 +305,6 @@ export default function Home() {
                 <div className="overflow-hidden h-52 relative rounded-t-2xl img-zoom">
                   <img src={a.img} alt={a.title} className="w-full h-full object-cover"/>
                   <div className="absolute inset-0 bg-gradient-to-t from-[#3a3027]/30 to-transparent"/>
-                  {/* tag badge slides in */}
                   <div className="absolute top-3 right-3 w-8 h-8 bg-[#FBEAD6]/90 backdrop-blur-sm flex items-center justify-center border border-[#C87D87]/20 rounded-lg"
                     style={{ animation: activitiesIn ? `slideInRight .5s ease ${0.3+i*0.15}s both` : 'none' }}>
                     <span className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-xs font-bold">{a.tag}</span>
@@ -345,6 +314,11 @@ export default function Home() {
                   <h3 className="font-['Playfair_Display',serif] italic text-[1.15rem] text-[#3a3027] mb-1.5 group-hover:text-[#C87D87] transition-colors duration-300">{a.title}</h3>
                   <div className="h-px mb-3 transition-all duration-500 group-hover:w-12" style={{ background: a.accent, width: activitiesIn ? '1.75rem' : '0', transition:'width .6s ease .4s' }}/>
                   <p className="text-sm text-[#5a4a3a] leading-relaxed font-['Cormorant_Garamond',serif]">{a.desc}</p>
+                  {/* "Book" hint on hover */}
+                  <div className="mt-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <span className="font-['Cormorant_Garamond',serif] text-xs tracking-widest uppercase text-[#C87D87]">Book this activity</span>
+                    <span className="text-[#C87D87] text-xs">→</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -355,8 +329,6 @@ export default function Home() {
       {/* ══ HOW IT WORKS ══ */}
       <section ref={processRef} className="py-20 px-8 md:px-24 overflow-hidden" style={{ background:'linear-gradient(135deg,#6B7556 0%,#5a6347 100%)' }}>
         <div className="max-w-5xl mx-auto">
-
-          {/* heading — scale in */}
           <div className={`text-center mb-12 reveal-scale ${processIn ? 'in-view' : ''}`}>
             <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/70 text-sm tracking-[.35em] uppercase mb-2">Simple by Design</p>
             <h2 className="font-['Playfair_Display',serif] italic text-[clamp(2.2rem,3.8vw,3.4rem)] text-[#FBEAD6] leading-tight">How Inora Works</h2>
@@ -369,14 +341,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* connector line draws across */}
           <div className="relative grid md:grid-cols-3 gap-6">
             <div className="hidden md:block absolute top-[2.75rem] h-px bg-[#FBEAD6]/15 overflow-hidden"
               style={{ left:'calc(16.66% + 1.75rem)', right:'calc(16.66% + 1.75rem)' }}>
               <div className="h-full bg-[#FBEAD6]/40"
                 style={{ width: processIn ? '100%' : '0', transition:'width 1s ease .6s' }}/>
             </div>
-
             {[
               { num:'01', title:'Choose Your Setting', desc:'Select the environment that speaks to your group — a sunlit garden, a cosy indoor space, or an open-air terrace.', icon:'◎', delay:'delay-1' },
               { num:'02', title:'Pick Your Craft',     desc:'Choose from crochet, painting, or pottery. We provide everything your group needs to create freely and beautifully.', icon:'◈', delay:'delay-3' },
@@ -388,7 +358,7 @@ export default function Home() {
                 <div className="absolute inset-[4px] rounded-xl border border-[#FBEAD6]/5 pointer-events-none"/>
                 <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#C87D87]/35 to-transparent"/>
                 <div className="relative mb-5 flex justify-center">
-                  <div className="w-14 h-14 rounded-full border border-[#FBEAD6]/25 flex items-center justify-center bg-[#FBEAD6]/6 group-hover:bg-[#C87D87]/22 transition-all duration-300"
+                  <div className="w-14 h-14 rounded-full border border-[#FBEAD6]/25 flex items-center justify-center bg-[#FBEAD6]/6 transition-all duration-300"
                     style={{ animation: processIn ? `scaleIn .5s cubic-bezier(.4,0,.2,1) ${.3+i*.18}s both` : 'none' }}>
                     <span className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/80 text-lg">{step.num}</span>
                   </div>
@@ -422,7 +392,8 @@ export default function Home() {
       </div>
 
       {/* ══ REVIEWS ══ */}
-      <section ref={reviewsRef} className="py-20 px-8 md:px-24 bg-[#FBEAD6]">
+      <section ref={reviewsRef} className="py-20 px-8 md:px-24 bg-[#FBEAD6] overflow-hidden">
+        <style>{`@keyframes carouselSlide { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }`}</style>
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
             <div className={`reveal-left ${reviewsIn ? 'in-view' : ''}`}>
@@ -440,57 +411,15 @@ export default function Home() {
               Every gathering tells a story.<br/>Here are a few of theirs.
             </p>
           </div>
-
-          {reviews.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {reviews.map((review, i) => (
-                <div key={review.id}
-                  className={`relative bg-white/80 backdrop-blur-sm border border-[#C87D87]/14 rounded-2xl p-7 card-hover reveal-scale delay-${i+1} ${reviewsIn ? 'in-view' : ''} ${i === 1 ? 'md:mt-6' : ''}`}
-                  style={reviewsIn ? { animation:`cardGlow .9s ease ${0.1+i*0.15}s` } : {}}>
-                  <div className="absolute inset-0 rounded-2xl border border-[#C87D87]/8 pointer-events-none"/>
-                  <div className="absolute inset-[4px] rounded-xl border border-[#C87D87]/5 pointer-events-none"/>
-                  <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#C87D87]/40 to-transparent"/>
-                  {/* quote mark drops in */}
-                  <div className="font-['Playfair_Display',serif] text-[4rem] text-[#C87D87]/15 leading-none mb-1 -mt-2 select-none"
-                    style={{ animation: reviewsIn ? `fadeInUp .5s ease ${0.2+i*0.12}s both` : 'none' }}>"</div>
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[1.05rem] text-[#5a4a3a] leading-[1.75] mb-5">{review.comment}</p>
-                  <div className="flex items-center justify-between pt-4 border-t border-[#C87D87]/12">
-                    <div className="flex items-center gap-3">
-                      {/* avatar pops in */}
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B7556] to-[#C87D87] flex items-center justify-center text-white font-['Playfair_Display',serif] text-sm shadow-sm"
-                        style={{ animation: reviewsIn ? `scaleIn .4s cubic-bezier(.4,0,.2,1) ${0.35+i*0.12}s both` : 'none' }}>
-                        {review.user.fullName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] tracking-wide leading-none">{review.user.fullName}</p>
-                        <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/70 mt-0.5">Inora Guest</p>
-                      </div>
-                    </div>
-                    {/* stars slide in from right */}
-                    <span className="text-[#C87D87] text-xs tracking-widest"
-                      style={{ animation: reviewsIn ? `slideInRight .5s ease ${0.4+i*0.12}s both` : 'none' }}>
-                      {'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="font-['Cormorant_Garamond',serif] italic text-xl text-[#C87D87]/60 text-center py-12">
-              No reviews yet. Be the first to share your experience.
-            </p>
-          )}
+          <ReviewCarousel reviews={allReviews} reviewsIn={reviewsIn} />
         </div>
       </section>
 
       {/* ══ FOOTER ══ */}
       <footer ref={footerRef} className="relative text-white overflow-hidden" style={{ background:'linear-gradient(135deg,#6B7556 0%,#5a6347 100%)' }}>
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/60 to-transparent"/>
-
         <div className="max-w-7xl mx-auto px-10 pt-14 pb-6">
           <div className="grid md:grid-cols-4 gap-10 pb-10 border-b border-[#FBEAD6]/10">
-
-            {/* brand — slides up */}
             <div className={`md:col-span-2 reveal-up ${footerIn ? 'in-view' : ''}`}>
               <h3 className="font-['Playfair_Display',serif] italic text-[2rem] text-[#FBEAD6] tracking-wide leading-none mb-1">Inora</h3>
               <div className="h-px bg-gradient-to-r from-[#FBEAD6]/50 via-[#FBEAD6]/20 to-transparent mb-4"
@@ -500,8 +429,6 @@ export default function Home() {
                 Private gatherings for up to 12 friends — curated by ambience, setting, and the craft you choose to share.
               </p>
             </div>
-
-            {/* nav — stagger up */}
             <div className={`reveal-up delay-2 ${footerIn ? 'in-view' : ''}`}>
               <h4 className="font-['Cormorant_Garamond',serif] text-xs tracking-[.35em] uppercase mb-5 text-[#FBEAD6]/50">Explore</h4>
               <ul className="flex flex-col gap-2.5">
@@ -515,8 +442,6 @@ export default function Home() {
                 ))}
               </ul>
             </div>
-
-            {/* contact — stagger up */}
             <div className={`reveal-up delay-3 ${footerIn ? 'in-view' : ''}`}>
               <h4 className="font-['Cormorant_Garamond',serif] text-xs tracking-[.35em] uppercase mb-5 text-[#FBEAD6]/50">Get in Touch</h4>
               <div className="flex flex-col gap-3">
@@ -526,7 +451,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-
           <div className={`flex flex-col md:flex-row items-center justify-between gap-4 pt-6 reveal-fade delay-4 ${footerIn ? 'in-view' : ''}`}>
             <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/30 text-sm">© {new Date().getFullYear()} Inora. All rights reserved.</p>
             <div className="flex items-center gap-2">
@@ -539,13 +463,6 @@ export default function Home() {
         </div>
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/40 to-transparent"/>
       </footer>
-
-      {/* Modal de réservation */}
-      <ActivityBookingModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        activity={selectedActivity} 
-      />
 
     </main>
   );
