@@ -82,12 +82,13 @@ export const login = async (req, res) => {
     );
 
     // Définir le cookie
-    res.cookie("token", accessToken, {
-      httpOnly: true,
-      secure:   false,
-      sameSite: "lax",
-      maxAge:   60 * 60 * 1000
-    });
+  // Définir le cookie
+res.cookie("token", accessToken, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',  // true en prod, false en local
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 60 * 60 * 1000
+});
 
     // Réponse
     return res.status(200).json({
