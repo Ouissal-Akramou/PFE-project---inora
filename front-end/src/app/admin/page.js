@@ -449,54 +449,57 @@ export default function Admin() {
             )}
 
             {/* ════════════ MEMBERS ════════════ */}
-            {activeTab === 'members' && (
-              <div style={{ animation:'fadeIn .3s ease both' }}>
-                <div className="relative mb-5 max-w-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]/35 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                  </svg>
-                  <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Rechercher…" className="df pl-9"/>
-                </div>
-                <div className="panel">
-                  <div className="grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-3 border-b border-white/[0.04]" style={{ background:'rgba(200,125,135,0.04)' }}>
-                    {['Membre','Email','Rôle','Rés.','Pmt','Avis'].map(h => (
-                      <p key={h} className="text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
-                    ))}
-                  </div>
-                  {usersLoading ? (
-                    <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/></div>
-                  ) : filteredUsers.map((u,i) => {
-                    const ub=userBookings(u), up=userPayments(u), ur=userReviews(u);
-                    return (
-                      <div key={u.id} onClick={() => setSelectedUser(u)}
-                        className={`drow grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-4 items-center border-b border-white/[0.04] last:border-0 ${u.suspended?'opacity-40':''}`}
-                        style={{ animation:`fadeUp .22s ease ${i*22}ms both` }}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${u.role==='admin'?'bg-[#6B7556]':'bg-[#C87D87]'}`}>
-                            {u.fullName?.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm text-[#e8ddd6] font-semibold truncate">{u.fullName}</p>
-                            <p className="italic text-[0.58rem] text-[#7a6a5a]/45">
-                              {new Date(u.createdAt).toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="italic text-xs text-[#7a6a5a]/55 truncate">{u.email}</p>
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[0.55rem] tracking-widest uppercase w-fit
-                          ${u.role==='admin'?'bg-[#6B7556]/18 text-[#8fa07a] border border-[#6B7556]/25':'bg-[#C87D87]/12 text-[#C87D87] border border-[#C87D87]/22'}`}>
-                          {u.role}
-                        </span>
-                        <p className="text-sm text-[#e8ddd6] text-center font-semibold">{ub.length||'—'}</p>
-                        <p className="text-sm text-[#6B7556] text-center font-semibold">{up.length||'—'}</p>
-                        <p className="text-sm text-[#C87D87] text-center font-semibold">{ur.length||'—'}</p>
-                      </div>
-                    );
-                  })}
-                  {filteredUsers.length===0 && <p className="text-center py-12 italic text-[#7a6a5a]/35">Aucun membre trouvé</p>}
-                </div>
+            {/* ════════════ MEMBERS ════════════ */}
+{activeTab === 'members' && (
+  <div style={{ animation:'fadeIn .3s ease both' }}>
+    <div className="relative mb-5 max-w-xs">
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]/35 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+      </svg>
+      <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Rechercher…" className="df pl-9"/>
+    </div>
+    <div className="panel">
+      <div className="grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-3 border-b border-white/[0.04]" style={{ background:'rgba(200,125,135,0.04)' }}>
+        {['Membre','Email','Rôle','Rés.','Pmt','Avis'].map(h => (
+          <p key={h} className="text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
+        ))}
+      </div>
+      {usersLoading ? (
+        <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/></div>
+      ) : filteredUsers.map((u,i) => {
+        const ub=userBookings(u), up=userPayments(u), ur=userReviews(u);
+        // Obtenir le nom de l'utilisateur (fullName ou name)
+        const userName = u.fullName || u.name || 'Utilisateur';
+        return (
+          <div key={u.id} onClick={() => setSelectedUser(u)}
+            className={`drow grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-4 items-center border-b border-white/[0.04] last:border-0 ${u.suspended?'opacity-40':''}`}
+            style={{ animation:`fadeUp .22s ease ${i*22}ms both` }}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${u.role==='admin'?'bg-[#6B7556]':'bg-[#C87D87]'}`}>
+                {userName.charAt(0).toUpperCase()}
               </div>
-            )}
+              <div className="min-w-0">
+                <p className="text-sm text-[#e8ddd6] font-semibold truncate">{userName}</p>
+                <p className="italic text-[0.58rem] text-[#7a6a5a]/45">
+                  {new Date(u.createdAt).toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}
+                </p>
+              </div>
+            </div>
+            <p className="italic text-xs text-[#7a6a5a]/55 truncate">{u.email}</p>
+            <span className={`inline-flex px-2 py-0.5 rounded-full text-[0.55rem] tracking-widest uppercase w-fit
+              ${u.role==='admin'?'bg-[#6B7556]/18 text-[#8fa07a] border border-[#6B7556]/25':'bg-[#C87D87]/12 text-[#C87D87] border border-[#C87D87]/22'}`}>
+              {u.role}
+            </span>
+            <p className="text-sm text-[#e8ddd6] text-center font-semibold">{ub.length||'—'}</p>
+            <p className="text-sm text-[#6B7556] text-center font-semibold">{up.length||'—'}</p>
+            <p className="text-sm text-[#C87D87] text-center font-semibold">{ur.length||'—'}</p>
+          </div>
+        );
+      })}
+      {filteredUsers.length===0 && <p className="text-center py-12 italic text-[#7a6a5a]/35">Aucun membre trouvé</p>}
+    </div>
+  </div>
+)}
 
             {/* ════════════ PAYMENTS ════════════ */}
             {activeTab === 'payments' && (
