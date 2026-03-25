@@ -7,28 +7,22 @@ datasource db {
   provider = "postgresql"
 }
 
-// ✅ Enum from Hasna's code
-enum Status {
-  OPEN
-  CLOSED
-}
-
 model User {
-  id                String             @id @default(cuid())
-  fullName          String
-  email             String             @unique
-  password          String
-  role              String             @default("member")
-  suspended         Boolean            @default(false)
-  avatarUrl         String?
-  createdAt         DateTime           @default(now())
-  drafts            Draft[]
-  reviews           Review[]
-  conversations     Conversation[]     @relation("UserConversations")
-  claimedConvos     Conversation[]     @relation("ClaimedConversations")
-  sentMessages      Message[]          @relation("SentMessages")
-  bookings          Booking[]
-  notifications     Notification[]
+  id            String         @id @default(cuid())
+  fullName      String
+  email         String         @unique
+  password      String
+  createdAt     DateTime       @default(now())
+  role          String         @default("member")
+  avatarUrl     String?
+  suspended     Boolean        @default(false)
+  bookings      Booking[]
+  claimedConvos Conversation[] @relation("ClaimedConversations")
+  conversations Conversation[] @relation("UserConversations")
+  drafts        Draft[]
+  sentMessages  Message[]      @relation("SentMessages")
+  notifications Notification[]
+  reviews       Review[]
 }
 
 model Draft {
@@ -43,76 +37,78 @@ model Draft {
 model Review {
   id        String   @id @default(cuid())
   userId    String
-  bookingId Int?     @unique   // ← was gatheringRequestId String?
   comment   String
   rating    Int
   approved  Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId Int?     @unique
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ✅ Changed Int → String cuid() to match all other models
 model Conversation {
   id          String    @id @default(cuid())
   userId      String
-  user        User      @relation("UserConversations", fields: [userId], references: [id])
   subject     String?
-  status      Status    @default(OPEN)
-  claimedById String?
-  claimedBy   User?     @relation("ClaimedConversations", fields: [claimedById], references: [id])
-  messages    Message[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  claimedById String?
+  status      Status    @default(OPEN)
+  claimedBy   User?     @relation("ClaimedConversations", fields: [claimedById], references: [id])
+  user        User      @relation("UserConversations", fields: [userId], references: [id])
+  messages    Message[]
 }
 
-// ✅ Changed Int → String cuid() + conversationId String
 model Message {
   id             String       @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderId       String
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
   body           String
   createdAt      DateTime     @default(now())
   readAt         DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
 }
 
 model Booking {
-  id               Int       @id @default(autoincrement())
   fullName         String
   email            String
   phone            String
   activity         String
-  participants     Int       @default(1)
+  participants     Int            @default(1)
   date             DateTime?
   timeSlot         String?
   allergies        String?
   specialRequests  String?
   additionalNotes  String?
-  preferredContact String    @default("telephone")
+  preferredContact String         @default("telephone")
   activityTheme    String?
-  status           String    @default("pending")
+  createdAt        DateTime       @default(now())
+  status           String         @default("pending")
   userId           String?
-  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  paymentStatus    String    @default("PENDING")
+  id               Int            @id @default(autoincrement())
   advancePaid      Float?
   paidAt           DateTime?
-  createdAt        DateTime  @default(now())
+  paymentStatus    String         @default("PENDING")
+  user             User?          @relation(fields: [userId], references: [id])
   notifications    Notification[]
-  review           Review?  
+  review           Review?
 }
 
 model Notification {
-  id        String   @id @default(cuid())  // ✅ changed to cuid for consistency
+  id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   bookingId Int?
-  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   type      String
   title     String
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Status {
+  OPEN
+  CLOSED
 }
