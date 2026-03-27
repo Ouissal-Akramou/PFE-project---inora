@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { DEFAULT_REVIEWS } from '@/lib/defaultReviews';
-
+import jsPDF from 'jspdf';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
@@ -77,13 +77,80 @@ const Field = ({ label, children }) => (
     <div className="flex-1">{children}</div>
   </div>
 );
+
 const Inp = ({ ...props }) => (
   <input {...props}
     className="w-full bg-[#fdf3e7] border border-[#C87D87]/22 rounded-xl px-4 py-2.5 font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] outline-none focus:border-[#C87D87]/55 focus:bg-[#fef6ec] focus:shadow-[0_0_0_3px_rgba(200,125,135,0.08)] transition-all placeholder:text-[#7a6a5a]/30"/>
 );
+
 const Msg = ({ msg }) => !msg?.text ? null : (
   <p className={`font-['Cormorant_Garamond',serif] italic text-xs mt-2 ${msg.type==='success'?'text-[#6B7556]':'text-red-400'}`}>{msg.text}</p>
 );
+
+// ── PDF Export ────────────────────────────────────────
+const exportBookingPDF = (b) => {
+  const doc  = new jsPDF();
+  const line = (label, value, y) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(label, 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(value ?? '—'), 70, y);
+  };
+
+  doc.setFillColor(107, 117, 86);
+  doc.rect(0, 0, 210, 22, 'F');
+  doc.setTextColor(251, 234, 214);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('Inora — Booking Details', 14, 14);
+
+  doc.setTextColor(40, 40, 40);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Exported on ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`, 14, 28);
+
+  doc.setDrawColor(200, 125, 135);
+  doc.setLineWidth(0.4);
+  doc.line(14, 31, 196, 31);
+
+  let y = 40;
+  const fields = [
+    ['Booking ID',        `#${b.id}`],
+    ['Client Name',       b.fullName || b.user?.fullName],
+    ['Email',             b.email],
+    ['Phone',             b.phone],
+    ['Activity',          b.activity],
+    ['Theme',             b.activityTheme],
+    ['Date',              b.date ? new Date(b.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : null],
+    ['Time Slot',         b.timeSlot],
+    ['Guests',            b.participants],
+    ['Setting',           b.setting],
+    ['Preferred Contact', b.preferredContact],
+    ['Allergies',         b.allergies],
+    ['Special Requests',  b.specialRequests],
+    ['Additional Notes',  b.additionalNotes],
+    ['Booking Status',    b.status?.toUpperCase()],
+    ['Payment Status',    b.paymentStatus],
+    ['Advance Paid',      b.advancePaid ? `${b.advancePaid} MAD` : null],
+    ['Paid At',           b.paidAt ? new Date(b.paidAt).toLocaleDateString('en-GB') : null],
+    ['Submitted At',      new Date(b.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})],
+  ];
+
+  fields.forEach(([label, value]) => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    line(label, value ?? '—', y);
+    y += 8;
+  });
+
+  doc.setDrawColor(200, 125, 135);
+  doc.line(14, 282, 196, 282);
+  doc.setFontSize(7);
+  doc.setTextColor(150, 130, 110);
+  doc.text('Inora · Confidential booking record', 14, 288);
+
+  doc.save(`booking-${b.id}-${(b.fullName || 'client').replace(/\s+/g,'_')}.pdf`);
+};
 
 export default function Admin() {
   const { user, setUser, logout } = useAuth();
@@ -98,15 +165,10 @@ export default function Admin() {
   const [usersLoading,       setUsersLoading]       = useState(false);
   const [userSearch,         setUserSearch]         = useState('');
   const [selectedUser,       setSelectedUser]       = useState(null);
-
-  // ── bookings: filtered (overview + badge counts) ──
   const [bookings,           setBookings]           = useState([]);
   const [bookingsLoading,    setBookingsLoading]    = useState(true);
-
-  // ✅ allBookings: full history (Réservations tab)
   const [allBookings,        setAllBookings]        = useState([]);
   const [allBookingsLoading, setAllBookingsLoading] = useState(true);
-
   const [payments,           setPayments]           = useState([]);
   const [paymentsLoading,    setPaymentsLoading]    = useState(false);
   const [selectedBooking,    setSelectedBooking]    = useState(null);
@@ -152,7 +214,6 @@ export default function Admin() {
     } catch {}
   };
 
-  // ✅ fetchAll now includes fetchAllBookings
   const fetchAll = () => {
     fetchReviews();
     fetchUsers();
@@ -181,7 +242,6 @@ export default function Admin() {
     } finally { setUsersLoading(false); }
   };
 
-  // filtered — used for overview widget + pending badge only
   const fetchBookings = async () => {
     setBookingsLoading(true);
     try {
@@ -191,7 +251,6 @@ export default function Admin() {
     } catch { setBookings([]); } finally { setBookingsLoading(false); }
   };
 
-  // ✅ full history — used for Réservations tab
   const fetchAllBookings = async () => {
     setAllBookingsLoading(true);
     try {
@@ -234,14 +293,14 @@ export default function Admin() {
       body: JSON.stringify({ status }),
     });
     fetchBookings();
-    fetchAllBookings(); // ✅ keep history in sync
+    fetchAllBookings();
     if (selectedBooking?.id === id) setSelectedBooking(b => ({ ...b, status }));
   };
   const deleteBooking = async (id) => {
-    if (!confirm('Supprimer cette réservation ?')) return;
+    if (!confirm('Delete this booking?')) return;
     await fetch(`${API}/api/bookings/${id}`, { method:'DELETE', credentials:'include' });
     fetchBookings();
-    fetchAllBookings(); // ✅ keep history in sync
+    fetchAllBookings();
     fetchPayments();
     if (selectedBooking?.id === id) setSelectedBooking(null);
   };
@@ -340,15 +399,15 @@ export default function Admin() {
   };
 
   const statusCfg = {
-    pending:   { label:'Pending',   dot:'bg-amber-400',  text:'text-amber-600',  bg:'bg-amber-50',       border:'border-amber-200'    },
-    confirmed: { label:'Confirmed', dot:'bg-[#6B7556]',  text:'text-[#4a5240]',  bg:'bg-[#6B7556]/10',   border:'border-[#6B7556]/30' },
-    completed: { label:'Completed', dot:'bg-[#6B7556]',  text:'text-[#4a5240]',  bg:'bg-[#6B7556]/10',   border:'border-[#6B7556]/30' },
-    cancelled: { label:'Cancelled', dot:'bg-red-400',    text:'text-red-500',     bg:'bg-red-50',         border:'border-red-200'      },
+    pending:   { label:'Pending',   dot:'bg-amber-400', text:'text-amber-600', bg:'bg-amber-50',     border:'border-amber-200'    },
+    confirmed: { label:'Confirmed', dot:'bg-[#6B7556]', text:'text-[#4a5240]', bg:'bg-[#6B7556]/10', border:'border-[#6B7556]/30' },
+    completed: { label:'Completed', dot:'bg-[#6B7556]', text:'text-[#4a5240]', bg:'bg-[#6B7556]/10', border:'border-[#6B7556]/30' },
+    cancelled: { label:'Cancelled', dot:'bg-red-400',   text:'text-red-500',   bg:'bg-red-50',       border:'border-red-200'      },
   };
   const getStatus        = s => statusCfg[s?.toLowerCase()] ?? { label: s ?? '—', dot:'bg-[#C87D87]', text:'text-[#C87D87]', bg:'bg-[#C87D87]/8', border:'border-[#C87D87]/20' };
   const settingFromBooking = b => SETTINGS_MAP[b?.setting] ?? null;
 
-  const userBookings  = u => allBookings.filter(b => b.email?.toLowerCase() === u.email?.toLowerCase()); // ✅ use full history
+  const userBookings  = u => allBookings.filter(b => b.email?.toLowerCase() === u.email?.toLowerCase());
   const userPayments  = u => payments.filter(p => p.email?.toLowerCase() === u.email?.toLowerCase());
   const userReviews   = u => [...approvedReviews, ...pendingReviews].filter(r => r.user?.id === u.id);
   const filteredUsers = users.filter(u =>
@@ -357,14 +416,14 @@ export default function Admin() {
   );
 
   const navItems = [
-    { id:'overview', label:'Overview',     icon:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-    { id:'bookings', label:'Réservations', icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-      badge: bookings.filter(b=>b.status==='pending').length }, // ✅ badge = filtered pending only
-    { id:'members',  label:'Members',      icon:'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
-    { id:'payments', label:'Payments',     icon:'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
-    { id:'reviews',  label:'Reviews',      icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
+    { id:'overview', label:'Overview',    icon:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+    { id:'bookings', label:'Bookings',    icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+      badge: bookings.filter(b=>b.status==='pending').length },
+    { id:'members',  label:'Members',     icon:'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+    { id:'payments', label:'Payments',    icon:'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
+    { id:'reviews',  label:'Reviews',     icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
       badge: pendingReviews.length },
-    { id:'profile',  label:'My Profile',   icon:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+    { id:'profile',  label:'My Profile',  icon:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   ];
 
   const sideW  = collapsed ? 'w-[72px]' : 'w-64';
@@ -377,6 +436,7 @@ export default function Admin() {
         @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
         @keyframes slideUp { from{opacity:0;transform:translateY(30px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+        @keyframes fadeInScale { from{opacity:0;transform:scale(0.96) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
         .pink-sidebar { background: linear-gradient(160deg,#C87D87 0%,#b56b76 55%,#a55e6a 100%); }
         .nav-item { transition:background .18s; border-radius:12px; }
         .nav-item:hover { background:rgba(255,255,255,0.10); }
@@ -527,756 +587,652 @@ export default function Admin() {
             <div className="flex items-center gap-3">
               {bookings.filter(b=>b.status==='pending').length > 0 && (
                 <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-widest uppercase px-3 py-1 rounded-full bg-white/15 text-white border border-white/25">
-                  {bookings.filter(b=>b.status==='pending').length} en attente
+                  {bookings.filter(b=>b.status==='pending').length} pending
                 </span>
               )}
               {pendingReviews.length > 0 && (
                 <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-widest uppercase px-3 py-1 rounded-full bg-white/15 text-white border border-white/25">
-                  {pendingReviews.length} avis
+                  {pendingReviews.length} reviews
                 </span>
               )}
               <p className="font-['Cormorant_Garamond',serif] italic text-sm text-white/60 hidden md:block">
-                {new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
+                {new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}
               </p>
             </div>
           </header>
 
           <div className="p-7" style={{ animation:'fadeUp .4s ease both' }}>
 
-            {/* ════════════ OVERVIEW ════════════ */}
-            {activeTab === 'overview' && (
-              <div className="space-y-6" style={{animation:'fadeIn .3s ease both'}}>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label:'Réservations',   n: bookings.length,       sub:`${bookings.filter(b=>b.status==='pending').length} en attente`, c:'#C87D87', icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-                    { label:'Membres',        n: users.length,          sub:`${users.filter(u=>u.role==='admin').length} admins`,            c:'#6B7556', icon:'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
-                    { label:'MAD collectés',  n:`${payments.reduce((s,p)=>s+(p.totalPrice||p.advancePaid||0),0).toLocaleString()}`, sub:`${payments.length} paiements`, c:'#3a3027', icon:'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
-                    { label:'Avis en attente',n: pendingReviews.length, sub:`${approvedReviews.length} publiés`,                          c:'#C87D87', icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
-                  ].map((s,i) => (
-                    <div key={s.label} className="stat-card" style={{ animation:`fadeUp .3s ease ${i*60}ms both` }}>
-                      <div className="w-10 h-10 rounded-xl mb-3 flex items-center justify-center" style={{ background:`${s.c}18` }}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke={s.c} strokeWidth={1.75}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d={s.icon}/>
-                        </svg>
-                      </div>
-                      <p className="font-['Playfair_Display',serif] italic text-3xl leading-none mb-1" style={{ color:s.c }}>{s.n}</p>
-                      <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.2em] uppercase text-[#7a6a5a]/55 mb-0.5">{s.label}</p>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/35">{s.sub}</p>
-                    </div>
-                  ))}
-                </div>
-                <Panel>
-                  <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
-                    <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">Dernières réservations</h3>
-                    <button onClick={() => setActiveTab('bookings')} className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/60 hover:text-[#C87D87] transition-colors">Voir tout →</button>
-                  </div>
-                  {bookings.slice(0,6).map(b => {
-                    const s = getStatus(b.status);
-                    return (
-                      <div key={b.id} onClick={() => setSelectedBooking(b)}
-                        className="trow flex items-center gap-4 px-6 py-3.5 border-b border-[#C87D87]/6 last:border-0">
-                        <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
-  {b.user?.avatarUrl
-    ? <img src={resolveAvatar(b.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
-    : (b.fullName||b.user?.fullName||'?').charAt(0).toUpperCase()
-  }
-</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{b.fullName||b.user?.fullName}</p>
-                            {b.user?.isDeleted && <DeletedBadge/>}
-                          </div>
-                          <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">
-                            {b.activity}{b.activityTheme ? ` · ${b.activityTheme}` : ''}{b.timeSlot ? ` · ${b.timeSlot}` : ''}
-                          </p>
-                        </div>
-                        <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase flex-shrink-0 ${s.bg} ${s.border} ${s.text}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>{s.label}
-                        </span>
-                        {b.totalPrice > 0 && (
-                          <p className="font-['Playfair_Display',serif] italic text-sm text-[#6B7556] flex-shrink-0 hidden lg:block">{b.totalPrice} MAD</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </Panel>
-                {pendingReviews.length > 0 && (
-                  <Panel>
-                    <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
-                      <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">
-                        Avis en attente <span className="text-[#C87D87] not-italic text-sm font-['Cormorant_Garamond',serif]">{pendingReviews.length}</span>
-                      </h3>
-                      <button onClick={() => setActiveTab('reviews')} className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/60 hover:text-[#C87D87] transition-colors">Gérer →</button>
-                    </div>
-                    {pendingReviews.slice(0,3).map(r => (
-                      <div key={r.id} className="trow flex items-center gap-4 px-6 py-3.5 border-b border-[#C87D87]/6 last:border-0">
-                        <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center font-bold text-xs text-[#C87D87] flex-shrink-0 overflow-hidden">
-                          {r.user.avatarUrl
-                            ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
-                            : r.user.fullName.charAt(0).toUpperCase()
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold">{r.user.fullName}</p>
-                          <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">{r.comment}</p>
-                        </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <button onClick={e=>{e.stopPropagation();approveReview(r.id);}} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 border border-[#6B7556]/40 text-[#6B7556] hover:bg-[#6B7556] hover:text-white transition-all rounded-lg">✓</button>
-                          <button onClick={e=>{e.stopPropagation();deleteReview(r.id);}}  className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 border border-[#C87D87]/40 text-[#C87D87] hover:bg-[#C87D87] hover:text-white transition-all rounded-lg">✕</button>
-                        </div>
-                      </div>
-                    ))}
-                  </Panel>
-                )}
-              </div>
-            )}
-
-           {/* ════════════ BOOKINGS — full history ════════════ */}
-{activeTab === 'bookings' && (
-  <div style={{ animation:'fadeIn .3s ease both' }}>
-    <Panel>
-      <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
-        <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">
-          Toutes les réservations{' '}
-          <span className="text-[#C87D87] not-italic text-sm font-['Cormorant_Garamond',serif]">
-            {allBookings.length}
-          </span>
-        </h3>
-        <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/40">
-          Cliquez sur une ligne pour voir les détails
-        </p>
-      </div>
-
-      {/* ── Header ── */}
-      <div className="grid grid-cols-[2fr_1.6fr_0.8fr_1fr_1fr_0.8fr_0.7fr] gap-4 px-6 py-3 border-b border-[#C87D87]/8"
-        style={{ background:'rgba(200,125,135,0.04)' }}>
-        {['Client','Activité · Cadre','Pers.','Date · Horaire','Statut','Paiement','Total'].map(h => (
-          <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
+  {/* ════════════ OVERVIEW ════════════ */}
+  {activeTab === 'overview' && (
+    <div className="space-y-6" style={{ animation:'fadeIn .3s ease both' }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label:'Bookings',        n: bookings.length,       sub:`${bookings.filter(b=>b.status==='pending').length} pending`,   c:'#C87D87', icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+          { label:'Members',         n: users.length,          sub:`${users.filter(u=>u.role==='admin').length} admins`,            c:'#6B7556', icon:'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+          { label:'MAD Collected',   n:`${payments.reduce((s,p)=>s+(p.totalPrice||p.advancePaid||0),0).toLocaleString()}`, sub:`${payments.length} payments`, c:'#3a3027', icon:'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
+          { label:'Pending Reviews', n: pendingReviews.length, sub:`${approvedReviews.length} published`,                         c:'#C87D87', icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
+        ].map((s, i) => (
+          <div key={s.label} className="stat-card" style={{ animation:`fadeUp .3s ease ${i*60}ms both` }}>
+            <div className="w-10 h-10 rounded-xl mb-3 flex items-center justify-center" style={{ background:`${s.c}18` }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke={s.c} strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={s.icon}/>
+              </svg>
+            </div>
+            <p className="font-['Playfair_Display',serif] italic text-3xl leading-none mb-1" style={{ color:s.c }}>{s.n}</p>
+            <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.2em] uppercase text-[#7a6a5a]/55 mb-0.5">{s.label}</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/35">{s.sub}</p>
+          </div>
         ))}
       </div>
 
-      {allBookingsLoading ? (
-        <div className="flex flex-col items-center gap-3 py-16">
-          <div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/>
-          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/50 tracking-widest">Chargement…</p>
+      {/* Recent Bookings */}
+      <Panel>
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
+          <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">Recent Bookings</h3>
+          <button onClick={() => setActiveTab('bookings')} className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/60 hover:text-[#C87D87] transition-colors">View all →</button>
         </div>
-      ) : allBookings.length === 0 ? (
-        <p className="font-['Cormorant_Garamond',serif] italic text-center py-16 text-[#7a6a5a]/35">Aucune réservation</p>
-      ) : allBookings.map((b, i) => {
-        const s       = getStatus(b.status);
-        const setting = settingFromBooking(b);
-
-        // ✅ payment status derived from payments array
-       const isPaid    = b.paymentStatus === 'PAID';
-const isPending = b.paymentStatus === 'PENDING';
-        const payBadge  = isPaid
-          ? { label:'Payé',     bg:'bg-emerald-50',   border:'border-emerald-200', text:'text-emerald-600', dot:'bg-emerald-400' }
-          : isPending
-          ? { label:'En attente', bg:'bg-amber-50',   border:'border-amber-200',   text:'text-amber-600',   dot:'bg-amber-400'   }
-          : { label:'Non payé', bg:'bg-[#C87D87]/8',  border:'border-[#C87D87]/20',text:'text-[#C87D87]/70',dot:'bg-[#C87D87]/40' };
-
-        return (
-          <div key={b.id} onClick={() => setSelectedBooking(b)}
-            className="trow grid grid-cols-[2fr_1.6fr_0.8fr_1fr_1fr_0.8fr_0.7fr] gap-4 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0"
-            style={{ animation:`fadeUp .22s ease ${i*25}ms both` }}>
-
-            {/* Client */}
-            <div className="flex items-center gap-3 min-w-0">
+        {bookings.slice(0, 6).map(b => {
+          const s = getStatus(b.status);
+          return (
+            <div key={b.id} onClick={() => setSelectedBooking(b)}
+              className="trow flex items-center gap-4 px-6 py-3.5 border-b border-[#C87D87]/6 last:border-0">
               <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
                 {b.user?.avatarUrl
                   ? <img src={resolveAvatar(b.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
                   : (b.fullName || b.user?.fullName || '?').charAt(0).toUpperCase()
                 }
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">
-                    {b.fullName || b.user?.fullName}
-                  </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{b.fullName || b.user?.fullName}</p>
                   {b.user?.isDeleted && <DeletedBadge/>}
                 </div>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45 truncate">{b.email}</p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">
+                  {b.activity}{b.activityTheme ? ` · ${b.activityTheme}` : ''}{b.timeSlot ? ` · ${b.timeSlot}` : ''}
+                </p>
               </div>
-            </div>
-
-            {/* Activity */}
-            <div className="min-w-0">
-              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] truncate">{b.activity}</p>
-              <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#C87D87]/55 truncate mt-0.5">
-                {[setting ? `${setting.icon} ${setting.label}` : b.setting, b.activityTheme].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-
-            {/* Guests */}
-            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] text-center">{b.participants}</p>
-
-            {/* Date */}
-            <div>
-              <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#5a4a3a]">
-                {b.date ? new Date(b.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—'}
-              </p>
-              {b.timeSlot && (
-                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#C87D87]/60 mt-0.5">{b.timeSlot}</p>
+              <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase flex-shrink-0 ${s.bg} ${s.border} ${s.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>{s.label}
+              </span>
+              {b.totalPrice > 0 && (
+                <p className="font-['Playfair_Display',serif] italic text-sm text-[#6B7556] flex-shrink-0 hidden lg:block">{b.totalPrice} MAD</p>
               )}
             </div>
+          );
+        })}
+      </Panel>
 
-            {/* Booking status */}
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${s.bg} ${s.border} ${s.text}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>{s.label}
-            </span>
-
-            {/* ✅ Payment badge */}
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${payBadge.bg} ${payBadge.border} ${payBadge.text}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${payBadge.dot}`}/>{payBadge.label}
-            </span>
-
-            {/* Total */}
-            <p className="font-['Playfair_Display',serif] italic text-sm text-[#6B7556]">
-              {b.totalPrice > 0 ? `${b.totalPrice} MAD` : '—'}
-            </p>
-
+      {/* Pending Reviews preview */}
+      {pendingReviews.length > 0 && (
+        <Panel>
+          <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
+            <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">
+              Pending Reviews <span className="text-[#C87D87] not-italic text-sm font-['Cormorant_Garamond',serif]">{pendingReviews.length}</span>
+            </h3>
+            <button onClick={() => setActiveTab('reviews')} className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/60 hover:text-[#C87D87] transition-colors">Manage →</button>
           </div>
-        );
-      })}
-    </Panel>
-  </div>
-)}
-
-
-            {/* ════════════ MEMBERS ════════════ */}
-            {activeTab === 'members' && (
-              <div style={{ animation:'fadeIn .3s ease both' }}>
-                <div className="relative mb-5 max-w-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]/40 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                  </svg>
-                  <input value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="Rechercher…" className="search-input pl-9"/>
-                </div>
-                <Panel>
-                  <div className="grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-3 border-b border-[#C87D87]/8" style={{background:'rgba(200,125,135,0.04)'}}>
-                    {['Membre','Email','Rôle','Rés.','Pmt','Avis'].map(h => (
-                      <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
-                    ))}
-                  </div>
-                  {usersLoading ? (
-                    <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/></div>
-                  ) : filteredUsers.map((u,i) => {
-                    const ub = userBookings(u), up = userPayments(u), ur = userReviews(u);
-                    return (
-                      <div key={u.id} onClick={() => setSelectedUser(u)}
-                        className={`trow grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0 ${u.suspended?'opacity-40':''}`}
-                        style={{ animation:`fadeUp .22s ease ${i*22}ms both` }}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${u.role==='admin'?'bg-[#6B7556]':'bg-[#C87D87]'}`}>
-                            {u.avatarUrl
-                              ? <img src={resolveAvatar(u.avatarUrl)} alt={u.fullName} className="w-full h-full object-cover rounded-full"/>
-                              : u.fullName?.charAt(0).toUpperCase()
-                            }
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{u.fullName}</p>
-                              {u.isDeleted && <DeletedBadge/>}
-                            </div>
-                            <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45">
-                              {new Date(u.createdAt).toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">{u.email}</p>
-                        <span className={`inline-flex px-2 py-0.5 rounded-full font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${u.role==='admin'?'bg-[#6B7556]/12 text-[#4a5240] border border-[#6B7556]/25':'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/22'}`}>
-                          {u.role}
-                        </span>
-                        <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] text-center font-semibold">{ub.length}</p>
-                        <p className="font-['Cormorant_Garamond',serif] text-sm text-[#6B7556] text-center font-semibold">{up.length}</p>
-                        <p className="font-['Cormorant_Garamond',serif] text-sm text-[#C87D87] text-center font-semibold">{ur.length}</p>
-                      </div>
-                    );
-                  })}
-                  {filteredUsers.length===0 && <p className="font-['Cormorant_Garamond',serif] italic text-center py-12 text-[#7a6a5a]/35">Aucun membre trouvé</p>}
-                </Panel>
+          {pendingReviews.slice(0, 3).map(r => (
+            <div key={r.id} className="trow flex items-center gap-4 px-6 py-3.5 border-b border-[#C87D87]/6 last:border-0">
+              <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center font-bold text-xs text-[#C87D87] flex-shrink-0 overflow-hidden">
+                {r.user.avatarUrl
+                  ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                  : r.user.fullName.charAt(0).toUpperCase()
+                }
               </div>
-            )}
-
-            {/* ════════════ PAYMENTS ════════════ */}
-            {activeTab === 'payments' && (
-              <div className="space-y-5" style={{ animation:'fadeIn .3s ease both' }}>
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { label:'Total collecté', n:`${payments.reduce((s,p)=>s+(p.totalPrice||p.advancePaid||0),0).toLocaleString()} MAD`, c:'#6B7556' },
-                    { label:'Paiements',       n: payments.length,                                                                       c:'#C87D87' },
-                    { label:'Clients uniques', n: new Set(payments.map(p=>p.email)).size,                                                c:'#3a3027' },
-                  ].map(s => (
-                    <div key={s.label} className="stat-card">
-                      <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45 mb-1">{s.label}</p>
-                      <p className="font-['Playfair_Display',serif] italic text-3xl" style={{ color:s.c }}>{s.n}</p>
-                    </div>
-                  ))}
-                </div>
-                <Panel>
-                  <div className="grid grid-cols-[2fr_1.4fr_0.5fr_0.9fr_0.8fr_0.7fr_0.8fr] gap-3 px-6 py-3 border-b border-[#C87D87]/8" style={{background:'rgba(200,125,135,0.04)'}}>
-                    {['Client','Activité','Pers.','Date','Horaire','Cadre','Total'].map(h => (
-                      <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
-                    ))}
-                  </div>
-                  {paymentsLoading ? (
-                    <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/></div>
-                  ) : payments.length===0 ? (
-                    <p className="font-['Cormorant_Garamond',serif] italic text-center py-16 text-[#7a6a5a]/35">Aucun paiement reçu</p>
-                  ) : payments.map((p,i) => (
-                    <div key={p.id}
-                      className="trow grid grid-cols-[2fr_1.4fr_0.5fr_0.9fr_0.8fr_0.7fr_0.8fr] gap-3 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0"
-                      style={{ animation:`fadeUp .22s ease ${i*28}ms both` }}>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
-                          {p.user?.avatarUrl
-                            ? <img src={resolveAvatar(p.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
-                            : (p.user?.fullName||p.fullName||'?').charAt(0).toUpperCase()
-                          }
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{p.user?.fullName||p.fullName}</p>
-                            {p.user?.isDeleted && <DeletedBadge/>}
-                          </div>
-                          <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45 truncate">{p.email}</p>
-                        </div>
-                      </div>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] truncate">{p.activity}</p>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] text-center">{p.participants}</p>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55">
-                        {p.date ? new Date(p.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—'}
-                      </p>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/65 truncate">{p.timeSlot}</p>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 capitalize truncate">
-                        {SETTINGS_MAP[p.setting]?.label || p.setting}
-                      </p>
-                      <p className="font-['Playfair_Display',serif] italic text-base text-[#6B7556]">{(p.totalPrice||p.advancePaid||0)} MAD</p>
-                    </div>
-                  ))}
-                </Panel>
+              <div className="flex-1 min-w-0">
+                <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold">{r.user.fullName}</p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">{r.comment}</p>
               </div>
-            )}
+              <div className="flex gap-2 flex-shrink-0">
+                <button onClick={e => { e.stopPropagation(); approveReview(r.id); }} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 border border-[#6B7556]/40 text-[#6B7556] hover:bg-[#6B7556] hover:text-white transition-all rounded-lg">✓</button>
+                <button onClick={e => { e.stopPropagation(); deleteReview(r.id); }}  className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 border border-[#C87D87]/40 text-[#C87D87] hover:bg-[#C87D87] hover:text-white transition-all rounded-lg">✕</button>
+              </div>
+            </div>
+          ))}
+        </Panel>
+      )}
+    </div>
+  )}
 
-{activeTab === 'reviews' && (
-  <div className="space-y-10" style={{ animation:'fadeIn .3s ease both' }}>
-
-    {/* ══ PENDING ══════════════════════════════════════════════════ */}
-    <div>
-      {/* Section header */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
-        <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-amber-200/60 bg-amber-50/60">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"/>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-amber-600">
-            En attente · {pendingReviews.length}
+  {/* ════════════ BOOKINGS ════════════ */}
+  {activeTab === 'bookings' && (
+    <div style={{ animation:'fadeIn .3s ease both' }}>
+      <Panel>
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
+          <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">
+            All Bookings{' '}
+            <span className="text-[#C87D87] not-italic text-sm font-['Cormorant_Garamond',serif]">
+              {allBookings.length}
+            </span>
+          </h3>
+          <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/40">
+            Click a row to view details
           </p>
         </div>
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
+
+        {/* Header */}
+        <div className="grid grid-cols-[2fr_1.6fr_0.8fr_1fr_1fr_0.8fr_0.6fr] gap-4 px-6 py-3 border-b border-[#C87D87]/8"
+          style={{ background:'rgba(200,125,135,0.04)' }}>
+          {['Client','Activity · Setting','Guests','Date · Time','Status','Payment','Export'].map(h => (
+            <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
+          ))}
+        </div>
+
+        {allBookingsLoading ? (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/>
+            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/50 tracking-widest">Loading…</p>
+          </div>
+        ) : allBookings.length === 0 ? (
+          <p className="font-['Cormorant_Garamond',serif] italic text-center py-16 text-[#7a6a5a]/35">No bookings found</p>
+        ) : allBookings.map((b, i) => {
+          const s       = getStatus(b.status);
+          const setting = settingFromBooking(b);
+          const isPaid    = b.paymentStatus === 'PAID';
+          const isPending = b.paymentStatus === 'PENDING';
+          const payBadge  = isPaid
+            ? { label:'Paid',    bg:'bg-emerald-50',  border:'border-emerald-200',  text:'text-emerald-600', dot:'bg-emerald-400'  }
+            : isPending
+            ? { label:'Pending', bg:'bg-amber-50',    border:'border-amber-200',    text:'text-amber-600',   dot:'bg-amber-400'   }
+            : { label:'Unpaid',  bg:'bg-[#C87D87]/8', border:'border-[#C87D87]/20', text:'text-[#C87D87]/70',dot:'bg-[#C87D87]/40' };
+
+          return (
+            <div key={b.id} onClick={() => setSelectedBooking(b)}
+              className="trow grid grid-cols-[2fr_1.6fr_0.8fr_1fr_1fr_0.8fr_0.6fr] gap-4 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0"
+              style={{ animation:`fadeUp .22s ease ${i*25}ms both` }}>
+
+              {/* Client */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
+                  {b.user?.avatarUrl
+                    ? <img src={resolveAvatar(b.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                    : (b.fullName || b.user?.fullName || '?').charAt(0).toUpperCase()
+                  }
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">
+                      {b.fullName || b.user?.fullName}
+                    </p>
+                    {b.user?.isDeleted && <DeletedBadge/>}
+                  </div>
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45 truncate">{b.email}</p>
+                </div>
+              </div>
+
+              {/* Activity */}
+              <div className="min-w-0">
+                <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] truncate">{b.activity}</p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#C87D87]/55 truncate mt-0.5">
+                  {[setting ? `${setting.icon} ${setting.label}` : b.setting, b.activityTheme].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+
+              {/* Guests */}
+              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] text-center">{b.participants}</p>
+
+              {/* Date */}
+              <div>
+                <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#5a4a3a]">
+                  {b.date ? new Date(b.date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
+                </p>
+                {b.timeSlot && (
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#C87D87]/60 mt-0.5">{b.timeSlot}</p>
+                )}
+              </div>
+
+              {/* Booking status */}
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${s.bg} ${s.border} ${s.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>{s.label}
+              </span>
+
+              {/* Payment badge */}
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${payBadge.bg} ${payBadge.border} ${payBadge.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${payBadge.dot}`}/>{payBadge.label}
+              </span>
+
+              {/* PDF Export */}
+              <button
+                onClick={e => { e.stopPropagation(); exportBookingPDF(b); }}
+                title="Export as PDF"
+                className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#6B7556]/25 bg-[#6B7556]/8 text-[#6B7556]/60 hover:bg-[#6B7556] hover:text-white hover:border-[#6B7556] transition-all duration-300 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                </svg>
+              </button>
+            </div>
+          );
+        })}
+      </Panel>
+    </div>
+  )}
+
+  {/* ════════════ MEMBERS ════════════ */}
+  {activeTab === 'members' && (
+    <div style={{ animation:'fadeIn .3s ease both' }}>
+      <div className="relative mb-5 max-w-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]/40 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+        </svg>
+        <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search members…" className="search-input pl-9"/>
+      </div>
+      <Panel>
+        <div className="grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-3 border-b border-[#C87D87]/8" style={{ background:'rgba(200,125,135,0.04)' }}>
+          {['Member','Email','Role','Book.','Pay.','Rev.'].map(h => (
+            <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
+          ))}
+        </div>
+        {usersLoading ? (
+          <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/></div>
+        ) : filteredUsers.map((u, i) => {
+          const ub = userBookings(u), up = userPayments(u), ur = userReviews(u);
+          return (
+            <div key={u.id} onClick={() => setSelectedUser(u)}
+              className={`trow grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0 ${u.suspended ? 'opacity-40' : ''}`}
+              style={{ animation:`fadeUp .22s ease ${i*22}ms both` }}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${u.role==='admin' ? 'bg-[#6B7556]' : 'bg-[#C87D87]'}`}>
+                  {u.avatarUrl
+                    ? <img src={resolveAvatar(u.avatarUrl)} alt={u.fullName} className="w-full h-full object-cover rounded-full"/>
+                    : u.fullName?.charAt(0).toUpperCase()
+                  }
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{u.fullName}</p>
+                    {u.isDeleted && <DeletedBadge/>}
+                  </div>
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45">
+                    {new Date(u.createdAt).toLocaleDateString('en-GB', { month:'short', year:'numeric' })}
+                  </p>
+                </div>
+              </div>
+              <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">{u.email}</p>
+              <span className={`inline-flex px-2 py-0.5 rounded-full font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${u.role==='admin' ? 'bg-[#6B7556]/12 text-[#4a5240] border border-[#6B7556]/25' : 'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/22'}`}>
+                {u.role}
+              </span>
+              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] text-center font-semibold">{ub.length}</p>
+              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#6B7556] text-center font-semibold">{up.length}</p>
+              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#C87D87] text-center font-semibold">{ur.length}</p>
+            </div>
+          );
+        })}
+        {filteredUsers.length === 0 && <p className="font-['Cormorant_Garamond',serif] italic text-center py-12 text-[#7a6a5a]/35">No members found</p>}
+      </Panel>
+    </div>
+  )}
+
+  {/* ════════════ PAYMENTS ════════════ */}
+  {activeTab === 'payments' && (
+    <div className="space-y-5" style={{ animation:'fadeIn .3s ease both' }}>
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label:'Total Collected', n:`${payments.reduce((s,p)=>s+(p.totalPrice||p.advancePaid||0),0).toLocaleString()} MAD`, c:'#6B7556' },
+          { label:'Payments',        n: payments.length,                                                                       c:'#C87D87' },
+          { label:'Unique Clients',  n: new Set(payments.map(p=>p.email)).size,                                                c:'#3a3027' },
+        ].map(s => (
+          <div key={s.label} className="stat-card">
+            <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45 mb-1">{s.label}</p>
+            <p className="font-['Playfair_Display',serif] italic text-3xl" style={{ color:s.c }}>{s.n}</p>
+          </div>
+        ))}
+      </div>
+      <Panel>
+        <div className="grid grid-cols-[2fr_1.4fr_0.5fr_0.9fr_0.8fr_0.7fr_0.8fr] gap-3 px-6 py-3 border-b border-[#C87D87]/8" style={{ background:'rgba(200,125,135,0.04)' }}>
+          {['Client','Activity','Guests','Date','Time Slot','Setting','Total'].map(h => (
+            <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
+          ))}
+        </div>
+        {paymentsLoading ? (
+          <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/></div>
+        ) : payments.length === 0 ? (
+          <p className="font-['Cormorant_Garamond',serif] italic text-center py-16 text-[#7a6a5a]/35">No payments received yet</p>
+        ) : payments.map((p, i) => (
+          <div key={p.id}
+            className="trow grid grid-cols-[2fr_1.4fr_0.5fr_0.9fr_0.8fr_0.7fr_0.8fr] gap-3 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0"
+            style={{ animation:`fadeUp .22s ease ${i*28}ms both` }}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
+                {p.user?.avatarUrl
+                  ? <img src={resolveAvatar(p.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                  : (p.user?.fullName || p.fullName || '?').charAt(0).toUpperCase()
+                }
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{p.user?.fullName || p.fullName}</p>
+                  {p.user?.isDeleted && <DeletedBadge/>}
+                </div>
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45 truncate">{p.email}</p>
+              </div>
+            </div>
+            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] truncate">{p.activity}</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] text-center">{p.participants}</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55">
+              {p.date ? new Date(p.date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
+            </p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/65 truncate">{p.timeSlot}</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 capitalize truncate">
+              {SETTINGS_MAP[p.setting]?.label || p.setting}
+            </p>
+            <p className="font-['Playfair_Display',serif] italic text-base text-[#6B7556]">{(p.totalPrice || p.advancePaid || 0)} MAD</p>
+          </div>
+        ))}
+      </Panel>
+    </div>
+  )}
+
+  {/* ════════════ REVIEWS ════════════ */}
+  {activeTab === 'reviews' && (
+    <div className="space-y-10" style={{ animation:'fadeIn .3s ease both' }}>
+
+      {/* ── PENDING ── */}
+      <div>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
+          <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-amber-200/60 bg-amber-50/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"/>
+            <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-amber-600">
+              Pending · {pendingReviews.length}
+            </p>
+          </div>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
+        </div>
+
+        {pendingReviews.length === 0 ? (
+          <div className="relative rounded-2xl border border-dashed border-[#C87D87]/20 bg-[#fef6ec] py-10 flex flex-col items-center gap-2 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/25 to-transparent"/>
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/15 to-transparent"/>
+            <div className="absolute top-2 left-2"><LaceCorner/></div>
+            <div className="absolute top-2 right-2"><LaceCorner flip/></div>
+            <div className="w-12 h-12 rounded-full border border-[#C87D87]/18 bg-[#C87D87]/6 flex items-center justify-center">
+              <span className="text-[#C87D87]/35 text-lg">✦</span>
+            </div>
+            <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/35 text-base">No pending reviews</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-[#7a6a5a]/30 tracking-widest">
+              New submitted reviews will appear here
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {pendingReviews.map((r, i) => (
+              <div key={r.id}
+                className="relative bg-[#fef6ec] rounded-2xl border border-amber-200/50 overflow-hidden shadow-[0_2px_12px_rgba(200,125,135,0.06)]"
+                style={{ animation:`fadeUp .25s ease ${i*60}ms both` }}>
+                <div className="h-0.5 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent"/>
+                <div className="absolute top-0 left-0"><LaceCorner/></div>
+                <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+                <div className="px-5 pt-6 pb-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-full border border-amber-200/60 overflow-hidden flex-shrink-0 bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-sm">
+                        {r.user.avatarUrl
+                          ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                          : r.user.fullName.charAt(0).toUpperCase()
+                        }
+                      </div>
+                      <div>
+                        <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user.fullName}</p>
+                        <span className="text-amber-400 text-[0.65rem] mt-0.5 block tracking-wider">
+                          {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-500 flex-shrink-0 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse"/> New
+                    </span>
+                  </div>
+                  <div className="font-['Playfair_Display',serif] text-[3rem] text-amber-200/60 leading-none -mt-2 mb-0.5 select-none">"</div>
+                  <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">{r.comment}</p>
+                  <div className="flex gap-2 pt-3 border-t border-amber-100">
+                    <button onClick={() => approveReview(r.id)}
+                      className="flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase py-2 rounded-xl border border-[#6B7556]/30 text-[#6B7556] hover:bg-[#6B7556] hover:text-white hover:border-[#6B7556] transition-all flex items-center justify-center gap-1.5">
+                      ✓ Approve
+                    </button>
+                    <button onClick={() => deleteReview(r.id)}
+                      className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase px-4 py-2 rounded-xl border border-[#C87D87]/25 text-[#C87D87]/50 hover:bg-[#C87D87] hover:text-white hover:border-[#C87D87] transition-all">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {pendingReviews.length === 0 ? (
-        <div className="relative rounded-2xl border border-dashed border-[#C87D87]/20 bg-[#fef6ec] py-10 flex flex-col items-center gap-2 overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/25 to-transparent"/>
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/15 to-transparent"/>
-          {/* mini lace corners */}
-          <div className="absolute top-2 left-2"><LaceCorner/></div>
-          <div className="absolute top-2 right-2"><LaceCorner flip/></div>
-          <div className="w-12 h-12 rounded-full border border-[#C87D87]/18 bg-[#C87D87]/6 flex items-center justify-center">
-            <span className="text-[#C87D87]/35 text-lg">✦</span>
+      {/* ── PUBLISHED ── */}
+      <div>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
+          <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-[#6B7556]/22 bg-[#6B7556]/8">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/>
+            <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-[#6B7556]">
+              Published · {DEFAULT_REVIEWS.length + approvedReviews.length}
+            </p>
           </div>
-          <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/35 text-base">Aucun avis en attente</p>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-[#7a6a5a]/30 tracking-widest">
-            Les nouveaux avis soumis apparaîtront ici
-          </p>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
         </div>
-      ) : (
+
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {pendingReviews.map((r, i) => (
+          {/* Default reviews — locked */}
+          {DEFAULT_REVIEWS.map((r, i) => (
             <div key={r.id}
-              className="relative bg-[#fef6ec] rounded-2xl border border-amber-200/50 overflow-hidden shadow-[0_2px_12px_rgba(200,125,135,0.06)]"
-              style={{ animation:`fadeUp .25s ease ${i*60}ms both` }}>
-              {/* lace top bar */}
-              <div className="h-0.5 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent"/>
-              {/* lace corners */}
+              className="relative bg-[#fef6ec] rounded-2xl border border-[#C87D87]/15 overflow-hidden shadow-[0_2px_12px_rgba(58,48,39,0.05)]"
+              style={{ animation:`fadeUp .25s ease ${i*50}ms both`, opacity:0.85 }}>
+              <div className="h-0.5 bg-gradient-to-r from-transparent via-[#6B7556]/50 to-transparent"/>
               <div className="absolute top-0 left-0"><LaceCorner/></div>
               <div className="absolute top-0 right-0"><LaceCorner flip/></div>
-
               <div className="px-5 pt-6 pb-5">
-                {/* header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-full border border-amber-200/60 overflow-hidden flex-shrink-0 bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-sm">
-                      {r.user.avatarUrl
-                        ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
-                        : r.user.fullName.charAt(0).toUpperCase()
-                      }
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B7556]/80 to-[#C87D87]/80 flex items-center justify-center text-white font-['Playfair_Display',serif] text-sm flex-shrink-0">
+                      {r.user.fullName.charAt(0)}
                     </div>
                     <div>
                       <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user.fullName}</p>
-                      <span className="text-amber-400 text-[0.65rem] mt-0.5 block tracking-wider">
-                        {'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}
+                      <span className="text-[#6B7556] text-[0.65rem] mt-0.5 block tracking-wider">
+                        {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
                       </span>
                     </div>
                   </div>
-                  <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-500 flex-shrink-0 flex items-center gap-1">
-                    <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse"/> Nouveau
+                  <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#3a3027]/5 border border-[#3a3027]/8 text-[#7a6a5a]/40 flex-shrink-0 flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    Default
                   </span>
                 </div>
-
-                {/* quote */}
-                <div className="font-['Playfair_Display',serif] text-[3rem] text-amber-200/60 leading-none -mt-2 mb-0.5 select-none">"</div>
-                <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">
-                  {r.comment}
-                </p>
-
-                {/* actions */}
-                <div className="flex gap-2 pt-3 border-t border-amber-100">
-                  <button onClick={() => approveReview(r.id)}
-                    className="flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase py-2 rounded-xl border border-[#6B7556]/30 text-[#6B7556] hover:bg-[#6B7556] hover:text-white hover:border-[#6B7556] transition-all flex items-center justify-center gap-1.5">
-                    ✓ Approuver
-                  </button>
-                  <button onClick={() => deleteReview(r.id)}
-                    className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase px-4 py-2 rounded-xl border border-[#C87D87]/25 text-[#C87D87]/50 hover:bg-[#C87D87] hover:text-white hover:border-[#C87D87] transition-all">
-                    ✕
-                  </button>
+                <div className="font-['Playfair_Display',serif] text-[3rem] text-[#C87D87]/10 leading-none -mt-2 mb-0.5 select-none">"</div>
+                <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">{r.comment}</p>
+                <div className="flex items-center justify-between pt-3 border-t border-[#C87D87]/10">
+                  <span className="inline-flex items-center gap-1.5 font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase text-[#6B7556] bg-[#6B7556]/8 border border-[#6B7556]/15 px-2.5 py-1 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/> Published
+                  </span>
+                  <span className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] text-[#7a6a5a]/22 tracking-widest">
+                    Non-editable
+                  </span>
                 </div>
               </div>
             </div>
           ))}
-        </div>
-      )}
-    </div>
-    {/* ══ PUBLISHED ════════════════════════════════════════════════ */}
-    <div>
-      {/* Section header */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
-        <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-[#6B7556]/22 bg-[#6B7556]/8">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-[#6B7556]">
-            Publiés · {DEFAULT_REVIEWS.length + approvedReviews.length}
-          </p>
-        </div>
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
-      </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-
-        {/* ── Default reviews — locked ── */}
-        {DEFAULT_REVIEWS.map((r, i) => (
-          <div key={r.id}
-            className="relative bg-[#fef6ec] rounded-2xl border border-[#C87D87]/15 overflow-hidden shadow-[0_2px_12px_rgba(58,48,39,0.05)]"
-            style={{ animation:`fadeUp .25s ease ${i*50}ms both`, opacity:0.85 }}>
-            <div className="h-0.5 bg-gradient-to-r from-transparent via-[#6B7556]/50 to-transparent"/>
-            <div className="absolute top-0 left-0"><LaceCorner/></div>
-            <div className="absolute top-0 right-0"><LaceCorner flip/></div>
-
-            <div className="px-5 pt-6 pb-5">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B7556]/80 to-[#C87D87]/80 flex items-center justify-center text-white font-['Playfair_Display',serif] text-sm flex-shrink-0">
-                    {r.user.fullName.charAt(0)}
+          {/* DB approved reviews — deletable */}
+                    {/* DB approved reviews — empty state */}
+          {approvedReviews.length === 0 && (
+            <div className="col-span-full relative rounded-2xl overflow-hidden"
+              style={{ background:'linear-gradient(135deg,#fdf0e8 0%,#fef6ec 50%,#fdf0e8 100%)', border:'1px solid rgba(200,125,135,0.18)' }}>
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/45 to-transparent"/>
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/25 to-transparent"/>
+              <div className="absolute top-0 left-0"><LaceCorner/></div>
+              <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+              <div className="absolute bottom-0 left-0" style={{ transform:'scaleY(-1)' }}><LaceCorner/></div>
+              <div className="absolute bottom-0 right-0" style={{ transform:'scale(-1,-1)' }}><LaceCorner flip/></div>
+              <div className="relative flex flex-col items-center justify-center py-14 gap-4 px-8">
+                <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/45 text-xl mb-1.5">No approved reviews yet</p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/40 tracking-wide leading-relaxed text-center">
+                  Approved reviews will automatically appear on the homepage,<br/>
+                  alongside Inora's default reviews.
+                </p>
+                {pendingReviews.length > 0 && (
+                  <div className="flex items-center gap-2 mt-1 px-4 py-2 rounded-full border border-amber-200/50 bg-amber-50/60">
+                    <span className="text-amber-400 text-xs">↑</span>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-amber-600/70 tracking-wide">
+                      {pendingReviews.length} review{pendingReviews.length > 1 ? 's' : ''} awaiting approval
+                    </p>
                   </div>
-                  <div>
-                    <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user.fullName}</p>
-                    <span className="text-[#6B7556] text-[0.65rem] mt-0.5 block tracking-wider">
-                      {'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}
-                    </span>
-                  </div>
-                </div>
-                {/* lock badge */}
-                <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#3a3027]/5 border border-[#3a3027]/8 text-[#7a6a5a]/40 flex-shrink-0 flex items-center gap-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                  </svg>
-                  Défaut
-                </span>
-              </div>
-
-              <div className="font-['Playfair_Display',serif] text-[3rem] text-[#C87D87]/10 leading-none -mt-2 mb-0.5 select-none">"</div>
-              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">
-                {r.comment}
-              </p>
-
-              <div className="flex items-center justify-between pt-3 border-t border-[#C87D87]/10">
-                <span className="inline-flex items-center gap-1.5 font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase text-[#6B7556] bg-[#6B7556]/8 border border-[#6B7556]/15 px-2.5 py-1 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/> Publié
-                </span>
-                <span className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] text-[#7a6a5a]/22 tracking-widest">
-                  Non modifiable
-                </span>
+                )}
               </div>
             </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* ════════════ MY PROFILE ════════════ */}
+  {activeTab === 'profile' && (
+    <div className="max-w-2xl mx-auto space-y-5" style={{ animation:'fadeIn .3s ease both' }}>
+
+      {/* Avatar */}
+      <Panel>
+        <div className="px-7 py-6">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-4">Profile Photo</p>
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#C87D87]/25 flex-shrink-0 bg-[#C87D87]/10 flex items-center justify-center">
+              {avatarUrl
+                ? <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover"/>
+                : <span className="font-['Playfair_Display',serif] italic text-3xl text-[#C87D87]">{displayName.charAt(0).toUpperCase()}</span>
+              }
+            </div>
+            <div>
+              <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar}/>
+              <button onClick={() => avatarRef.current?.click()} disabled={avatarLoad}
+                className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#C87D87] border border-[#C87D87]/35 px-5 py-2.5 rounded-xl hover:bg-[#C87D87]/8 transition-all disabled:opacity-50">
+                {avatarLoad ? 'Uploading…' : 'Change Photo'}
+              </button>
+              <Msg msg={avatarMsg}/>
+            </div>
           </div>
-        ))}
+        </div>
+      </Panel>
 
-        {/* ── DB approved reviews — deletable ── */}
-        {approvedReviews.map((r, i) => (
-          <div key={r.id}
-            className="relative bg-[#fef6ec] rounded-2xl border border-[#C87D87]/15 overflow-hidden shadow-[0_2px_12px_rgba(58,48,39,0.05)] group"
-            style={{ animation:`fadeUp .25s ease ${(DEFAULT_REVIEWS.length+i)*50}ms both` }}>
-            <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/55 to-transparent"/>
-            <div className="absolute top-0 left-0"><LaceCorner/></div>
-            <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+      {/* Display Name */}
+      <Panel>
+        <form onSubmit={handleName} className="px-7 py-5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Display Name</p>
+          <Field label="Full Name">
+            <Inp value={nameForm.fullName} onChange={e => setNameForm({ fullName:e.target.value })} placeholder="Your full name"/>
+          </Field>
+          <div className="flex justify-end mt-3">
+            <button type="submit" disabled={nameLoad}
+              className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
+              style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
+              {nameLoad ? 'Saving…' : 'Save Name'}
+            </button>
+          </div>
+          <Msg msg={nameMsg}/>
+        </form>
+      </Panel>
 
-            <div className="px-5 pt-6 pb-5">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full border border-[#C87D87]/20 overflow-hidden flex-shrink-0 bg-[#C87D87]/10 flex items-center justify-center text-[#C87D87] font-bold text-sm">
-                    {r.user.avatarUrl
-                      ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
-                      : r.user.fullName.charAt(0).toUpperCase()
-                    }
-                  </div>
-                  <div>
-                    <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user.fullName}</p>
-                    <span className="text-[#C87D87] text-[0.65rem] mt-0.5 block tracking-wider">
-                      {'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}
-                    </span>
-                  </div>
-                </div>
-                <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#6B7556]/8 border border-[#6B7556]/18 text-[#6B7556] flex-shrink-0 flex items-center gap-1">
-                  <span className="w-1 h-1 rounded-full bg-[#6B7556]"/> Vérifié
-                </span>
-              </div>
+      {/* Email */}
+      <Panel>
+        <form onSubmit={handleEmail} className="px-7 py-5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Email Address</p>
+          <Field label="New Email">
+            <Inp type="email" value={emailForm.email} onChange={e => setEmailForm(f => ({ ...f, email:e.target.value }))} placeholder="new@email.com"/>
+          </Field>
+          <Field label="Password">
+            <Inp type="password" value={emailForm.currentPassword} onChange={e => setEmailForm(f => ({ ...f, currentPassword:e.target.value }))} placeholder="Current password"/>
+          </Field>
+          <div className="flex justify-end mt-3">
+            <button type="submit" disabled={emailLoad}
+              className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
+              style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
+              {emailLoad ? 'Saving…' : 'Update Email'}
+            </button>
+          </div>
+          <Msg msg={emailMsg}/>
+        </form>
+      </Panel>
 
-              <div className="font-['Playfair_Display',serif] text-[3rem] text-[#C87D87]/12 leading-none -mt-2 mb-0.5 select-none">"</div>
-              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">
-                {r.comment}
-              </p>
+      {/* Password */}
+      <Panel>
+        <form onSubmit={handlePassword} className="px-7 py-5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Change Password</p>
+          <Field label="Current">
+            <Inp type="password" value={passForm.currentPassword} onChange={e => setPassForm(f => ({ ...f, currentPassword:e.target.value }))} placeholder="Current password"/>
+          </Field>
+          <Field label="New">
+            <Inp type="password" value={passForm.newPassword} onChange={e => setPassForm(f => ({ ...f, newPassword:e.target.value }))} placeholder="New password"/>
+          </Field>
+          <Field label="Confirm">
+            <Inp type="password" value={passForm.confirmPassword} onChange={e => setPassForm(f => ({ ...f, confirmPassword:e.target.value }))} placeholder="Confirm new password"/>
+          </Field>
+          <div className="flex justify-end mt-3">
+            <button type="submit" disabled={passLoad}
+              className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
+              style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
+              {passLoad ? 'Saving…' : 'Update Password'}
+            </button>
+          </div>
+          <Msg msg={passMsg}/>
+        </form>
+      </Panel>
 
-              <div className="flex items-center justify-between pt-3 border-t border-[#C87D87]/10">
-                <span className="inline-flex items-center gap-1.5 font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase text-[#6B7556] bg-[#6B7556]/8 border border-[#6B7556]/15 px-2.5 py-1 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/> Publié
-                </span>
-                <button onClick={() => deleteReview(r.id)}
-                  className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#C87D87]/40 hover:text-[#C87D87] px-2.5 py-1 border border-transparent hover:border-[#C87D87]/20 hover:bg-[#C87D87]/5 rounded-xl transition-all">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                  </svg>
-                  Retirer
+      {/* Danger Zone */}
+      <div className="rounded-2xl overflow-hidden border border-red-200/60 relative">
+        <div className="h-0.5 bg-gradient-to-r from-transparent via-red-300/50 to-transparent"/>
+        <div className="absolute top-0 left-0"><LaceCorner danger/></div>
+        <div className="absolute top-0 right-0"><LaceCorner flip danger/></div>
+        <div className="px-7 py-5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-red-400/70 mb-3">Danger Zone</p>
+          {!showDelete ? (
+            <button onClick={() => setShowDelete(true)}
+              className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-red-400 border border-red-300/50 px-5 py-2.5 rounded-xl hover:bg-red-50 transition-all">
+              Delete Account
+            </button>
+          ) : (
+            <form onSubmit={handleDelete} className="space-y-3">
+              <Field label="Password">
+                <Inp type="password" value={deleteForm.password} onChange={e => setDeleteForm(f => ({ ...f, password:e.target.value }))} placeholder="Confirm password"/>
+              </Field>
+              <Field label="Admin Code">
+                <Inp value={deleteForm.adminCode} onChange={e => setDeleteForm(f => ({ ...f, adminCode:e.target.value }))} placeholder="Admin deletion code"/>
+              </Field>
+              <div className="flex gap-3 justify-end mt-2">
+                <button type="button" onClick={() => setShowDelete(false)}
+                  className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-widest uppercase text-[#7a6a5a]/50 border border-[#3a3027]/10 px-5 py-2.5 rounded-xl hover:bg-[#3a3027]/5 transition-all">
+                  Cancel
+                </button>
+                <button type="submit" disabled={deleteLoad}
+                  className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-widest uppercase text-white px-5 py-2.5 rounded-xl bg-red-400 hover:bg-red-500 transition-all disabled:opacity-50">
+                  {deleteLoad ? 'Deleting…' : 'Confirm Delete'}
                 </button>
               </div>
-            </div>
-          </div>
-        ))}
-
-        {/* ── Empty — no approved DB reviews ── */}
-{approvedReviews.length === 0 && (
-  <div className="col-span-full relative rounded-2xl overflow-hidden"
-    style={{ background:'linear-gradient(135deg,#fdf0e8 0%,#fef6ec 50%,#fdf0e8 100%)', border:'1px solid rgba(200,125,135,0.18)' }}>
-
-    {/* top + bottom gradient bars */}
-    <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/45 to-transparent"/>
-    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/25 to-transparent"/>
-
-    {/* lace corners */}
-    <div className="absolute top-0 left-0"><LaceCorner/></div>
-    <div className="absolute top-0 right-0"><LaceCorner flip/></div>
-    <div className="absolute bottom-0 left-0" style={{ transform:'scaleY(-1)' }}><LaceCorner/></div>
-    <div className="absolute bottom-0 right-0" style={{ transform:'scale(-1,-1)' }}><LaceCorner flip/></div>
-
-    {/* background aura */}
-    <div className="absolute inset-0 pointer-events-none"
-      style={{ background:'radial-gradient(ellipse at center,rgba(200,125,135,0.07) 0%,transparent 65%)' }}/>
-
-    <div className="relative flex flex-col items-center justify-center py-14 gap-4 px-8">
-
-      {/* ornament top */}
-      <div className="flex items-center gap-3 mb-1">
-        <div className="w-16 h-px bg-gradient-to-r from-transparent to-[#C87D87]/30"/>
-        <span className="text-[#C87D87]/30 text-[0.45rem] tracking-[1.5em]">✦ ✦ ✦</span>
-        <div className="w-16 h-px bg-gradient-to-l from-transparent to-[#C87D87]/30"/>
-      </div>
-
-      {/* icon */}
-      <div className="w-14 h-14 rounded-full border border-[#C87D87]/18 bg-white/60 flex items-center justify-center shadow-[0_2px_12px_rgba(200,125,135,0.08)]">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-[#C87D87]/35" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-        </svg>
-      </div>
-
-      {/* text */}
-      <div className="text-center">
-        <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/45 text-xl mb-1.5">
-          Aucun avis approuvé pour le moment
-        </p>
-        <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/40 tracking-wide leading-relaxed">
-          Les avis approuvés apparaîtront automatiquement sur la homepage,<br/>
-          aux côtés des avis par défaut d'Inora.
-        </p>
-      </div>
-
-      {/* hint arrow pointing up to pending */}
-      {pendingReviews.length > 0 && (
-        <div className="flex items-center gap-2 mt-1 px-4 py-2 rounded-full border border-amber-200/50 bg-amber-50/60">
-          <span className="text-amber-400 text-xs">↑</span>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-amber-600/70 tracking-wide">
-            {pendingReviews.length} avis en attente d'approbation
-          </p>
+              <Msg msg={deleteMsg}/>
+            </form>
+          )}
         </div>
-      )}
-
-      {/* ornament bottom */}
-      <div className="flex items-center gap-3 mt-1">
-        <div className="w-16 h-px bg-gradient-to-r from-transparent to-[#C87D87]/20"/>
-        <span className="text-[#C87D87]/20 text-[0.45rem] tracking-[1.5em]">✦ ✦ ✦</span>
-        <div className="w-16 h-px bg-gradient-to-l from-transparent to-[#C87D87]/20"/>
       </div>
+
     </div>
-  </div>
-)}
+  )}{/* end activeTab === 'profile' */}
 
-      </div>
-    </div>
-
-  </div>
-)}
-
-
-            {/* ════════════ MY PROFILE ════════════ */}
-            {activeTab === 'profile' && (
-              <div className="max-w-2xl mx-auto space-y-5" style={{ animation:'fadeIn .3s ease both' }}>
-
-                {/* Avatar */}
-                <Panel>
-                  <div className="px-7 py-6">
-                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-4">Profile Photo</p>
-                    <div className="flex items-center gap-6">
-                      <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#C87D87]/25 flex-shrink-0 bg-[#C87D87]/10 flex items-center justify-center">
-                        {avatarUrl
-                          ? <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover"/>
-                          : <span className="font-['Playfair_Display',serif] italic text-3xl text-[#C87D87]">{displayName.charAt(0).toUpperCase()}</span>
-                        }
-                      </div>
-                      <div>
-                        <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar}/>
-                        <button onClick={() => avatarRef.current?.click()} disabled={avatarLoad}
-                          className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#C87D87] border border-[#C87D87]/35 px-5 py-2.5 rounded-xl hover:bg-[#C87D87]/8 transition-all disabled:opacity-50">
-                          {avatarLoad ? 'Uploading…' : 'Change Photo'}
-                        </button>
-                        <Msg msg={avatarMsg}/>
-                      </div>
-                    </div>
-                  </div>
-                </Panel>
-
-                {/* Display Name */}
-                <Panel>
-                  <form onSubmit={handleName} className="px-7 py-5">
-                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Display Name</p>
-                    <Field label="Full Name">
-                      <Inp value={nameForm.fullName} onChange={e=>setNameForm({fullName:e.target.value})} placeholder="Your full name"/>
-                    </Field>
-                    <div className="flex justify-end mt-3">
-                      <button type="submit" disabled={nameLoad}
-                        className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
-                        style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
-                        {nameLoad ? 'Saving…' : 'Save Name'}
-                      </button>
-                    </div>
-                    <Msg msg={nameMsg}/>
-                  </form>
-                </Panel>
-
-                {/* Email */}
-                <Panel>
-                  <form onSubmit={handleEmail} className="px-7 py-5">
-                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Email Address</p>
-                    <Field label="New Email">
-                      <Inp type="email" value={emailForm.email} onChange={e=>setEmailForm(f=>({...f,email:e.target.value}))} placeholder="new@email.com"/>
-                    </Field>
-                    <Field label="Password">
-                      <Inp type="password" value={emailForm.currentPassword} onChange={e=>setEmailForm(f=>({...f,currentPassword:e.target.value}))} placeholder="Current password"/>
-                    </Field>
-                    <div className="flex justify-end mt-3">
-                      <button type="submit" disabled={emailLoad}
-                        className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
-                        style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
-                        {emailLoad ? 'Saving…' : 'Update Email'}
-                      </button>
-                    </div>
-                    <Msg msg={emailMsg}/>
-                  </form>
-                </Panel>
-
-                {/* Password */}
-                <Panel>
-                  <form onSubmit={handlePassword} className="px-7 py-5">
-                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Change Password</p>
-                    <Field label="Current">
-                      <Inp type="password" value={passForm.currentPassword} onChange={e=>setPassForm(f=>({...f,currentPassword:e.target.value}))} placeholder="Current password"/>
-                    </Field>
-                    <Field label="New">
-                      <Inp type="password" value={passForm.newPassword} onChange={e=>setPassForm(f=>({...f,newPassword:e.target.value}))} placeholder="New password"/>
-                    </Field>
-                    <Field label="Confirm">
-                      <Inp type="password" value={passForm.confirmPassword} onChange={e=>setPassForm(f=>({...f,confirmPassword:e.target.value}))} placeholder="Confirm new password"/>
-                    </Field>
-                    <div className="flex justify-end mt-3">
-                      <button type="submit" disabled={passLoad}
-                        className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
-                        style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
-                        {passLoad ? 'Saving…' : 'Update Password'}
-                      </button>
-                    </div>
-                    <Msg msg={passMsg}/>
-                  </form>
-                </Panel>
-
-                {/* Danger zone */}
-                <div className="rounded-2xl overflow-hidden border border-red-200/60 relative">
-                  <div className="h-0.5 bg-gradient-to-r from-transparent via-red-300/50 to-transparent"/>
-                  <div className="absolute top-0 left-0"><LaceCorner danger/></div>
-                  <div className="absolute top-0 right-0"><LaceCorner flip danger/></div>
-                  <div className="px-7 py-5">
-                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-red-400/70 mb-3">Danger Zone</p>
-                    {!showDelete ? (
-                      <button onClick={() => setShowDelete(true)}
-                        className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-red-400 border border-red-300/50 px-5 py-2.5 rounded-xl hover:bg-red-50 transition-all">
-                        Delete Account
-                      </button>
-                    ) : (
-                      <form onSubmit={handleDelete} className="space-y-3">
-                        <Field label="Password">
-                          <Inp type="password" value={deleteForm.password} onChange={e=>setDeleteForm(f=>({...f,password:e.target.value}))} placeholder="Confirm password"/>
-                        </Field>
-                        <Field label="Admin Code">
-                          <Inp value={deleteForm.adminCode} onChange={e=>setDeleteForm(f=>({...f,adminCode:e.target.value}))} placeholder="Admin deletion code"/>
-                        </Field>
-                        <div className="flex gap-3 justify-end mt-2">
-                          <button type="button" onClick={() => setShowDelete(false)}
-                            className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-widest uppercase text-[#7a6a5a]/50 border border-[#3a3027]/10 px-5 py-2.5 rounded-xl hover:bg-[#3a3027]/5 transition-all">
-                            Cancel
-                          </button>
-                          <button type="submit" disabled={deleteLoad}
-                            className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-widest uppercase text-white px-5 py-2.5 rounded-xl bg-red-400 hover:bg-red-500 transition-all disabled:opacity-50">
-                            {deleteLoad ? 'Deleting…' : 'Confirm Delete'}
-                          </button>
-                        </div>
-                        <Msg msg={deleteMsg}/>
-                      </form>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-          </div>
+          </div>{/* end p-7 */}
         </main>
-      </div>
-
-      {/* ════════════ BOOKING DETAIL MODAL ════════════ */}
+      </div>{/* end min-h-screen flex */}
+ {/* ════════════ BOOKING DETAIL MODAL ════════════ */}
 {selectedBooking && (() => {
   const isPaid    = selectedBooking.paymentStatus === 'PAID';
   const isPending = selectedBooking.paymentStatus === 'PENDING';
   const payBadge  = isPaid
-    ? { label:'Payé',        bg:'bg-emerald-50',  border:'border-emerald-200', text:'text-emerald-600', dot:'bg-emerald-400' }
+    ? { label:'Paid',    bg:'bg-emerald-50',  border:'border-emerald-200',  text:'text-emerald-600', dot:'bg-emerald-400'  }
     : isPending
-    ? { label:'En attente',  bg:'bg-amber-50',    border:'border-amber-200',   text:'text-amber-600',   dot:'bg-amber-400'   }
-    : { label:'Non payé',    bg:'bg-[#C87D87]/8', border:'border-[#C87D87]/20',text:'text-[#C87D87]/70',dot:'bg-[#C87D87]/40' };
+    ? { label:'Pending', bg:'bg-amber-50',    border:'border-amber-200',    text:'text-amber-600',   dot:'bg-amber-400'   }
+    : { label:'Unpaid',  bg:'bg-[#C87D87]/8', border:'border-[#C87D87]/20', text:'text-[#C87D87]/70',dot:'bg-[#C87D87]/40' };
 
   return (
     <div className="bmodal-bg fixed inset-0 z-50 flex items-center justify-center px-4"
@@ -1299,7 +1255,6 @@ const isPending = b.paymentStatus === 'PENDING';
                 {selectedBooking.fullName || selectedBooking.user?.fullName}
               </h3>
             </div>
-            {/* ✅ Payment badge in header — visible at a glance */}
             <div className="flex items-center gap-3">
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase ${payBadge.bg} ${payBadge.border} ${payBadge.text}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${payBadge.dot}`}/>
@@ -1342,7 +1297,7 @@ const isPending = b.paymentStatus === 'PENDING';
                 { l:'Activity',    v: selectedBooking.activity },
                 { l:'Theme',       v: selectedBooking.activityTheme || '—' },
                 { l:'Date',        v: selectedBooking.date
-                    ? new Date(selectedBooking.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+                    ? new Date(selectedBooking.date).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
                     : '—' },
                 { l:'Time',        v: selectedBooking.timeSlot || '—' },
                 { l:'Guests',      v: selectedBooking.participants },
@@ -1361,51 +1316,57 @@ const isPending = b.paymentStatus === 'PENDING';
             </div>
           </Panel>
 
-          {/* ✅ Payment detail row — shows amount + method if paid */}
-          {/* Payment summary — uses paymentStatus / advancePaid / paidAt directly */}
-<div className="mt-4 rounded-2xl border border-[#6B7556]/30 overflow-hidden"
-  style={{ background:'rgba(107,117,86,0.08)' }}>
-  <div className="px-5 py-2.5 border-b border-[#6B7556]/15"
-    style={{ background:'rgba(107,117,86,0.12)' }}>
-    <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#6B7556]/70">
-      Paiement
-    </p>
-  </div>
-  <div className="flex items-center justify-between px-5 py-3.5">
-    <div>
-      <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold">
-        {selectedBooking.advancePaid ? `${selectedBooking.advancePaid} MAD` : '—'}
-      </p>
-      <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/50 mt-0.5">
-        {selectedBooking.paidAt
-          ? `Payé le ${new Date(selectedBooking.paidAt).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}`
-          : 'Aucun paiement enregistré'
-        }
-      </p>
-    </div>
-    {(() => {
-      const isPaid    = selectedBooking.paymentStatus === 'PAID';
-      const isPending = selectedBooking.paymentStatus === 'PENDING';
-      const badge = isPaid
-        ? { label:'Payé',       bg:'bg-emerald-50',  border:'border-emerald-200',  text:'text-emerald-600', dot:'bg-emerald-400'  }
-        : isPending
-        ? { label:'En attente', bg:'bg-amber-50',    border:'border-amber-200',    text:'text-amber-600',   dot:'bg-amber-400'   }
-        : { label:'Non payé',   bg:'bg-white/30',    border:'border-[#6B7556]/25', text:'text-[#6B7556]/70',dot:'bg-[#6B7556]/40' };
-      return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase ${badge.bg} ${badge.border} ${badge.text}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}/>
-          {badge.label}
-        </span>
-      );
-    })()}
-  </div>
-</div>
+          {/* Payment summary */}
+          <div className="mt-4 rounded-2xl border border-[#6B7556]/30 overflow-hidden"
+            style={{ background:'rgba(107,117,86,0.08)' }}>
+            <div className="px-5 py-2.5 border-b border-[#6B7556]/15"
+              style={{ background:'rgba(107,117,86,0.12)' }}>
+              <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#6B7556]/70">
+                Payment
+              </p>
+            </div>
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <div>
+                <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold">
+                  {selectedBooking.advancePaid ? `${selectedBooking.advancePaid} MAD` : '—'}
+                </p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/50 mt-0.5">
+                  {selectedBooking.paidAt
+                    ? `Paid on ${new Date(selectedBooking.paidAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}`
+                    : 'No payment recorded'
+                  }
+                </p>
+              </div>
+              {(() => {
+                const isPaid2    = selectedBooking.paymentStatus === 'PAID';
+                const isPending2 = selectedBooking.paymentStatus === 'PENDING';
+                const badge = isPaid2
+                  ? { label:'Paid',    bg:'bg-emerald-50',  border:'border-emerald-200',  text:'text-emerald-600', dot:'bg-emerald-400'  }
+                  : isPending2
+                  ? { label:'Pending', bg:'bg-amber-50',    border:'border-amber-200',    text:'text-amber-600',   dot:'bg-amber-400'   }
+                  : { label:'Unpaid',  bg:'bg-white/30',    border:'border-[#6B7556]/25', text:'text-[#6B7556]/70',dot:'bg-[#6B7556]/40' };
+                return (
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase ${badge.bg} ${badge.border} ${badge.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}/>
+                    {badge.label}
+                  </span>
+                );
+              })()}
+            </div>
+          </div>
 
-
+          {/* Export PDF */}
+          <button onClick={() => exportBookingPDF(selectedBooking)}
+            className="w-full mt-4 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase text-[#6B7556] border border-[#6B7556]/30 py-3 rounded-2xl hover:bg-[#6B7556]/8 transition-all flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+            Export as PDF
+          </button>
 
           {/* Delete */}
           <button onClick={() => deleteBooking(selectedBooking.id)}
-            className="w-full mt-5 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase text-red-400 border border-red-200 py-3 rounded-2xl hover:bg-red-50 transition-all">
+            className="w-full mt-3 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase text-red-400 border border-red-200 py-3 rounded-2xl hover:bg-red-50 transition-all">
             Delete Booking
           </button>
 
@@ -1468,7 +1429,7 @@ const isPending = b.paymentStatus === 'PENDING';
           <div className="px-5 py-1">
             {[
               { l:'Role',     v: selectedUser.role },
-              { l:'Joined',   v: new Date(selectedUser.createdAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) },
+              { l:'Joined',   v: new Date(selectedUser.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' }) },
               { l:'Bookings', v: `${userBookings(selectedUser).length} total` },
               { l:'Payments', v: `${userPayments(selectedUser).length} transactions` },
               { l:'Reviews',  v: `${userReviews(selectedUser).length} submitted` },
@@ -1494,7 +1455,7 @@ const isPending = b.paymentStatus === 'PENDING';
                     <div className="flex-1 min-w-0">
                       <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{b.activity}</p>
                       <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/50">
-                        {b.date ? new Date(b.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '—'}
+                        {b.date ? new Date(b.date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—'}
                         {b.timeSlot ? ` · ${b.timeSlot}` : ''}
                       </p>
                     </div>
@@ -1512,7 +1473,6 @@ const isPending = b.paymentStatus === 'PENDING';
     </div>
   </div>
 )}
-
 
     </>
   );

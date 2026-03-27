@@ -7,19 +7,19 @@ import cookieParser   from 'cookie-parser';
 import 'dotenv/config';
 
 // Routes
-import auth               from './Routes/auth.js';
-import reviewRoutes       from './Routes/reviews.js';
-import profile            from './Routes/profile.js';
-import bookingRoutes      from './Routes/booking.js';
+import auth                from './Routes/auth.js';
+import reviewRoutes        from './Routes/reviews.js';
+import profile             from './Routes/profile.js';
+import bookingRoutes       from './Routes/booking.js';
 import notificationsRouter from './Routes/notifications.js';
-import paymentRoutes      from './Routes/payment.js';
-import draftsRouter       from './Routes/drafts.js';
+import paymentRoutes       from './Routes/payment.js';
+import draftsRouter        from './Routes/drafts.js';
 
 // Prisma
 import { prisma } from './lib/prisma.js';
 
-const app         = express();
-const PORT        = process.env.PORT || 4000;
+const app          = express();
+const PORT         = process.env.PORT || 4000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // ── HTTP + Socket.io ─────────────────────────────────────────────
@@ -79,12 +79,11 @@ cron.schedule('*/15 * * * *', async () => {
         date:          { not: null },
         timeSlot:      { not: null },
       },
-      select: { id: true, date: true, timeSlot: true, userId: true },
+      select: { id: true, date: true, timeSlot: true, userId: true, activity: true },
     });
 
     const toComplete = bookings.filter(b => {
-      // parse end time from "09:30 – 12:30" or "09:30 - 12:30"
-      const endStr = b.timeSlot.split(/[–—-]/).pop().trim(); // "12:30"
+      const endStr = b.timeSlot.split(/[–—-]/).pop().trim();
       const [h, m] = endStr.split(':').map(Number);
       if (isNaN(h) || isNaN(m)) return false;
 
@@ -103,17 +102,16 @@ cron.schedule('*/15 * * * *', async () => {
       data:  { status: 'completed' },
     });
 
-    // ── send feedback notification to each user ──
-    // skip if user already submitted a review for this booking
+    // ── skip if already reviewed ──
     const existingReviews = await prisma.review.findMany({
-      where: { bookingId: { in: ids } },
+      where:  { bookingId: { in: ids } },
       select: { bookingId: true },
     });
     const alreadyReviewed = new Set(existingReviews.map(r => r.bookingId));
 
-    // skip if notification already sent
+    // ── skip if notification already sent ──
     const existingNotifs = await prisma.notification.findMany({
-      where: { bookingId: { in: ids }, type: 'FEEDBACK_REQUEST' },
+      where:  { bookingId: { in: ids }, type: 'FEEDBACK_REQUEST' },
       select: { bookingId: true },
     });
     const alreadyNotified = new Set(existingNotifs.map(n => n.bookingId));
@@ -124,21 +122,23 @@ cron.schedule('*/15 * * * *', async () => {
         userId:    b.userId,
         bookingId: b.id,
         type:      'FEEDBACK_REQUEST',
-        title:     'Comment était votre expérience ?',
-        message:   'Votre séance vient de se terminer. Partagez votre avis — il aide notre communauté à grandir.',
+        title:     '✨ How was your experience?',
+        message:   `Your "${b.activity || 'session'}" just ended. Share your thoughts — it helps our community grow.`,
+        actionUrl: `/review?bookingId=${b.id}`,
         read:      false,
       }));
 
     if (notifications.length > 0) {
       await prisma.notification.createMany({ data: notifications });
 
-      // ── push real-time notification via Socket.io ──
+      // ── push real-time via Socket.io ──
       notifications.forEach(n => {
         io.to(`user_${n.userId}`).emit('notification', {
           type:      n.type,
           title:     n.title,
           message:   n.message,
           bookingId: n.bookingId,
+          actionUrl: n.actionUrl,
         });
       });
     }
@@ -165,10 +165,10 @@ app.use(cors({
     );
     isAllowed ? callback(null, true) : callback(new Error('Not allowed by CORS'));
   },
-  credentials:       true,
-  methods:           ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders:    ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders:    ['Set-Cookie'],
+  credentials:          true,
+  methods:              ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders:       ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders:       ['Set-Cookie'],
   optionsSuccessStatus: 200,
 }));
 
@@ -185,10 +185,11 @@ app.use((req, res, next) => {
 
 // ── Health ───────────────────────────────────────────────────────
 app.get('/', (req, res) => res.json({
-  status: 'OK', message: 'Backend running',
-  timestamp: new Date().toISOString(),
+  status:      'OK',
+  message:     'Backend running',
+  timestamp:   new Date().toISOString(),
   environment: process.env.NODE_ENV || 'development',
-  port: PORT,
+  port:        PORT,
 }));
 
 app.get('/health', (req, res) =>

@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client'; // ✅ add
+import { io } from 'socket.io-client';
 
 export default function Navbar() {
-  const { user, logout, loading, refreshUser } = useAuth(); // ✅ pull refreshUser
+  const { user, logout, loading, refreshUser } = useAuth();
   const router = useRouter();
   const [scrolled,     setScrolled]     = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -38,12 +38,11 @@ export default function Navbar() {
     }
   }, [user]);
 
-  // ✅ Socket.io — listen for real-time FEEDBACK_REQUEST pushed by cron
+  // Socket.io — real-time notifications from cron
   useEffect(() => {
     if (!user || isAdmin) return;
 
     const socket = io(process.env.NEXT_PUBLIC_API_URL, { withCredentials: true });
-
     socket.emit('join', user.id);
 
     socket.on('notification', (notif) => {
@@ -98,15 +97,16 @@ export default function Navbar() {
     router.push(`/checkout?bookingId=${notif.bookingId}`);
   };
 
+  // ← handles both REVIEW_REQUEST (manual) and FEEDBACK_REQUEST (cron)
   const handleReview = async (notif) => {
     await markAsRead(notif.id);
     setNotifOpen(false);
-    router.push(`/reviews/new?bookingId=${notif.bookingId}`);
+    const url = notif.actionUrl || `/reviews/new?bookingId=${notif.bookingId}`;
+    router.push(url);
   };
 
   if (loading) return null;
 
-  // ✅ Avatar now re-renders whenever user.avatarUrl changes after refreshUser()
   const Avatar = ({ size = 8, textSize = 'text-sm' }) =>
     avatarUrl ? (
       <img
@@ -213,7 +213,6 @@ export default function Navbar() {
           <div className="w-10 h-px bg-gradient-to-l from-transparent to-[#C87D87]/25"/>
         </div>
 
-
         {/* ── NAV CONTENT ── */}
         <div className="max-w-7xl mx-auto flex justify-between items-center px-10">
 
@@ -294,7 +293,7 @@ export default function Navbar() {
                             <p className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.18em] uppercase text-[#3a3027] font-semibold">Notifications</p>
                             {unreadNotifs.length > 0 && (
                               <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#C87D87]">
-                                {unreadNotifs.length} non lue{unreadNotifs.length > 1 ? 's' : ''}
+                                {unreadNotifs.length} unread
                               </p>
                             )}
                           </div>
@@ -302,7 +301,7 @@ export default function Navbar() {
                         {unreadNotifs.length > 0 && (
                           <button onClick={markAllAsRead}
                             className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.15em] uppercase text-[#6B7556] border border-[#6B7556]/35 bg-[#6B7556]/8 px-2.5 py-1 rounded-lg hover:bg-[#6B7556] hover:text-[#FBEAD6] transition-all duration-300">
-                            Tout lire
+                            Mark all read
                           </button>
                         )}
                       </div>
@@ -316,7 +315,7 @@ export default function Navbar() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
                               </svg>
                             </div>
-                            <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/60 text-sm">Aucune notification</p>
+                            <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/60 text-sm">No notifications yet</p>
                           </div>
                         ) : (
                           notifications.map(notif => (
@@ -328,16 +327,20 @@ export default function Navbar() {
 
                                 {/* Icon badge */}
                                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 border ${
-                                  notif.type === 'REVIEW_REQUEST'
+                                  notif.type === 'REVIEW_REQUEST' || notif.type === 'FEEDBACK_REQUEST'
                                     ? 'bg-amber-50/80 border-amber-300/50'
                                     : !notif.read
                                       ? 'bg-[#6B7556]/12 border-[#6B7556]/30'
                                       : 'bg-[#C87D87]/10 border-[#C87D87]/20'
                                 }`}>
                                   <svg xmlns="http://www.w3.org/2000/svg"
-                                    className={`w-4 h-4 ${notif.type==='REVIEW_REQUEST'?'text-amber-500':!notif.read?'text-[#6B7556]':'text-[#C87D87]/60'}`}
+                                    className={`w-4 h-4 ${
+                                      notif.type === 'REVIEW_REQUEST' || notif.type === 'FEEDBACK_REQUEST'
+                                        ? 'text-amber-500'
+                                        : !notif.read ? 'text-[#6B7556]' : 'text-[#C87D87]/60'
+                                    }`}
                                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                                    {notif.type === 'REVIEW_REQUEST'
+                                    {notif.type === 'REVIEW_REQUEST' || notif.type === 'FEEDBACK_REQUEST'
                                       ? <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.563.563 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/>
                                       : <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     }
@@ -355,28 +358,28 @@ export default function Navbar() {
                                     {notif.message}
                                   </p>
                                   <p className="font-['Cormorant_Garamond',serif] text-[0.57rem] text-[#C87D87]/50 mt-1 tracking-wide">
-                                    {new Date(notif.createdAt).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+                                    {new Date(notif.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
                                   </p>
 
-                                  {/* ✅ Checkout button — always visible for BOOKING_CONFIRMED */}
+                                  {/* Checkout button — BOOKING_CONFIRMED */}
                                   {notif.type === 'BOOKING_CONFIRMED' && (
                                     <button onClick={() => handleCheckout(notif)}
                                       className="mt-2.5 w-full font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.15em] uppercase text-[#FBEAD6] bg-[#6B7556] px-3 py-2 rounded-xl hover:bg-[#4a5240] transition-all duration-300 flex items-center justify-center gap-1.5 shadow-[0_2px_10px_rgba(107,117,86,0.22)]">
                                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/>
                                       </svg>
-                                      Procéder au paiement →
+                                      Proceed to Payment →
                                     </button>
                                   )}
 
-                                  {/* ✅ Review button — with bookingId passed */}
-                                  {notif.type === 'REVIEW_REQUEST' && (
+                                  {/* Review button — REVIEW_REQUEST (manual) + FEEDBACK_REQUEST (cron) */}
+                                  {(notif.type === 'REVIEW_REQUEST' || notif.type === 'FEEDBACK_REQUEST') && (
                                     <button onClick={() => handleReview(notif)}
                                       className="mt-2.5 w-full font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.15em] uppercase text-[#FBEAD6] bg-[#C87D87] px-3 py-2 rounded-xl hover:bg-[#a85e6a] transition-all duration-300 flex items-center justify-center gap-1.5 shadow-[0_2px_10px_rgba(200,125,135,0.22)]">
                                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.563.563 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/>
                                       </svg>
-                                      Laisser un avis →
+                                      Leave a Review →
                                     </button>
                                   )}
 
@@ -433,7 +436,9 @@ export default function Navbar() {
                     <div className="px-4 py-3.5 border-b border-[#C87D87]/15 flex items-center gap-3"
                       style={{ background:'linear-gradient(135deg,#FBEAD6 0%,rgba(200,125,135,0.06) 100%)' }}>
                       {avatarUrl ? (
-                        <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar"
+                        <img
+                          src={avatarUrl.startsWith('http') ? avatarUrl : `${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`}
+                          alt="avatar"
                           className="w-9 h-9 rounded-full object-cover ring-2 ring-[#C87D87]/25 flex-shrink-0"/>
                       ) : (
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C87D87] to-[#FBEAD6] flex items-center justify-center text-[#6B7556] font-['Playfair_Display',serif] font-bold text-sm flex-shrink-0 ring-2 ring-[#C87D87]/20">
