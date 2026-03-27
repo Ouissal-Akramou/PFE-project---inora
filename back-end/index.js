@@ -82,7 +82,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
-      'https://pleasant-enthusiasm-production-0c41.up.railway.app',
+      'https://gleaming-trust-production-e46f.up.railway.app/',
       'http://localhost:3001',
       FRONTEND_URL,
       /\.railway\.app$/,

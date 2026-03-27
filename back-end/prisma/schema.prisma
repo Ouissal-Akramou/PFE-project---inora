@@ -7,69 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id            String         @id @default(cuid())
-  fullName      String
-  email         String         @unique
-  password      String
-  createdAt     DateTime       @default(now())
-  role          String         @default("member")
-  avatarUrl     String?
-  suspended     Boolean        @default(false)
-  bookings      Booking[]
-  claimedConvos Conversation[] @relation("ClaimedConversations")
-  conversations Conversation[] @relation("UserConversations")
-  drafts        Draft[]
-  sentMessages  Message[]      @relation("SentMessages")
-  notifications Notification[]
-  reviews       Review[]
-}
-
-model Draft {
-  id          String   @id @default(cuid())
-  userId      String
-  formData    Json
-  lastSavedAt DateTime @updatedAt
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Review {
-  id        String   @id @default(cuid())
-  userId    String
-  comment   String
-  rating    Int
-  approved  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  bookingId Int?     @unique
-  booking   Booking? @relation(fields: [bookingId], references: [id])
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Conversation {
-  id          String    @id @default(cuid())
-  userId      String
-  subject     String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  claimedById String?
-  status      Status    @default(OPEN)
-  claimedBy   User?     @relation("ClaimedConversations", fields: [claimedById], references: [id])
-  user        User      @relation("UserConversations", fields: [userId], references: [id])
-  messages    Message[]
-}
-
-model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  senderId       String
-  body           String
-  createdAt      DateTime     @default(now())
-  readAt         DateTime?
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
-}
-
 model Booking {
   fullName         String
   email            String
@@ -90,13 +27,46 @@ model Booking {
   advancePaid      Float?
   paidAt           DateTime?
   paymentStatus    String         @default("PENDING")
-  user             User?          @relation(fields: [userId], references: [id])
-  notifications    Notification[]
-  review           Review?
+  User             User?          @relation(fields: [userId], references: [id])
+  Notification     Notification[]
+  Review           Review?
+}
+
+model Conversation {
+  id                                  String    @id
+  userId                              String
+  subject                             String?
+  createdAt                           DateTime  @default(now())
+  updatedAt                           DateTime
+  claimedById                         String?
+  status                              Status    @default(OPEN)
+  User_Conversation_claimedByIdToUser User?     @relation("Conversation_claimedByIdToUser", fields: [claimedById], references: [id])
+  User_Conversation_userIdToUser      User      @relation("Conversation_userIdToUser", fields: [userId], references: [id])
+  Message                             Message[]
+}
+
+model Draft {
+  id          String   @id
+  userId      String
+  formData    Json
+  lastSavedAt DateTime
+  createdAt   DateTime @default(now())
+  User        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id             String       @id
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+  Conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  User           User         @relation(fields: [senderId], references: [id])
 }
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String   @id
   userId    String
   bookingId Int?
   type      String
@@ -104,8 +74,38 @@ model Notification {
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-  booking   Booking? @relation(fields: [bookingId], references: [id])
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Booking   Booking? @relation(fields: [bookingId], references: [id])
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id        String   @id
+  userId    String
+  comment   String
+  rating    Int
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  bookingId Int?     @unique
+  Booking   Booking? @relation(fields: [bookingId], references: [id])
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                                          String         @id
+  fullName                                    String
+  email                                       String         @unique
+  password                                    String
+  createdAt                                   DateTime       @default(now())
+  role                                        String         @default("member")
+  avatarUrl                                   String?
+  suspended                                   Boolean        @default(false)
+  Booking                                     Booking[]
+  Conversation_Conversation_claimedByIdToUser Conversation[] @relation("Conversation_claimedByIdToUser")
+  Conversation_Conversation_userIdToUser      Conversation[] @relation("Conversation_userIdToUser")
+  Draft                                       Draft[]
+  Message                                     Message[]
+  Notification                                Notification[]
+  Review                                      Review[]
 }
 
 enum Status {
