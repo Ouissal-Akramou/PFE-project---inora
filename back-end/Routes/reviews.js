@@ -1,14 +1,24 @@
-import express from 'express';
-import { createReview, getApprovedReviews, getPendingReviews, approveReview, deleteReview } from '../Controllers/reviews.js';
-import auth from '../Middlewares/auth.js';
+import express      from 'express';
+import { protect, isAdmin } from '../Middlewares/auth.js'; // ✅
+import {
+  getApprovedReviews,
+  getPendingReviews,
+  createReview,
+  approveReview,
+  deleteReview,
+} from '../Controllers/reviews.js';
 
 const router = express.Router();
 
-router.get('/approved', getApprovedReviews);       // Public - homepage
-                             // Protect all below
-router.post('/',auth, createReview);                    // User submits
-router.get('/pending',auth, getPendingReviews);         // Admin - pending
-router.patch('/:id/approve',auth, approveReview);       // Admin - approve
-router.delete('/:id',auth, deleteReview);               // Admin - delete
+// ── Public ──
+router.get('/approved',       getApprovedReviews);
+
+// ── Static routes before /:id ──
+router.get('/pending',        isAdmin,  getPendingReviews);  // ✅ isAdmin not just protect
+router.patch('/:id/approve',  isAdmin,  approveReview);      // ✅ isAdmin
+router.delete('/:id',         isAdmin,  deleteReview);       // ✅ isAdmin
+
+// ── User ──
+router.post('/',              protect,  createReview);
 
 export default router;

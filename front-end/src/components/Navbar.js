@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client'; // ✅ add
 
 export default function Navbar() {
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, refreshUser } = useAuth(); // ✅ pull refreshUser
   const router = useRouter();
   const [scrolled,     setScrolled]     = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -35,6 +36,24 @@ export default function Navbar() {
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
     }
+  }, [user]);
+
+  // ✅ Socket.io — listen for real-time FEEDBACK_REQUEST pushed by cron
+  useEffect(() => {
+    if (!user || isAdmin) return;
+
+    const socket = io(process.env.NEXT_PUBLIC_API_URL, { withCredentials: true });
+
+    socket.emit('join', user.id);
+
+    socket.on('notification', (notif) => {
+      setNotifications(prev => [
+        { ...notif, id: notif.id ?? Date.now().toString(), read: false, createdAt: new Date().toISOString() },
+        ...prev,
+      ]);
+    });
+
+    return () => socket.disconnect();
   }, [user]);
 
   useEffect(() => {
@@ -72,7 +91,6 @@ export default function Navbar() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  // ✅ Marks as read then goes to checkout — works even after read
   const handleCheckout = async (notif) => {
     await markAsRead(notif.id);
     setNotifOpen(false);
@@ -80,7 +98,6 @@ export default function Navbar() {
     router.push(`/checkout?bookingId=${notif.bookingId}`);
   };
 
-  // ✅ Marks as read then goes to review form with bookingId
   const handleReview = async (notif) => {
     await markAsRead(notif.id);
     setNotifOpen(false);
@@ -89,10 +106,14 @@ export default function Navbar() {
 
   if (loading) return null;
 
+  // ✅ Avatar now re-renders whenever user.avatarUrl changes after refreshUser()
   const Avatar = ({ size = 8, textSize = 'text-sm' }) =>
     avatarUrl ? (
       <img
-        src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`}
+        src={avatarUrl.startsWith('http')
+          ? avatarUrl
+          : `${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`
+        }
         alt="avatar"
         className={`w-${size} h-${size} rounded-full object-cover flex-shrink-0 shadow-sm transition-all duration-300 ${
           dropdownOpen ? 'ring-2 ring-[#C87D87]' : 'ring-2 ring-[#C87D87]/30 group-hover:ring-[#C87D87]'

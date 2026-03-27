@@ -8,11 +8,7 @@ import DraftBanner from '@/components/DraftBanner';  // ← ADD
 
 
 // ─── Constants ───────────────────────────────────────────────────
-const defaultReviews = [
-  { id: 'default-1', user: { fullName: 'Sophie Laurent' },  rating: 5, comment: 'Inora turned a simple afternoon into the most meaningful gathering I have ever attended. Every detail was thoughtful and beautiful.' },
-  { id: 'default-2', user: { fullName: 'Isabella Moreau' }, rating: 5, comment: 'From the ambience to the pottery session — it felt entirely curated for us. A truly rare and intimate experience.' },
-  { id: 'default-3', user: { fullName: 'Charlotte Dubois' },rating: 4, comment: 'Our crochet circle in the garden was nothing short of magical. Inora understood exactly the mood we wanted.' },
-];
+import { DEFAULT_REVIEWS } from '@/lib/defaultReviews';
 
 const activities = [
   { img:'https://images.unsplash.com/photo-1612278675615-7b093b07772d', tag:'01', title:'Crochet Circle',   desc:'Gather around yarn and quiet conversation. A slow, meditative craft that brings warmth to any setting.',                  accent:'#C87D87', delay:'delay-1' },
@@ -163,10 +159,8 @@ export default function Home() {
   const [reviewsRef,    reviewsIn]    = useInView(0.1);
   const [footerRef,     footerIn]     = useInView(0.1);
 
-  const allReviews = reviews.length > 0
-    ? [...defaultReviews, ...reviews]
-    : defaultReviews;
-
+  const allReviews = [...DEFAULT_REVIEWS, ...reviews];
+  
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reviews/approved`, { credentials: 'include' })
       .then(res => res.json())
