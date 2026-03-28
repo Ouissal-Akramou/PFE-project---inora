@@ -2,6 +2,9 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma.js';
 import { transporter } from "../lib/mailer.js";
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
+
+import { v4 as uuidv4 } from 'uuid';
 
 export const register = async (req, res) => {
   try {
@@ -17,7 +20,13 @@ export const register = async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
-      data: { fullName, email, password: hashed, role }
+      data: { 
+        id: uuidv4(),        // ← AJOUTE CETTE LIGNE
+        fullName, 
+        email, 
+        password: hashed, 
+        role 
+      }
     });
 
     return res.status(201).json({
