@@ -1,11 +1,13 @@
 'use client';
+
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-export default function BookingConfirmed() {
+function BookingConfirmedContent() {
   const searchParams = useSearchParams();
   const bookingId    = searchParams.get('bookingId');
   const [booking, setBooking] = useState(null);
@@ -133,5 +135,25 @@ export default function BookingConfirmed() {
 
       </div>
     </div>
+  );
+}
+
+export default function BookingConfirmedPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FBEAD6] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-10 h-10">
+            <div className="absolute inset-0 rounded-full border border-[#C87D87]/20"/>
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#C87D87] animate-spin"/>
+          </div>
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/50 tracking-[0.35em] text-xs uppercase">
+            Loading...
+          </p>
+        </div>
+      </div>
+    }>
+      <BookingConfirmedContent />
+    </Suspense>
   );
 }
