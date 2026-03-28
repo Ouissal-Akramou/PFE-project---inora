@@ -1,1082 +1,1479 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { DEFAULT_REVIEWS } from '@/lib/defaultReviews';
+import jsPDF from 'jspdf';
+
+const API = process.env.NEXT_PUBLIC_API_URL;
+
+const resolveAvatar = (url) => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  return `${API}${url}`;
+};
+
+const ACTIVITY_IMGS = {
+  'Crochet Circle':   'https://images.unsplash.com/photo-1612278675615-7b093b07772d',
+  'Painting Session': 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b',
+  'Pottery Workshop': 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261',
+};
+const TIME_SLOTS = [
+  { id:'morning',   label:'Morning',   hours:'09:30 – 12:30', icon:'◎', sub:'Soft light & fresh starts' },
+  { id:'afternoon', label:'Afternoon', hours:'14:30 – 17:30', icon:'◈', sub:'Golden hour creativity'    },
+  { id:'evening',   label:'Evening',   hours:'19:30 – 22:30', icon:'◇', sub:'Candlelit & intimate'      },
+];
+const SETTINGS_MAP = {
+  garden:  { label:'Sunlit Garden',    icon:'❧' },
+  indoor:  { label:'Cosy Indoor',      icon:'⌂' },
+  terrace: { label:'Open-Air Terrace', icon:'◻' },
+};
+
+const LaceCorner = ({ flip = false, danger = false }) => (
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none"
+    className="pointer-events-none select-none"
+    style={{ transform: flip ? 'scaleX(-1)' : undefined }}>
+    <line x1="0"  y1="1"  x2="22" y2="1"  stroke={danger ? '#ef4444' : '#C87D87'} strokeWidth="0.8" strokeOpacity="0.50"/>
+    <line x1="1"  y1="0"  x2="1"  y2="22" stroke={danger ? '#ef4444' : '#C87D87'} strokeWidth="0.8" strokeOpacity="0.50"/>
+    <rect x="2" y="2" width="4.5" height="4.5" transform="rotate(45 4.25 4.25)" fill="none"
+          stroke={danger ? '#ef4444' : '#C87D87'} strokeWidth="0.7" strokeOpacity="0.80"/>
+    <circle cx="4.25" cy="4.25" r="0.8" fill={danger ? '#ef4444' : '#C87D87'} fillOpacity="0.45"/>
+    <rect x="8"  y="1.5" width="3" height="3" transform="rotate(45 9.5 3)" fill="none"
+          stroke={danger ? '#ef4444' : '#C87D87'} strokeWidth="0.5" strokeOpacity="0.30"/>
+    <rect x="1.5" y="8" width="3" height="3" transform="rotate(45 3 9.5)" fill="none"
+          stroke={danger ? '#ef4444' : '#C87D87'} strokeWidth="0.5" strokeOpacity="0.30"/>
+    {[8,12,16,20].map((x,j) => (
+      <line key={x} x1={x} y1="1" x2={x} y2={j%2===0?4:3}
+            stroke={danger ? '#ef4444' : '#C87D87'} strokeWidth="0.4" strokeOpacity="0.25"/>
+    ))}
+    {[8,12,16,20].map((y,j) => (
+      <line key={y} x1="1" y1={y} x2={j%2===0?4:3} y2={y}
+            stroke={danger ? '#ef4444' : '#C87D87'} strokeWidth="0.4" strokeOpacity="0.25"/>
+    ))}
+  </svg>
+);
+
+const Panel = ({ children, className = '' }) => (
+  <div className={`bg-[#fef6ec] rounded-2xl overflow-hidden border border-[#C87D87]/20 shadow-[0_2px_12px_rgba(58,48,39,0.06)] relative ${className}`}>
+    <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/50 to-transparent"/>
+    <div className="absolute top-0 left-0"><LaceCorner/></div>
+    <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+    {children}
+  </div>
+);
+
+const DeletedBadge = () => (
+  <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-100 border border-gray-200 text-gray-400 font-['Cormorant_Garamond',serif] text-[0.52rem] tracking-widest uppercase flex-shrink-0">
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+    </svg>
+    Deleted
+  </span>
+);
+
+const Field = ({ label, children }) => (
+  <div className="flex items-start gap-4 py-4 border-b border-[#C87D87]/10 last:border-0">
+    <span className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase text-[#7a6a5a]/50 w-24 flex-shrink-0 pt-2">{label}</span>
+    <div className="flex-1">{children}</div>
+  </div>
+);
+
+const Inp = ({ ...props }) => (
+  <input {...props}
+    className="w-full bg-[#fdf3e7] border border-[#C87D87]/22 rounded-xl px-4 py-2.5 font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] outline-none focus:border-[#C87D87]/55 focus:bg-[#fef6ec] focus:shadow-[0_0_0_3px_rgba(200,125,135,0.08)] transition-all placeholder:text-[#7a6a5a]/30"/>
+);
+
+const Msg = ({ msg }) => !msg?.text ? null : (
+  <p className={`font-['Cormorant_Garamond',serif] italic text-xs mt-2 ${msg.type==='success'?'text-[#6B7556]':'text-red-400'}`}>{msg.text}</p>
+);
+
+// ── PDF Export ────────────────────────────────────────
+const exportBookingPDF = (b) => {
+  const doc  = new jsPDF();
+  const line = (label, value, y) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(label, 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(value ?? '—'), 70, y);
+  };
+
+  doc.setFillColor(107, 117, 86);
+  doc.rect(0, 0, 210, 22, 'F');
+  doc.setTextColor(251, 234, 214);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('Inora — Booking Details', 14, 14);
+
+  doc.setTextColor(40, 40, 40);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Exported on ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`, 14, 28);
+
+  doc.setDrawColor(200, 125, 135);
+  doc.setLineWidth(0.4);
+  doc.line(14, 31, 196, 31);
+
+  let y = 40;
+  const fields = [
+    ['Booking ID',        `#${b.id}`],
+    ['Client Name',       b.fullName || b.user?.fullName],
+    ['Email',             b.email],
+    ['Phone',             b.phone],
+    ['Activity',          b.activity],
+    ['Theme',             b.activityTheme],
+    ['Date',              b.date ? new Date(b.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : null],
+    ['Time Slot',         b.timeSlot],
+    ['Guests',            b.participants],
+    ['Setting',           b.setting],
+    ['Preferred Contact', b.preferredContact],
+    ['Allergies',         b.allergies],
+    ['Special Requests',  b.specialRequests],
+    ['Additional Notes',  b.additionalNotes],
+    ['Booking Status',    b.status?.toUpperCase()],
+    ['Payment Status',    b.paymentStatus],
+    ['Advance Paid',      b.advancePaid ? `${b.advancePaid} MAD` : null],
+    ['Paid At',           b.paidAt ? new Date(b.paidAt).toLocaleDateString('en-GB') : null],
+    ['Submitted At',      new Date(b.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})],
+  ];
+
+  fields.forEach(([label, value]) => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    line(label, value ?? '—', y);
+    y += 8;
+  });
+
+  doc.setDrawColor(200, 125, 135);
+  doc.line(14, 282, 196, 282);
+  doc.setFontSize(7);
+  doc.setTextColor(150, 130, 110);
+  doc.text('Inora · Confidential booking record', 14, 288);
+
+  doc.save(`booking-${b.id}-${(b.fullName || 'client').replace(/\s+/g,'_')}.pdf`);
+};
 
 export default function Admin() {
-  const { user, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState('reviews');
-  const [approvedReviews, setApprovedReviews] = useState([]);
-  const [pendingReviews, setPendingReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [pageReady, setPageReady] = useState(false);
+  const [activeTab,          setActiveTab]          = useState('overview');
+  const [pageReady,          setPageReady]          = useState(false);
+  const [collapsed,          setCollapsed]          = useState(false);
+  const [approvedReviews,    setApprovedReviews]    = useState([]);
+  const [pendingReviews,     setPendingReviews]     = useState([]);
+  const [users,              setUsers]              = useState([]);
+  const [usersLoading,       setUsersLoading]       = useState(false);
+  const [userSearch,         setUserSearch]         = useState('');
+  const [selectedUser,       setSelectedUser]       = useState(null);
+  const [bookings,           setBookings]           = useState([]);
+  const [bookingsLoading,    setBookingsLoading]    = useState(true);
+  const [allBookings,        setAllBookings]        = useState([]);
+  const [allBookingsLoading, setAllBookingsLoading] = useState(true);
+  const [payments,           setPayments]           = useState([]);
+  const [paymentsLoading,    setPaymentsLoading]    = useState(false);
+  const [selectedBooking,    setSelectedBooking]    = useState(null);
 
-  // Users state
-  const [users, setUsers] = useState([]);
-  const [userSearch, setUserSearch] = useState('');
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [roleFilter, setRoleFilter] = useState('all');
+  // ── Profile state ──
+  const avatarRef    = useRef(null);
+  const [profile,    setProfile]    = useState(null);
+  const [avatarMsg,  setAvatarMsg]  = useState({ type:'', text:'' });
+  const [avatarLoad, setAvatarLoad] = useState(false);
+  const [nameForm,   setNameForm]   = useState({ fullName:'' });
+  const [nameMsg,    setNameMsg]    = useState({ type:'', text:'' });
+  const [nameLoad,   setNameLoad]   = useState(false);
+  const [emailForm,  setEmailForm]  = useState({ email:'', currentPassword:'' });
+  const [emailMsg,   setEmailMsg]   = useState({ type:'', text:'' });
+  const [emailLoad,  setEmailLoad]  = useState(false);
+  const [passForm,   setPassForm]   = useState({ currentPassword:'', newPassword:'', confirmPassword:'' });
+  const [passMsg,    setPassMsg]    = useState({ type:'', text:'' });
+  const [passLoad,   setPassLoad]   = useState(false);
+  const [deleteForm, setDeleteForm] = useState({ password:'', adminCode:'' });
+  const [deleteMsg,  setDeleteMsg]  = useState({ type:'', text:'' });
+  const [deleteLoad, setDeleteLoad] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
-  // Bookings state
-  const [bookings, setBookings] = useState([]);
-  const [bookingsLoading, setBookingsLoading] = useState(true);
-  const [unreadBookings, setUnreadBookings] = useState([]);
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
-
-  // ✅ تعريف displayName هنا باش يكون متاح فكل الكومبوننت
-  const displayName = user?.fullName ?? user?.name ?? 'Admin';
+  const displayName  = profile?.fullName ?? user?.fullName ?? user?.name ?? 'Admin';
+  const displayEmail = profile?.email    ?? user?.email ?? '';
+  const avatarUrl    = resolveAvatar(profile?.avatarUrl ?? user?.avatarUrl ?? null);
 
   useEffect(() => {
-    fetchReviews();
-    fetchUsers();
-    fetchBookings();
+    fetchAll();
+    fetchProfile();
     setTimeout(() => setPageReady(true), 100);
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/');
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch(`${API}/api/auth/me`, { credentials:'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data.user);
+        setNameForm({ fullName: data.user.fullName || '' });
+        setEmailForm(f => ({ ...f, email: data.user.email || '' }));
+      }
+    } catch {}
   };
 
-  // ========== REVIEWS ==========
+  const fetchAll = () => {
+    fetchReviews();
+    fetchUsers();
+    fetchBookings();
+    fetchAllBookings();
+    fetchPayments();
+  };
+
   const fetchReviews = async () => {
     try {
-      const [approvedRes, pendingRes] = await Promise.all([
-        fetch('http://localhost:4000/api/reviews/approved', { credentials: 'include' }),
-        fetch('http://localhost:4000/api/reviews/pending', { credentials: 'include' }),
+      const [aRes, pRes] = await Promise.all([
+        fetch(`${API}/api/reviews/approved`, { credentials:'include' }),
+        fetch(`${API}/api/reviews/pending`,  { credentials:'include' }),
       ]);
-      const approved = await approvedRes.json();
-      const pending = await pendingRes.json();
-      setApprovedReviews(Array.isArray(approved) ? approved : []);
-      setPendingReviews(Array.isArray(pending) ? pending : []);
-    } catch {
-      setApprovedReviews([]);
-      setPendingReviews([]);
-    } finally {
-      setLoading(false);
-    }
+      const aData = await aRes.json(); const pData = await pRes.json();
+      setApprovedReviews(Array.isArray(aData) ? aData : []);
+      setPendingReviews(Array.isArray(pData)  ? pData : []);
+    } catch { setApprovedReviews([]); setPendingReviews([]); }
   };
 
-  const approveReview = async (id) => {
-    await fetch(`http://localhost:4000/api/reviews/${id}/approve`, { method: 'PATCH', credentials: 'include' });
-    fetchReviews();
-  };
-
-  const deleteReview = async (id) => {
-    if (!confirm('Delete this review?')) return;
-    await fetch(`http://localhost:4000/api/reviews/${id}`, { method: 'DELETE', credentials: 'include' });
-    fetchReviews();
-  };
-
-  // ========== USERS ==========
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/auth/admin/users', { credentials: 'include' });
+      const res = await fetch(`${API}/api/auth/admin/users`, { credentials:'include' });
       if (res.ok) setUsers(await res.json());
-    } finally {
-      setUsersLoading(false);
-    }
+    } finally { setUsersLoading(false); }
   };
 
+  const fetchBookings = async () => {
+    setBookingsLoading(true);
+    try {
+      const res = await fetch(`${API}/api/bookings`, { credentials:'include' });
+      const d   = await res.json();
+      setBookings(Array.isArray(d) ? d : []);
+    } catch { setBookings([]); } finally { setBookingsLoading(false); }
+  };
+
+  const fetchAllBookings = async () => {
+    setAllBookingsLoading(true);
+    try {
+      const res = await fetch(`${API}/api/bookings/all`, { credentials:'include' });
+      const d   = await res.json();
+      setAllBookings(Array.isArray(d) ? d : []);
+    } catch { setAllBookings([]); } finally { setAllBookingsLoading(false); }
+  };
+
+  const fetchPayments = async () => {
+    setPaymentsLoading(true);
+    try {
+      const res = await fetch(`${API}/api/bookings/paid`, { credentials:'include' });
+      const d   = await res.json();
+      setPayments(Array.isArray(d) ? d : []);
+    } catch { setPayments([]); } finally { setPaymentsLoading(false); }
+  };
+
+  const approveReview = async (id) => {
+    await fetch(`${API}/api/reviews/${id}/approve`, { method:'PATCH', credentials:'include' });
+    fetchReviews();
+  };
+  const deleteReview = async (id) => {
+    if (!confirm('Delete this review?')) return;
+    await fetch(`${API}/api/reviews/${id}`, { method:'DELETE', credentials:'include' });
+    fetchReviews();
+  };
   const toggleSuspend = async (id, suspended) => {
-    await fetch(`http://localhost:4000/api/auth/admin/users/${id}/suspend`, {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ suspended: !suspended })
+    await fetch(`${API}/api/auth/admin/users/${id}/suspend`, {
+      method:'PATCH', credentials:'include',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ suspended: !suspended }),
     });
     fetchUsers();
   };
+  const updateBookingStatus = async (id, status) => {
+    await fetch(`${API}/api/bookings/${id}/status`, {
+      method:'PATCH', credentials:'include',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    fetchBookings();
+    fetchAllBookings();
+    if (selectedBooking?.id === id) setSelectedBooking(b => ({ ...b, status }));
+  };
+  const deleteBooking = async (id) => {
+    if (!confirm('Delete this booking?')) return;
+    await fetch(`${API}/api/bookings/${id}`, { method:'DELETE', credentials:'include' });
+    fetchBookings();
+    fetchAllBookings();
+    fetchPayments();
+    if (selectedBooking?.id === id) setSelectedBooking(null);
+  };
 
-  // ========== BOOKINGS ==========
-  const fetchBookings = async () => {
+  // ── Profile handlers ──
+  const handleAvatar = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarLoad(true); setAvatarMsg({ type:'', text:'' });
+    const fd = new FormData(); fd.append('avatar', file);
     try {
-      const res = await fetch('http://localhost:4000/api/bookings', {
-        credentials: 'include'
+      const res = await fetch(`${API}/api/auth/avatar`, {
+        method:'POST', credentials:'include', body: fd,
       });
       const data = await res.json();
-      setBookings(Array.isArray(data) ? data : []);
-
-      // نجيبو لائحة الحجوزات لي قريناها (ID)
-      const readBookings = JSON.parse(localStorage.getItem('readBookings') || '[]');
-
-      // الحجوزات الجدد هوما لي ماشي موجودين فـ readBookings
-      const newUnread = Array.isArray(data)
-        ? data.filter(b => !readBookings.includes(b.id))
-        : [];
-
-      setUnreadBookings(newUnread);
-
-    } catch (error) {
-      console.error('Failed to fetch bookings:', error);
-      setBookings([]);
-    } finally {
-      setBookingsLoading(false);
-    }
+      if (res.ok) {
+        setAvatarMsg({ type:'success', text:'Avatar updated.' });
+        const freshUrl = `${resolveAvatar(data.avatarUrl)}?t=${Date.now()}`;
+        setProfile(p => ({ ...p, avatarUrl: freshUrl }));
+        if (setUser) setUser(u => ({ ...u, avatarUrl: freshUrl }));
+      } else setAvatarMsg({ type:'error', text: data.message || 'Upload failed.' });
+    } catch { setAvatarMsg({ type:'error', text:'Something went wrong.' }); }
+    finally { setAvatarLoad(false); }
   };
 
-  // منين كدير "Marquer comme lu"
-  const markAsRead = (bookingId) => {
-    // نجيبو لائحة الحجوزات لي قريناها
-    const readBookings = JSON.parse(localStorage.getItem('readBookings') || '[]');
-
-    // نزيدو الـ ID الجديد
-    if (!readBookings.includes(bookingId)) {
-      readBookings.push(bookingId);
-      localStorage.setItem('readBookings', JSON.stringify(readBookings));
-    }
-
-    // نحيدو من unreadBookings
-    setUnreadBookings(prev => prev.filter(b => b.id !== bookingId));
+  const handleName = async (e) => {
+    e.preventDefault(); setNameLoad(true); setNameMsg({ type:'', text:'' });
+    try {
+      const res = await fetch(`${API}/api/auth/update-name`, {
+        method:'PATCH', credentials:'include',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ fullName: nameForm.fullName }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNameMsg({ type:'success', text:'Name updated.' });
+        setProfile(p => ({ ...p, fullName: nameForm.fullName }));
+        if (setUser) setUser(u => ({ ...u, fullName: nameForm.fullName }));
+      } else setNameMsg({ type:'error', text: data.message || 'Failed.' });
+    } catch { setNameMsg({ type:'error', text:'Something went wrong.' }); }
+    finally { setNameLoad(false); }
   };
 
-  // منين كدير "Tout marquer comme lu"
-  const markAllAsRead = () => {
-    // نجيبو لائحة الحجوزات لي قريناها
-    const readBookings = JSON.parse(localStorage.getItem('readBookings') || '[]');
-
-    // نزيدو كل الحجوزات لي ماقريناهمش
-    unreadBookings.forEach(booking => {
-      if (!readBookings.includes(booking.id)) {
-        readBookings.push(booking.id);
-      }
-    });
-
-    localStorage.setItem('readBookings', JSON.stringify(readBookings));
-    setUnreadBookings([]);
+  const handleEmail = async (e) => {
+    e.preventDefault(); setEmailLoad(true); setEmailMsg({ type:'', text:'' });
+    try {
+      const res = await fetch(`${API}/api/auth/update-email`, {
+        method:'PATCH', credentials:'include',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(emailForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEmailMsg({ type:'success', text:'Email updated.' });
+        setProfile(p => ({ ...p, email: emailForm.email }));
+        if (setUser) setUser(u => ({ ...u, email: emailForm.email }));
+        setEmailForm(f => ({ ...f, currentPassword:'' }));
+      } else setEmailMsg({ type:'error', text: data.message || 'Failed.' });
+    } catch { setEmailMsg({ type:'error', text:'Something went wrong.' }); }
+    finally { setEmailLoad(false); }
   };
 
-  // دالة تجميع الحجوزات حسب المستخدم
-  const groupBookingsByUser = () => {
-    const grouped = {};
-
-    bookings.forEach(booking => {
-      const email = booking.email;
-      if (!grouped[email]) {
-        grouped[email] = {
-          user: users.find(u => u.email === email) || null,
-          bookings: [],
-          count: 0
-        };
-      }
-      grouped[email].bookings.push(booking);
-      grouped[email].count++;
-    });
-
-    return grouped;
+  const handlePassword = async (e) => {
+    e.preventDefault();
+    if (passForm.newPassword !== passForm.confirmPassword)
+      return setPassMsg({ type:'error', text:'Passwords do not match.' });
+    setPassLoad(true); setPassMsg({ type:'', text:'' });
+    try {
+      const res = await fetch(`${API}/api/auth/update-password`, {
+        method:'PATCH', credentials:'include',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ currentPassword: passForm.currentPassword, newPassword: passForm.newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPassMsg({ type:'success', text:'Password updated.' });
+        setPassForm({ currentPassword:'', newPassword:'', confirmPassword:'' });
+      } else setPassMsg({ type:'error', text: data.message || 'Failed.' });
+    } catch { setPassMsg({ type:'error', text:'Something went wrong.' }); }
+    finally { setPassLoad(false); }
   };
 
-  // تصفية الحجوزات حسب ما يختار المسؤول
-  const displayedBookings = showUnreadOnly ? unreadBookings : bookings;
+  const handleDelete = async (e) => {
+    e.preventDefault(); setDeleteLoad(true); setDeleteMsg({ type:'', text:'' });
+    try {
+      const res = await fetch(`${API}/api/auth/delete-account`, {
+        method:'DELETE', credentials:'include',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(deleteForm),
+      });
+      const data = await res.json();
+      if (res.ok) { await logout(); router.push('/'); }
+      else setDeleteMsg({ type:'error', text: data.message || 'Failed.' });
+    } catch { setDeleteMsg({ type:'error', text:'Something went wrong.' }); }
+    finally { setDeleteLoad(false); }
+  };
 
-  // Filter users
-  const filteredUsers = users.filter(u => {
-    const matchesSearch =
-      u.fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearch.toLowerCase());
-    const matchesRole = roleFilter === 'all' ? true : u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+  const statusCfg = {
+    pending:   { label:'Pending',   dot:'bg-amber-400', text:'text-amber-600', bg:'bg-amber-50',     border:'border-amber-200'    },
+    confirmed: { label:'Confirmed', dot:'bg-[#6B7556]', text:'text-[#4a5240]', bg:'bg-[#6B7556]/10', border:'border-[#6B7556]/30' },
+    completed: { label:'Completed', dot:'bg-[#6B7556]', text:'text-[#4a5240]', bg:'bg-[#6B7556]/10', border:'border-[#6B7556]/30' },
+    cancelled: { label:'Cancelled', dot:'bg-red-400',   text:'text-red-500',   bg:'bg-red-50',       border:'border-red-200'      },
+  };
+  const getStatus        = s => statusCfg[s?.toLowerCase()] ?? { label: s ?? '—', dot:'bg-[#C87D87]', text:'text-[#C87D87]', bg:'bg-[#C87D87]/8', border:'border-[#C87D87]/20' };
+  const settingFromBooking = b => SETTINGS_MAP[b?.setting] ?? null;
+
+  const userBookings  = u => allBookings.filter(b => b.email?.toLowerCase() === u.email?.toLowerCase());
+  const userPayments  = u => payments.filter(p => p.email?.toLowerCase() === u.email?.toLowerCase());
+  const userReviews   = u => [...approvedReviews, ...pendingReviews].filter(r => r.user?.id === u.id);
+  const filteredUsers = users.filter(u =>
+    u.fullName?.toLowerCase().includes(userSearch.toLowerCase()) ||
+    u.email?.toLowerCase().includes(userSearch.toLowerCase())
+  );
 
   const navItems = [
-    {
-      id: 'reviews', label: 'Reviews', sub: 'Testimonials',
-      badge: pendingReviews.length,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-    },
-    {
-      id: 'bookings',
-      label: 'Réservations',
-      sub: 'Demandes clients',
-      badge: unreadBookings.length,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-    },
-    {
-      id: 'users', label: 'Members', sub: 'Users & admins',
-      badge: null,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-    },
-    {
-      id: 'payments', label: 'Payments', sub: 'Transactions',
-      badge: null,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
-    },
-    {
-      id: 'settings', label: 'Profile', sub: 'Your account',
-      badge: null,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-    },
+    { id:'overview', label:'Overview',    icon:'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+    { id:'bookings', label:'Bookings',    icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+      badge: bookings.filter(b=>b.status==='pending').length },
+    { id:'members',  label:'Members',     icon:'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+    { id:'payments', label:'Payments',    icon:'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
+    { id:'reviews',  label:'Reviews',     icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
+      badge: pendingReviews.length },
+    { id:'profile',  label:'My Profile',  icon:'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   ];
+
+  const sideW  = collapsed ? 'w-[72px]' : 'w-64';
+  const mainML = collapsed ? 'ml-[72px]' : 'ml-64';
 
   return (
     <>
       <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        .lace-bg {
+        @keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(30px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
+        @keyframes fadeInScale { from{opacity:0;transform:scale(0.96) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        .pink-sidebar { background: linear-gradient(160deg,#C87D87 0%,#b56b76 55%,#a55e6a 100%); }
+        .nav-item { transition:background .18s; border-radius:12px; }
+        .nav-item:hover { background:rgba(255,255,255,0.10); }
+        .nav-item-active { background:rgba(255,255,255,0.18); }
+        .dash-bg {
           background-color: #FBEAD6;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='2' fill='none' stroke='%23C87D87' stroke-width='0.4' opacity='0.25'/%3E%3Ccircle cx='40' cy='40' r='8' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.15'/%3E%3Ccircle cx='40' cy='40' r='16' fill='none' stroke='%23C87D87' stroke-width='0.2' opacity='0.10'/%3E%3Cpath d='M40 24 L44 32 L40 40 L36 32 Z' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.12'/%3E%3Cpath d='M56 40 L48 44 L40 40 L48 36 Z' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.12'/%3E%3Cpath d='M40 56 L36 48 L40 40 L44 48 Z' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.12'/%3E%3Cpath d='M24 40 L32 36 L40 40 L32 44 Z' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.12'/%3E%3Ccircle cx='0' cy='0' r='3' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.15'/%3E%3Ccircle cx='80' cy='0' r='3' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.15'/%3E%3Ccircle cx='0' cy='80' r='3' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.15'/%3E%3Ccircle cx='80' cy='80' r='3' fill='none' stroke='%23C87D87' stroke-width='0.3' opacity='0.15'/%3E%3Cline x1='40' y1='0' x2='40' y2='24' stroke='%23C87D87' stroke-width='0.2' opacity='0.10'/%3E%3Cline x1='40' y1='56' x2='40' y2='80' stroke='%23C87D87' stroke-width='0.2' opacity='0.10'/%3E%3Cline x1='0' y1='40' x2='24' y2='40' stroke='%23C87D87' stroke-width='0.2' opacity='0.10'/%3E%3Cline x1='56' y1='40' x2='80' y2='40' stroke='%23C87D87' stroke-width='0.2' opacity='0.10'/%3E%3C/svg%3E");
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cline x1='0' y1='1' x2='18' y2='1' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='1' y1='0' x2='1' y2='18' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='80' y1='1' x2='62' y2='1' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='79' y1='0' x2='79' y2='18' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='0' y1='79' x2='18' y2='79' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='1' y1='80' x2='1' y2='62' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='80' y1='79' x2='62' y2='79' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='79' y1='80' x2='79' y2='62' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Crect x='2' y='2' width='3.5' height='3.5' transform='rotate(45 3.75 3.75)' fill='none' stroke='%23C87D87' stroke-width='0.7' stroke-opacity='0.35'/%3E%3Crect x='73.5' y='2' width='3.5' height='3.5' transform='rotate(45 75.25 3.75)' fill='none' stroke='%23C87D87' stroke-width='0.7' stroke-opacity='0.35'/%3E%3Crect x='2' y='73.5' width='3.5' height='3.5' transform='rotate(45 3.75 75.25)' fill='none' stroke='%23C87D87' stroke-width='0.7' stroke-opacity='0.35'/%3E%3Crect x='73.5' y='73.5' width='3.5' height='3.5' transform='rotate(45 75.25 75.25)' fill='none' stroke='%23C87D87' stroke-width='0.7' stroke-opacity='0.35'/%3E%3Ccircle cx='3.75' cy='3.75' r='0.8' fill='%23C87D87' fill-opacity='0.25'/%3E%3Ccircle cx='76.25' cy='3.75' r='0.8' fill='%23C87D87' fill-opacity='0.25'/%3E%3Ccircle cx='3.75' cy='76.25' r='0.8' fill='%23C87D87' fill-opacity='0.25'/%3E%3Ccircle cx='76.25' cy='76.25' r='0.8' fill='%23C87D87' fill-opacity='0.25'/%3E%3C/svg%3E");
         }
-        .lace-sidebar {
-          background-color: #6B7556;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='2' fill='none' stroke='%23FBEAD6' stroke-width='0.4' opacity='0.12'/%3E%3Ccircle cx='30' cy='30' r='10' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.07'/%3E%3Cpath d='M30 18 L33 24 L30 30 L27 24 Z' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.08'/%3E%3Cpath d='M42 30 L36 33 L30 30 L36 27 Z' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.08'/%3E%3Cpath d='M30 42 L27 36 L30 30 L33 36 Z' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.08'/%3E%3Cpath d='M18 30 L24 27 L30 30 L24 33 Z' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.08'/%3E%3Ccircle cx='0' cy='0' r='2' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.10'/%3E%3Ccircle cx='60' cy='0' r='2' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.10'/%3E%3Ccircle cx='0' cy='60' r='2' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.10'/%3E%3Ccircle cx='60' cy='60' r='2' fill='none' stroke='%23FBEAD6' stroke-width='0.3' opacity='0.10'/%3E%3C/svg%3E");
+        .admin-topbar {
+          background: linear-gradient(160deg,#C87D87 0%,#b56b76 100%);
+          border-bottom: 1px solid rgba(255,255,255,0.12);
+          box-shadow: 0 2px 24px rgba(200,125,135,0.28);
         }
-        .card-hover {
-          transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        .card-hover:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 16px 48px rgba(200,125,135,0.16);
-        }
-        .unread-badge {
-          animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
+        .stat-card { background:#fef6ec; border:1px solid rgba(200,125,135,0.20); border-radius:18px; padding:20px; transition:all .22s; position:relative; overflow:hidden; }
+        .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,rgba(200,125,135,0.5),transparent); }
+        .stat-card:hover { border-color:rgba(200,125,135,0.40); transform:translateY(-2px); box-shadow:0 8px 32px rgba(58,48,39,0.10); }
+        .trow { transition:background .15s; }
+        .trow:hover { background:rgba(200,125,135,0.05); cursor:pointer; }
+        .search-input { background:#fdf3e7; border:1.5px solid rgba(200,125,135,0.25); border-radius:12px; padding:10px 14px; font-family:'Cormorant Garamond',serif; font-size:.9rem; color:#3a3027; outline:none; width:100%; transition:all .18s; }
+        .search-input:focus { border-color:rgba(200,125,135,0.55); background:#fef6ec; box-shadow:0 0 0 3px rgba(200,125,135,0.08); }
+        .rev-card { background:#fef6ec; border:1px solid rgba(200,125,135,0.18); border-radius:16px; padding:20px; transition:transform .2s, box-shadow .2s; position:relative; overflow:hidden; }
+        .rev-card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(200,125,135,0.4),transparent); }
+        .rev-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(58,48,39,0.08); }
+        .bmodal-bg { background:rgba(58,48,39,0.55); backdrop-filter:blur(8px); }
+        ::-webkit-scrollbar { width:5px; }
+        ::-webkit-scrollbar-track { background:#FBEAD6; }
+        ::-webkit-scrollbar-thumb { background:rgba(200,125,135,0.30); border-radius:8px; }
       `}</style>
 
-      <div className={`min-h-screen flex transition-opacity duration-700 ${pageReady ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`min-h-screen flex font-['Cormorant_Garamond',serif] transition-opacity duration-500 ${pageReady?'opacity-100':'opacity-0'}`}>
 
-        {/* SIDEBAR */}
-        <aside className="lace-sidebar fixed top-0 left-0 h-full w-72 z-40 flex flex-col"
-          style={{ boxShadow: '6px 0 50px rgba(107,117,86,0.3)' }}>
+        {/* ═══════════ SIDEBAR ═══════════ */}
+        <aside className={`pink-sidebar fixed top-0 left-0 h-full z-40 flex flex-col transition-all duration-300 ${sideW} overflow-hidden`}
+          style={{ boxShadow:'6px 0 32px rgba(200,125,135,0.30)' }}>
+          <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-white/40 to-transparent"/>
 
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/80 to-transparent" />
-          <div className="absolute top-0 right-0 h-full w-px bg-gradient-to-b from-transparent via-[#C87D87]/25 to-transparent" />
-
-          {/* LOGO */}
-          <div className="relative px-10 pt-12 pb-8">
-            <div className="absolute top-4 left-4 w-12 h-12 pointer-events-none">
-              <div className="absolute top-0 left-0 w-full h-px bg-[#C87D87]/50" />
-              <div className="absolute top-0 left-0 w-px h-full bg-[#C87D87]/50" />
-              <div className="absolute top-2 left-2 w-3 h-3 border-t border-l border-[#C87D87]/60" />
-            </div>
-            <div className="absolute top-4 right-4 w-12 h-12 pointer-events-none">
-              <div className="absolute top-0 right-0 w-full h-px bg-[#C87D87]/50" />
-              <div className="absolute top-0 right-0 w-px h-full bg-[#C87D87]/50" />
-              <div className="absolute top-2 right-2 w-3 h-3 border-t border-r border-[#C87D87]/60" />
-            </div>
-            <div className="text-center">
-              <p className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] tracking-[0.35em] uppercase text-[#C87D87]/60 mb-1">— Admin Panel —</p>
-              <h1 className="font-['Playfair_Display',serif] italic text-4xl text-[#FBEAD6] tracking-wide">Inora</h1>
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <div className="w-8 h-px bg-[#C87D87]/40" />
-                <span className="text-[#C87D87]/40 text-[0.45rem]">✦</span>
-                <div className="w-8 h-px bg-[#C87D87]/40" />
-              </div>
-            </div>
+          <div className={`flex items-center border-b border-white/10 flex-shrink-0 ${collapsed?'justify-center px-0 py-5':'justify-between px-6 py-5'}`}>
+            {!collapsed && (
+              <button onClick={() => router.push('/')} className="text-left group">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.5rem] tracking-[0.4em] uppercase text-white/50">Admin Panel</p>
+                <h1 className="font-['Playfair_Display',serif] italic text-2xl text-white leading-tight group-hover:text-white/80 transition-colors">Inora</h1>
+                <div className="mt-1 w-8 h-px bg-gradient-to-r from-white/30 to-transparent"/>
+              </button>
+            )}
+            {collapsed && (
+              <button onClick={() => router.push('/')}
+                className="font-['Playfair_Display',serif] italic text-white text-xl hover:text-white/80 transition-colors">I</button>
+            )}
+            <button onClick={() => setCollapsed(c=>!c)}
+              className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                {collapsed ? <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/> : <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>}
+              </svg>
+            </button>
           </div>
 
-          {/* PROFILE CARD */}
-          <div className="mx-6 mb-6 p-4 border border-[#FBEAD6]/15 bg-[#FBEAD6]/6 relative">
-            <div className="absolute top-1 left-1 w-3 h-3 pointer-events-none border-t border-l border-[#C87D87]/40" />
-            <div className="absolute top-1 right-1 w-3 h-3 pointer-events-none border-t border-r border-[#C87D87]/40" />
-            <div className="absolute bottom-1 left-1 w-3 h-3 pointer-events-none border-b border-l border-[#C87D87]/40" />
-            <div className="absolute bottom-1 right-1 w-3 h-3 pointer-events-none border-b border-r border-[#C87D87]/40" />
-            <div className="flex items-center gap-3">
-              <div className="relative flex-shrink-0">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#C87D87] to-[#FBEAD6]/90 flex items-center justify-center text-[#6B7556] font-['Playfair_Display',serif] font-bold text-base shadow-lg">
-                  {displayName.charAt(0).toUpperCase()}
+          {!collapsed ? (
+            <div className="px-5 py-4 border-b border-white/8 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full border-2 border-white/30 flex-shrink-0 overflow-hidden bg-white/20">
+                  {avatarUrl
+                    ? <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover"/>
+                    : <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">{displayName.charAt(0).toUpperCase()}</div>
+                  }
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#FBEAD6] rounded-full border-2 border-[#6B7556] flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#6B7556]" />
+                <div className="min-w-0">
+                  <p className="font-['Cormorant_Garamond',serif] text-sm text-white font-semibold truncate">{displayName}</p>
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-white/50 truncate">{displayEmail}</p>
                 </div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-['Playfair_Display',serif] italic text-sm text-[#FBEAD6] truncate">{displayName}</p>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#C87D87]/60 truncate">{user?.email}</p>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex justify-center py-3 border-b border-white/8 flex-shrink-0">
+              <div className="w-9 h-9 rounded-full border-2 border-white/30 overflow-hidden bg-white/20">
+                {avatarUrl
+                  ? <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover"/>
+                  : <div className="w-full h-full flex items-center justify-center text-white font-bold text-sm">{displayName.charAt(0).toUpperCase()}</div>
+                }
+              </div>
+            </div>
+          )}
 
-          {/* NAV */}
-          <nav className="flex-1 px-4 space-y-1">
-            <p className="px-4 mb-3 font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-[0.35em] uppercase text-[#FBEAD6]/20">Menu</p>
-            {navItems.map((item, i) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                style={{ animationDelay: `${i * 60}ms` }}
-                className={`w-full flex items-center gap-3 px-5 py-3.5 transition-all duration-400 relative group ${
-                  activeTab === item.id
-                    ? 'bg-[#FBEAD6]/12 border border-[#C87D87]/30'
-                    : 'border border-transparent hover:border-[#FBEAD6]/10 hover:bg-[#FBEAD6]/6'
-                }`}
-              >
-                {activeTab === item.id && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#C87D87]/8 via-transparent to-transparent" />
+          <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-hidden">
+            {navItems.map(item => (
+              <button key={item.id} onClick={() => setActiveTab(item.id)}
+                title={collapsed ? item.label : ''}
+                className={`nav-item w-full flex items-center text-left relative group
+                  ${collapsed?'justify-center px-0 py-3':'gap-3 px-3 py-2.5'}
+                  ${activeTab===item.id?'nav-item-active':''}`}>
+                {activeTab===item.id && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-white rounded-r-full"/>}
+                <svg xmlns="http://www.w3.org/2000/svg"
+                  className={`flex-shrink-0 w-5 h-5 transition-colors ${activeTab===item.id?'text-white':'text-white/50 group-hover:text-white/80'}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={item.icon}/>
+                </svg>
+                {!collapsed && (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-['Cormorant_Garamond',serif] text-[0.72rem] tracking-[0.15em] uppercase transition-colors ${activeTab===item.id?'text-white':'text-white/55 group-hover:text-white/85'}`}>
+                        {item.label}
+                      </p>
+                    </div>
+                    {item.badge > 0 && (
+                      <span className="bg-white text-[#C87D87] text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full min-w-[1.2rem] text-center leading-none">
+                        {item.badge}
+                      </span>
+                    )}
+                  </>
                 )}
-                {activeTab === item.id && <>
-                  <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l border-[#C87D87]/60" />
-                  <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r border-[#C87D87]/60" />
-                </>}
-                <span className={`relative z-10 flex-shrink-0 transition-colors duration-300 ${
-                  activeTab === item.id ? 'text-[#C87D87]' : 'text-[#FBEAD6]/30 group-hover:text-[#C87D87]/50'
-                }`}>
-                  {item.icon}
-                </span>
-                <div className="relative z-10 text-left flex-1 min-w-0">
-                  <p className={`font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase leading-tight transition-colors duration-300 ${
-                    activeTab === item.id ? 'text-[#FBEAD6]' : 'text-[#FBEAD6]/50 group-hover:text-[#FBEAD6]/80'
-                  }`}>{item.label}</p>
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#FBEAD6]/20 mt-0.5">{item.sub}</p>
-                </div>
-                {item.badge > 0 && (
-                  <span className={`relative z-10 min-w-[1.3rem] h-5 px-1.5 ${item.id === 'bookings' ? 'bg-red-500 animate-pulse' : 'bg-[#C87D87]'} flex items-center justify-center font-['Cormorant_Garamond',serif] text-[0.55rem] text-white`}>
-                    {item.badge}
-                  </span>
-                )}
+                {collapsed && item.badge > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-white rounded-full"/>}
               </button>
             ))}
           </nav>
 
-          {/* Divider */}
-          <div className="flex items-center gap-2 mx-6 my-3">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[#C87D87]/20" />
-            <span className="text-[#C87D87]/25 text-[0.4rem]">✦</span>
-            <div className="flex-1 h-px bg-gradient-to-l from-transparent to-[#C87D87]/20" />
-          </div>
-
-          {/* LOGOUT */}
-          <div className="px-4 pb-3">
-            <button onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-5 py-3.5 border border-transparent hover:border-[#C87D87]/25 hover:bg-[#C87D87]/10 transition-all duration-300 group">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FBEAD6]/25 group-hover:text-[#C87D87] transition-colors duration-300 group-hover:translate-x-0.5 transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          <div className="border-t border-white/8 py-3 px-2 space-y-0.5 flex-shrink-0">
+            <button onClick={fetchAll} title="Refresh"
+              className={`nav-item w-full flex items-center text-white/40 hover:text-white/70 ${collapsed?'justify-center px-0 py-3':'gap-3 px-3 py-2.5'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
               </svg>
-              <div className="text-left">
-                <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#FBEAD6]/30 group-hover:text-[#FBEAD6]/70 transition-colors">
-                  Sign Out
-                </p>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#FBEAD6]/15 group-hover:text-[#FBEAD6]/30 transition-colors">
-                  End your session
-                </p>
-              </div>
+              {!collapsed && <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.15em] uppercase">Refresh</span>}
+            </button>
+            <button onClick={async () => { await logout(); router.push('/'); }} title="Sign Out"
+              className={`nav-item w-full flex items-center text-white/40 hover:text-white hover:bg-white/10 ${collapsed?'justify-center px-0 py-3':'gap-3 px-3 py-2.5'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+              {!collapsed && <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.15em] uppercase">Sign Out</span>}
             </button>
           </div>
-
-          <div className="px-10 pb-8 text-center">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-px bg-[#C87D87]/20" />
-              <span className="text-[#C87D87]/25 text-[0.4rem]">✦</span>
-              <div className="flex-1 h-px bg-[#C87D87]/20" />
-            </div>
-          </div>
-
-          <div className="absolute bottom-4 left-4 w-12 h-12 pointer-events-none">
-            <div className="absolute bottom-0 left-0 w-full h-px bg-[#C87D87]/40" />
-            <div className="absolute bottom-0 left-0 w-px h-full bg-[#C87D87]/40" />
-            <div className="absolute bottom-2 left-2 w-3 h-3 border-b border-l border-[#C87D87]/50" />
-          </div>
-          <div className="absolute bottom-4 right-4 w-12 h-12 pointer-events-none">
-            <div className="absolute bottom-0 right-0 w-full h-px bg-[#C87D87]/40" />
-            <div className="absolute bottom-0 right-0 w-px h-full bg-[#C87D87]/40" />
-            <div className="absolute bottom-2 right-2 w-3 h-3 border-b border-r border-[#C87D87]/50" />
-          </div>
-          <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/60 to-transparent" />
         </aside>
 
-        {/* MAIN */}
-        <main className="lace-bg ml-72 flex-1 min-h-screen flex flex-col">
+        {/* ═══════════ MAIN ═══════════ */}
+        <main className={`${mainML} flex-1 min-h-screen dash-bg transition-all duration-300`}>
 
-          {/* TOP BAR */}
-          <header className="sticky top-0 z-30 bg-[#FBEAD6]/96 backdrop-blur-sm border-b border-[#C87D87]/15 px-12 py-5 flex items-center justify-between"
-            style={{ boxShadow: '0 2px 30px rgba(200,125,135,0.07)' }}>
-            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/50 to-transparent" />
-            <div className="absolute top-2 left-2 w-8 h-8 pointer-events-none">
-              <div className="absolute top-0 left-0 w-full h-px bg-[#C87D87]/30" />
-              <div className="absolute top-0 left-0 w-px h-full bg-[#C87D87]/30" />
-            </div>
-            <div className="absolute top-2 right-2 w-8 h-8 pointer-events-none">
-              <div className="absolute top-0 right-0 w-full h-px bg-[#C87D87]/30" />
-              <div className="absolute top-0 right-0 w-px h-full bg-[#C87D87]/30" />
-            </div>
-
+          {/* ── TOPBAR ── */}
+          <header className="admin-topbar sticky top-0 z-30 px-6 py-2 flex items-center justify-between relative">
+            <div className="absolute top-0 left-0 pointer-events-none"><LaceCorner/></div>
+            <div className="absolute top-0 right-0 pointer-events-none"><LaceCorner flip/></div>
             <div>
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.25em] text-[#C87D87]/40">Inora</span>
-                <span className="text-[#C87D87]/30">›</span>
-                <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.25em] text-[#C87D87]/60 capitalize">
-                  {navItems.find(n => n.id === activeTab)?.label}
-                </span>
-              </div>
-              <h2 className="font-['Playfair_Display',serif] italic text-2xl text-[#6B7556]">
-                {navItems.find(n => n.id === activeTab)?.label}
-                <span className="text-[#C87D87]">.</span>
+              <p className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] tracking-[0.32em] uppercase text-white/55">
+                Inora › {navItems.find(n=>n.id===activeTab)?.label}
+              </p>
+              <h2 className="font-['Playfair_Display',serif] italic text-xl text-white leading-tight">
+                {navItems.find(n=>n.id===activeTab)?.label}
               </h2>
             </div>
-
-            <div className="flex items-center gap-6">
-              <div className="hidden lg:flex items-center gap-4">
-                <div className="relative px-5 py-2 border border-[#6B7556]/20 bg-[#6B7556]/5">
-                  <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l border-[#6B7556]/30" />
-                  <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r border-[#6B7556]/30" />
-                  <p className="font-['Playfair_Display',serif] italic text-lg text-[#6B7556] leading-none text-center">{approvedReviews.length}</p>
-                  <p className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-[0.2em] uppercase text-[#6B7556]/50 text-center">Live</p>
-                </div>
-                <div className="relative px-5 py-2 border border-[#C87D87]/20 bg-[#C87D87]/5">
-                  <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l border-[#C87D87]/40" />
-                  <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r border-[#C87D87]/40" />
-                  <p className="font-['Playfair_Display',serif] italic text-lg text-[#C87D87] leading-none text-center">{pendingReviews.length}</p>
-                  <p className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-[0.2em] uppercase text-[#C87D87]/50 text-center">Pending</p>
-                </div>
-              </div>
-              <div className="w-px h-8 bg-gradient-to-b from-transparent via-[#C87D87]/20 to-transparent" />
-              <button onClick={() => { fetchReviews(); fetchUsers(); fetchBookings(); }}
-                className="relative font-['Cormorant_Garamond',serif] text-[0.65rem] tracking-[0.22em] uppercase text-[#6B7556] border border-[#6B7556]/30 px-5 py-2 hover:bg-[#6B7556] hover:text-white transition-all duration-500 group overflow-hidden">
-                <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l border-[#6B7556]/40 group-hover:border-white/30 transition-colors" />
-                <div className="absolute bottom-0.5 right-0.5 w-2 h-2 border-b border-r border-[#6B7556]/40 group-hover:border-white/30 transition-colors" />
-                <span className="inline-block group-hover:rotate-180 transition-transform duration-500 mr-1">✦</span>
-                Refresh
-              </button>
+            <div className="flex items-center gap-3">
+              {bookings.filter(b=>b.status==='pending').length > 0 && (
+                <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-widest uppercase px-3 py-1 rounded-full bg-white/15 text-white border border-white/25">
+                  {bookings.filter(b=>b.status==='pending').length} pending
+                </span>
+              )}
+              {pendingReviews.length > 0 && (
+                <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-widest uppercase px-3 py-1 rounded-full bg-white/15 text-white border border-white/25">
+                  {pendingReviews.length} reviews
+                </span>
+              )}
+              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-white/60 hidden md:block">
+                {new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}
+              </p>
             </div>
           </header>
 
-          {/* CONTENT */}
-          <div className="flex-1 p-12">
+          <div className="p-7" style={{ animation:'fadeUp .4s ease both' }}>
 
-            {/* ══ REVIEWS TAB ══ */}
-            {activeTab === 'reviews' && (
-              <div className="space-y-14 animate-[fadeUp_0.5s_ease_forwards]">
+  {/* ════════════ OVERVIEW ════════════ */}
+  {activeTab === 'overview' && (
+    <div className="space-y-6" style={{ animation:'fadeIn .3s ease both' }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label:'Bookings',        n: bookings.length,       sub:`${bookings.filter(b=>b.status==='pending').length} pending`,   c:'#C87D87', icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+          { label:'Members',         n: users.length,          sub:`${users.filter(u=>u.role==='admin').length} admins`,            c:'#6B7556', icon:'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+          { label:'MAD Collected',   n:`${payments.reduce((s,p)=>s+(p.totalPrice||p.advancePaid||0),0).toLocaleString()}`, sub:`${payments.length} payments`, c:'#3a3027', icon:'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z' },
+          { label:'Pending Reviews', n: pendingReviews.length, sub:`${approvedReviews.length} published`,                         c:'#C87D87', icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
+        ].map((s, i) => (
+          <div key={s.label} className="stat-card" style={{ animation:`fadeUp .3s ease ${i*60}ms both` }}>
+            <div className="w-10 h-10 rounded-xl mb-3 flex items-center justify-center" style={{ background:`${s.c}18` }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke={s.c} strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={s.icon}/>
+              </svg>
+            </div>
+            <p className="font-['Playfair_Display',serif] italic text-3xl leading-none mb-1" style={{ color:s.c }}>{s.n}</p>
+            <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.2em] uppercase text-[#7a6a5a]/55 mb-0.5">{s.label}</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/35">{s.sub}</p>
+          </div>
+        ))}
+      </div>
 
-                <div className="grid grid-cols-3 gap-5">
-                  {[
-                    { label: 'Total', value: approvedReviews.length + pendingReviews.length, color: '#3a3027', border: 'border-[#C87D87]/15', bg: 'bg-white/50' },
-                    { label: 'Live on Site', value: approvedReviews.length, color: '#6B7556', border: 'border-[#6B7556]/20', bg: 'bg-[#6B7556]/5' },
-                    { label: 'Pending', value: pendingReviews.length, color: '#C87D87', border: 'border-[#C87D87]/20', bg: 'bg-[#C87D87]/5' },
-                  ].map((stat, i) => (
-                    <div key={stat.label} style={{ animationDelay: `${i * 80}ms` }}
-                      className={`relative ${stat.bg} border ${stat.border} p-6 card-hover animate-[fadeUp_0.5s_ease_forwards]`}>
-                      <div className="absolute top-1.5 left-1.5 w-4 h-4 pointer-events-none">
-                        <div className="absolute top-0 left-0 w-full h-px" style={{ backgroundColor: stat.color, opacity: 0.3 }} />
-                        <div className="absolute top-0 left-0 w-px h-full" style={{ backgroundColor: stat.color, opacity: 0.3 }} />
-                      </div>
-                      <div className="absolute bottom-1.5 right-1.5 w-4 h-4 pointer-events-none">
-                        <div className="absolute bottom-0 right-0 w-full h-px" style={{ backgroundColor: stat.color, opacity: 0.3 }} />
-                        <div className="absolute bottom-0 right-0 w-px h-full" style={{ backgroundColor: stat.color, opacity: 0.3 }} />
-                      </div>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.22em] uppercase text-[#7a6a5a] mb-2">{stat.label}</p>
-                      <p className="font-['Playfair_Display',serif] italic text-5xl leading-none" style={{ color: stat.color }}>{stat.value}</p>
-                      <div className="mt-4 h-px" style={{ background: `linear-gradient(to right, ${stat.color}40, transparent)` }} />
-                    </div>
-                  ))}
+      {/* Recent Bookings */}
+      <Panel>
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
+          <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">Recent Bookings</h3>
+          <button onClick={() => setActiveTab('bookings')} className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/60 hover:text-[#C87D87] transition-colors">View all →</button>
+        </div>
+        {bookings.slice(0, 6).map(b => {
+          const s = getStatus(b.status);
+          return (
+            <div key={b.id} onClick={() => setSelectedBooking(b)}
+              className="trow flex items-center gap-4 px-6 py-3.5 border-b border-[#C87D87]/6 last:border-0">
+              <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
+                {b.user?.avatarUrl
+                  ? <img src={resolveAvatar(b.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                  : (b.fullName || b.user?.fullName || '?').charAt(0).toUpperCase()
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{b.fullName || b.user?.fullName}</p>
+                  {b.user?.isDeleted && <DeletedBadge/>}
                 </div>
+                <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">
+                  {b.activity}{b.activityTheme ? ` · ${b.activityTheme}` : ''}{b.timeSlot ? ` · ${b.timeSlot}` : ''}
+                </p>
+              </div>
+              <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase flex-shrink-0 ${s.bg} ${s.border} ${s.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>{s.label}
+              </span>
+              {b.totalPrice > 0 && (
+                <p className="font-['Playfair_Display',serif] italic text-sm text-[#6B7556] flex-shrink-0 hidden lg:block">{b.totalPrice} MAD</p>
+              )}
+            </div>
+          );
+        })}
+      </Panel>
 
-                {pendingReviews.length > 0 && (
-                  <section>
-                    <div className="flex items-center gap-5 mb-8">
-                      <div className="relative">
-                        <div className="w-px h-12 bg-gradient-to-b from-transparent via-[#C87D87] to-transparent" />
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[#C87D87] rotate-45" />
+      {/* Pending Reviews preview */}
+      {pendingReviews.length > 0 && (
+        <Panel>
+          <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
+            <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">
+              Pending Reviews <span className="text-[#C87D87] not-italic text-sm font-['Cormorant_Garamond',serif]">{pendingReviews.length}</span>
+            </h3>
+            <button onClick={() => setActiveTab('reviews')} className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/60 hover:text-[#C87D87] transition-colors">Manage →</button>
+          </div>
+          {pendingReviews.slice(0, 3).map(r => (
+            <div key={r.id} className="trow flex items-center gap-4 px-6 py-3.5 border-b border-[#C87D87]/6 last:border-0">
+              <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center font-bold text-xs text-[#C87D87] flex-shrink-0 overflow-hidden">
+                {r.user.avatarUrl
+                  ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                  : r.user.fullName.charAt(0).toUpperCase()
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold">{r.user.fullName}</p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">{r.comment}</p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button onClick={e => { e.stopPropagation(); approveReview(r.id); }} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 border border-[#6B7556]/40 text-[#6B7556] hover:bg-[#6B7556] hover:text-white transition-all rounded-lg">✓</button>
+                <button onClick={e => { e.stopPropagation(); deleteReview(r.id); }}  className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 border border-[#C87D87]/40 text-[#C87D87] hover:bg-[#C87D87] hover:text-white transition-all rounded-lg">✕</button>
+              </div>
+            </div>
+          ))}
+        </Panel>
+      )}
+    </div>
+  )}
+
+  {/* ════════════ BOOKINGS ════════════ */}
+  {activeTab === 'bookings' && (
+    <div style={{ animation:'fadeIn .3s ease both' }}>
+      <Panel>
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#C87D87]/10">
+          <h3 className="font-['Playfair_Display',serif] italic text-base text-[#3a3027]">
+            All Bookings{' '}
+            <span className="text-[#C87D87] not-italic text-sm font-['Cormorant_Garamond',serif]">
+              {allBookings.length}
+            </span>
+          </h3>
+          <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/40">
+            Click a row to view details
+          </p>
+        </div>
+
+        {/* Header */}
+        <div className="grid grid-cols-[2fr_1.6fr_0.8fr_1fr_1fr_0.8fr_0.6fr] gap-4 px-6 py-3 border-b border-[#C87D87]/8"
+          style={{ background:'rgba(200,125,135,0.04)' }}>
+          {['Client','Activity · Setting','Guests','Date · Time','Status','Payment','Export'].map(h => (
+            <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
+          ))}
+        </div>
+
+        {allBookingsLoading ? (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/>
+            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/50 tracking-widest">Loading…</p>
+          </div>
+        ) : allBookings.length === 0 ? (
+          <p className="font-['Cormorant_Garamond',serif] italic text-center py-16 text-[#7a6a5a]/35">No bookings found</p>
+        ) : allBookings.map((b, i) => {
+          const s       = getStatus(b.status);
+          const setting = settingFromBooking(b);
+          const isPaid    = b.paymentStatus === 'PAID';
+          const isPending = b.paymentStatus === 'PENDING';
+          const payBadge  = isPaid
+            ? { label:'Paid',    bg:'bg-emerald-50',  border:'border-emerald-200',  text:'text-emerald-600', dot:'bg-emerald-400'  }
+            : isPending
+            ? { label:'Pending', bg:'bg-amber-50',    border:'border-amber-200',    text:'text-amber-600',   dot:'bg-amber-400'   }
+            : { label:'Unpaid',  bg:'bg-[#C87D87]/8', border:'border-[#C87D87]/20', text:'text-[#C87D87]/70',dot:'bg-[#C87D87]/40' };
+
+          return (
+            <div key={b.id} onClick={() => setSelectedBooking(b)}
+              className="trow grid grid-cols-[2fr_1.6fr_0.8fr_1fr_1fr_0.8fr_0.6fr] gap-4 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0"
+              style={{ animation:`fadeUp .22s ease ${i*25}ms both` }}>
+
+              {/* Client */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
+                  {b.user?.avatarUrl
+                    ? <img src={resolveAvatar(b.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                    : (b.fullName || b.user?.fullName || '?').charAt(0).toUpperCase()
+                  }
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">
+                      {b.fullName || b.user?.fullName}
+                    </p>
+                    {b.user?.isDeleted && <DeletedBadge/>}
+                  </div>
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45 truncate">{b.email}</p>
+                </div>
+              </div>
+
+              {/* Activity */}
+              <div className="min-w-0">
+                <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] truncate">{b.activity}</p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#C87D87]/55 truncate mt-0.5">
+                  {[setting ? `${setting.icon} ${setting.label}` : b.setting, b.activityTheme].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+
+              {/* Guests */}
+              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] text-center">{b.participants}</p>
+
+              {/* Date */}
+              <div>
+                <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#5a4a3a]">
+                  {b.date ? new Date(b.date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
+                </p>
+                {b.timeSlot && (
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#C87D87]/60 mt-0.5">{b.timeSlot}</p>
+                )}
+              </div>
+
+              {/* Booking status */}
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${s.bg} ${s.border} ${s.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>{s.label}
+              </span>
+
+              {/* Payment badge */}
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${payBadge.bg} ${payBadge.border} ${payBadge.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${payBadge.dot}`}/>{payBadge.label}
+              </span>
+
+              {/* PDF Export */}
+              <button
+                onClick={e => { e.stopPropagation(); exportBookingPDF(b); }}
+                title="Export as PDF"
+                className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#6B7556]/25 bg-[#6B7556]/8 text-[#6B7556]/60 hover:bg-[#6B7556] hover:text-white hover:border-[#6B7556] transition-all duration-300 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                </svg>
+              </button>
+            </div>
+          );
+        })}
+      </Panel>
+    </div>
+  )}
+
+  {/* ════════════ MEMBERS ════════════ */}
+  {activeTab === 'members' && (
+    <div style={{ animation:'fadeIn .3s ease both' }}>
+      <div className="relative mb-5 max-w-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]/40 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+        </svg>
+        <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search members…" className="search-input pl-9"/>
+      </div>
+      <Panel>
+        <div className="grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-3 border-b border-[#C87D87]/8" style={{ background:'rgba(200,125,135,0.04)' }}>
+          {['Member','Email','Role','Book.','Pay.','Rev.'].map(h => (
+            <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
+          ))}
+        </div>
+        {usersLoading ? (
+          <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/></div>
+        ) : filteredUsers.map((u, i) => {
+          const ub = userBookings(u), up = userPayments(u), ur = userReviews(u);
+          return (
+            <div key={u.id} onClick={() => setSelectedUser(u)}
+              className={`trow grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0 ${u.suspended ? 'opacity-40' : ''}`}
+              style={{ animation:`fadeUp .22s ease ${i*22}ms both` }}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${u.role==='admin' ? 'bg-[#6B7556]' : 'bg-[#C87D87]'}`}>
+                  {u.avatarUrl
+                    ? <img src={resolveAvatar(u.avatarUrl)} alt={u.fullName} className="w-full h-full object-cover rounded-full"/>
+                    : u.fullName?.charAt(0).toUpperCase()
+                  }
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{u.fullName}</p>
+                    {u.isDeleted && <DeletedBadge/>}
+                  </div>
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45">
+                    {new Date(u.createdAt).toLocaleDateString('en-GB', { month:'short', year:'numeric' })}
+                  </p>
+                </div>
+              </div>
+              <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">{u.email}</p>
+              <span className={`inline-flex px-2 py-0.5 rounded-full font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${u.role==='admin' ? 'bg-[#6B7556]/12 text-[#4a5240] border border-[#6B7556]/25' : 'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/22'}`}>
+                {u.role}
+              </span>
+              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] text-center font-semibold">{ub.length}</p>
+              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#6B7556] text-center font-semibold">{up.length}</p>
+              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#C87D87] text-center font-semibold">{ur.length}</p>
+            </div>
+          );
+        })}
+        {filteredUsers.length === 0 && <p className="font-['Cormorant_Garamond',serif] italic text-center py-12 text-[#7a6a5a]/35">No members found</p>}
+      </Panel>
+    </div>
+  )}
+
+  {/* ════════════ PAYMENTS ════════════ */}
+  {activeTab === 'payments' && (
+    <div className="space-y-5" style={{ animation:'fadeIn .3s ease both' }}>
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label:'Total Collected', n:`${payments.reduce((s,p)=>s+(p.totalPrice||p.advancePaid||0),0).toLocaleString()} MAD`, c:'#6B7556' },
+          { label:'Payments',        n: payments.length,                                                                       c:'#C87D87' },
+          { label:'Unique Clients',  n: new Set(payments.map(p=>p.email)).size,                                                c:'#3a3027' },
+        ].map(s => (
+          <div key={s.label} className="stat-card">
+            <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45 mb-1">{s.label}</p>
+            <p className="font-['Playfair_Display',serif] italic text-3xl" style={{ color:s.c }}>{s.n}</p>
+          </div>
+        ))}
+      </div>
+      <Panel>
+        <div className="grid grid-cols-[2fr_1.4fr_0.5fr_0.9fr_0.8fr_0.7fr_0.8fr] gap-3 px-6 py-3 border-b border-[#C87D87]/8" style={{ background:'rgba(200,125,135,0.04)' }}>
+          {['Client','Activity','Guests','Date','Time Slot','Setting','Total'].map(h => (
+            <p key={h} className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase text-[#7a6a5a]/45">{h}</p>
+          ))}
+        </div>
+        {paymentsLoading ? (
+          <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin"/></div>
+        ) : payments.length === 0 ? (
+          <p className="font-['Cormorant_Garamond',serif] italic text-center py-16 text-[#7a6a5a]/35">No payments received yet</p>
+        ) : payments.map((p, i) => (
+          <div key={p.id}
+            className="trow grid grid-cols-[2fr_1.4fr_0.5fr_0.9fr_0.8fr_0.7fr_0.8fr] gap-3 px-6 py-4 items-center border-b border-[#C87D87]/6 last:border-0"
+            style={{ animation:`fadeUp .22s ease ${i*28}ms both` }}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
+                {p.user?.avatarUrl
+                  ? <img src={resolveAvatar(p.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                  : (p.user?.fullName || p.fullName || '?').charAt(0).toUpperCase()
+                }
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{p.user?.fullName || p.fullName}</p>
+                  {p.user?.isDeleted && <DeletedBadge/>}
+                </div>
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45 truncate">{p.email}</p>
+              </div>
+            </div>
+            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] truncate">{p.activity}</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] text-center">{p.participants}</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55">
+              {p.date ? new Date(p.date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
+            </p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/65 truncate">{p.timeSlot}</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 capitalize truncate">
+              {SETTINGS_MAP[p.setting]?.label || p.setting}
+            </p>
+            <p className="font-['Playfair_Display',serif] italic text-base text-[#6B7556]">{(p.totalPrice || p.advancePaid || 0)} MAD</p>
+          </div>
+        ))}
+      </Panel>
+    </div>
+  )}
+
+  {/* ════════════ REVIEWS ════════════ */}
+  {activeTab === 'reviews' && (
+    <div className="space-y-10" style={{ animation:'fadeIn .3s ease both' }}>
+
+      {/* ── PENDING ── */}
+      <div>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
+          <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-amber-200/60 bg-amber-50/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"/>
+            <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-amber-600">
+              Pending · {pendingReviews.length}
+            </p>
+          </div>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
+        </div>
+
+        {pendingReviews.length === 0 ? (
+          <div className="relative rounded-2xl border border-dashed border-[#C87D87]/20 bg-[#fef6ec] py-10 flex flex-col items-center gap-2 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/25 to-transparent"/>
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/15 to-transparent"/>
+            <div className="absolute top-2 left-2"><LaceCorner/></div>
+            <div className="absolute top-2 right-2"><LaceCorner flip/></div>
+            <div className="w-12 h-12 rounded-full border border-[#C87D87]/18 bg-[#C87D87]/6 flex items-center justify-center">
+              <span className="text-[#C87D87]/35 text-lg">✦</span>
+            </div>
+            <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/35 text-base">No pending reviews</p>
+            <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-[#7a6a5a]/30 tracking-widest">
+              New submitted reviews will appear here
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {pendingReviews.map((r, i) => (
+              <div key={r.id}
+                className="relative bg-[#fef6ec] rounded-2xl border border-amber-200/50 overflow-hidden shadow-[0_2px_12px_rgba(200,125,135,0.06)]"
+                style={{ animation:`fadeUp .25s ease ${i*60}ms both` }}>
+                <div className="h-0.5 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent"/>
+                <div className="absolute top-0 left-0"><LaceCorner/></div>
+                <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+                <div className="px-5 pt-6 pb-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-full border border-amber-200/60 overflow-hidden flex-shrink-0 bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-sm">
+                        {r.user.avatarUrl
+                          ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                          : r.user.fullName.charAt(0).toUpperCase()
+                        }
                       </div>
                       <div>
-                        <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/50 text-[0.6rem] tracking-[0.3em] uppercase">Awaiting your decision</p>
-                        <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027]">
-                          Pending Approval
-                          <span className="ml-2 text-[#C87D87] font-['Cormorant_Garamond',serif] text-base not-italic">({pendingReviews.length})</span>
-                        </h3>
-                      </div>
-                      <div className="flex-1 flex items-center gap-3">
-                        <div className="flex-1 h-px bg-gradient-to-r from-[#C87D87]/20 to-transparent" />
-                        <span className="text-[#C87D87]/20 text-[0.4rem]">✦</span>
-                      </div>
-                    </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {pendingReviews.map((review, i) => (
-                        <div key={review.id} style={{ animationDelay: `${i * 70}ms` }}
-                          className="relative bg-white/65 border border-[#C87D87]/20 p-7 card-hover animate-[fadeUp_0.5s_ease_forwards] group overflow-hidden">
-                          <div className="absolute top-2 left-2 w-5 h-5 pointer-events-none">
-                            <div className="absolute top-0 left-0 w-full h-px bg-[#C87D87]/40" />
-                            <div className="absolute top-0 left-0 w-px h-full bg-[#C87D87]/40" />
-                            <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-[#C87D87]/50" />
-                          </div>
-                          <div className="absolute top-2 right-2 w-5 h-5 pointer-events-none">
-                            <div className="absolute top-0 right-0 w-full h-px bg-[#C87D87]/40" />
-                            <div className="absolute top-0 right-0 w-px h-full bg-[#C87D87]/40" />
-                            <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-[#C87D87]/50" />
-                          </div>
-                          <div className="absolute bottom-2 left-2 w-5 h-5 pointer-events-none">
-                            <div className="absolute bottom-0 left-0 w-full h-px bg-[#C87D87]/30" />
-                            <div className="absolute bottom-0 left-0 w-px h-full bg-[#C87D87]/30" />
-                          </div>
-                          <div className="absolute bottom-2 right-2 w-5 h-5 pointer-events-none">
-                            <div className="absolute bottom-0 right-0 w-full h-px bg-[#C87D87]/30" />
-                            <div className="absolute bottom-0 right-0 w-px h-full bg-[#C87D87]/30" />
-                          </div>
-                          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-[#C87D87]/40 via-[#C87D87]/20 to-transparent" />
-                          <div className="font-['Playfair_Display',serif] text-[4.5rem] text-[#C87D87]/8 leading-none -mt-4 -mb-3 select-none">"</div>
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C87D87] to-[#FBEAD6] flex items-center justify-center text-[#6B7556] font-['Playfair_Display',serif] font-bold text-sm flex-shrink-0">
-                              {review.user.fullName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027]">{review.user.fullName}</p>
-                              <span className="text-[#C87D87] text-xs tracking-widest">
-                                {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 mb-4">
-                            <div className="w-5 h-px bg-[#C87D87]/30" />
-                            <div className="w-1 h-1 bg-[#C87D87]/20 rotate-45" />
-                          </div>
-                          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a]/80 leading-relaxed mb-6 line-clamp-3">
-                            "{review.comment}"
-                          </p>
-                          <div className="flex gap-2">
-                            <button onClick={() => approveReview(review.id)}
-                              className="relative flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.2em] uppercase text-[#6B7556] border border-[#6B7556]/40 py-2.5 hover:bg-[#6B7556] hover:text-white transition-all duration-300 overflow-hidden group/btn">
-                              <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 border-t border-l border-[#6B7556]/40 group-hover/btn:border-white/30" />
-                              ✓ Approve
-                            </button>
-                            <button onClick={() => deleteReview(review.id)}
-                              className="relative flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.2em] uppercase text-[#C87D87] border border-[#C87D87]/40 py-2.5 hover:bg-[#C87D87] hover:text-white transition-all duration-300 overflow-hidden group/btn">
-                              <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 border-t border-r border-[#C87D87]/40 group-hover/btn:border-white/30" />
-                              ✕ Delete
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                <div className="flex items-center justify-center gap-4 py-2">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[#C87D87]/20" />
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 border border-[#C87D87]/30 rotate-45" />
-                    <span className="text-[#C87D87]/30 text-[0.5rem] tracking-[0.4em]">✦ ✦ ✦</span>
-                    <div className="w-2 h-2 border border-[#C87D87]/30 rotate-45" />
-                  </div>
-                  <div className="flex-1 h-px bg-gradient-to-l from-transparent to-[#C87D87]/20" />
-                </div>
-
-                <section>
-                  <div className="flex items-center gap-5 mb-8">
-                    <div className="relative">
-                      <div className="w-px h-12 bg-gradient-to-b from-transparent via-[#6B7556] to-transparent" />
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[#6B7556] rotate-45" />
-                    </div>
-                    <div>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[#6B7556]/50 text-[0.6rem] tracking-[0.3em] uppercase">Currently visible</p>
-                      <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027]">
-                        Live on Homepage
-                        <span className="ml-2 text-[#6B7556] font-['Cormorant_Garamond',serif] text-base not-italic">({approvedReviews.length})</span>
-                      </h3>
-                    </div>
-                    <div className="flex-1 flex items-center gap-3">
-                      <div className="flex-1 h-px bg-gradient-to-r from-[#6B7556]/20 to-transparent" />
-                      <span className="text-[#6B7556]/20 text-[0.4rem]">✦</span>
-                    </div>
-                  </div>
-
-                  {approvedReviews.length === 0 ? (
-                    <div className="relative border border-dashed border-[#C87D87]/20 p-16 text-center bg-white/30">
-                      <div className="absolute top-2 left-2 w-4 h-4 pointer-events-none border-t border-l border-[#C87D87]/20" />
-                      <div className="absolute bottom-2 right-2 w-4 h-4 pointer-events-none border-b border-r border-[#C87D87]/20" />
-                      <p className="font-['Cormorant_Garamond',serif] italic text-xl text-[#C87D87]/30">— No approved reviews yet —</p>
-                    </div>
-                  ) : (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {approvedReviews.map((review, i) => (
-                        <div key={review.id} style={{ animationDelay: `${i * 60}ms` }}
-                          className="relative bg-white/75 border border-[#6B7556]/15 p-7 card-hover animate-[fadeUp_0.5s_ease_forwards] group overflow-hidden">
-                          <div className="absolute top-2 left-2 w-5 h-5 pointer-events-none">
-                            <div className="absolute top-0 left-0 w-full h-px bg-[#6B7556]/30" />
-                            <div className="absolute top-0 left-0 w-px h-full bg-[#6B7556]/30" />
-                            <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-[#6B7556]/40" />
-                          </div>
-                          <div className="absolute top-2 right-2 w-5 h-5 pointer-events-none">
-                            <div className="absolute top-0 right-0 w-full h-px bg-[#6B7556]/30" />
-                            <div className="absolute top-0 right-0 w-px h-full bg-[#6B7556]/30" />
-                            <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-[#6B7556]/40" />
-                          </div>
-                          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-[#6B7556]/30 via-[#6B7556]/15 to-transparent" />
-                          <div className="font-['Playfair_Display',serif] text-[4.5rem] text-[#6B7556]/8 leading-none -mt-4 -mb-3 select-none">"</div>
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B7556] to-[#C87D87] flex items-center justify-center text-white font-['Playfair_Display',serif] font-bold text-sm flex-shrink-0">
-                              {review.user.fullName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027]">{review.user.fullName}</p>
-                              <span className="text-[#C87D87] text-xs tracking-widest">
-                                {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 mb-4">
-                            <div className="w-5 h-px bg-[#6B7556]/30" />
-                            <div className="w-1 h-1 bg-[#6B7556]/20 rotate-45" />
-                          </div>
-                          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a]/80 leading-relaxed mb-6 line-clamp-3">
-                            "{review.comment}"
-                          </p>
-                          <button onClick={() => deleteReview(review.id)}
-                            className="w-full font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.2em] uppercase text-[#C87D87]/50 border border-[#C87D87]/15 py-2.5 hover:bg-[#C87D87] hover:text-white hover:border-[#C87D87] transition-all duration-300 opacity-0 group-hover:opacity-100">
-                            Remove from Homepage
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </div>
-            )}
-
-            {/* ══ BOOKINGS TAB ══ */}
-            {activeTab === 'bookings' && (
-              <div className="space-y-8 animate-[fadeUp_0.5s_ease_forwards]">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-5">
-                    <div className="relative">
-                      <div className="w-px h-12 bg-gradient-to-b from-transparent via-[#C87D87] to-transparent" />
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[#C87D87] rotate-45" />
-                    </div>
-                    <div>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/50 text-[0.6rem] tracking-[0.3em] uppercase">
-                        Demandes de réservation
-                      </p>
-                      <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027]">
-                        Toutes les demandes
-                        <span className="ml-2 text-[#C87D87] font-['Cormorant_Garamond',serif] text-base not-italic">({bookings.length})</span>
-                      </h3>
-                    </div>
-                  </div>
-
-                  {/* أزرار التحكم في الإشعارات */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setShowUnreadOnly(!showUnreadOnly)}
-                      className={`px-4 py-2 rounded-lg text-sm font-['Cormorant_Garamond',serif] tracking-wider transition-all ${
-                        showUnreadOnly 
-                          ? 'bg-[#C87D87] text-white' 
-                          : 'bg-white/50 border border-[#C87D87]/30 text-[#3a3027]'
-                      }`}
-                    >
-                      {showUnreadOnly ? 'Toutes les réservations' : `Nouvelles (${unreadBookings.length})`}
-                    </button>
-
-                    {unreadBookings.length > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="px-4 py-2 bg-green-600/20 text-green-700 border border-green-600/30 rounded-lg text-sm font-['Cormorant_Garamond',serif] hover:bg-green-600/30 transition-all"
-                      >
-                        ✓ Tout marquer comme lu
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {bookingsLoading ? (
-                  <div className="flex justify-center py-20">
-                    <div className="w-10 h-10 border-2 border-[#C87D87]/20 border-t-[#C87D87] rounded-full animate-spin" />
-                  </div>
-                ) : displayedBookings.length === 0 ? (
-                  <div className="relative border border-dashed border-[#C87D87]/20 p-16 text-center bg-white/30">
-                    <div className="absolute top-2 left-2 w-4 h-4 pointer-events-none border-t border-l border-[#C87D87]/20" />
-                    <div className="absolute bottom-2 right-2 w-4 h-4 pointer-events-none border-b border-r border-[#C87D87]/20" />
-                    <p className="font-['Cormorant_Garamond',serif] italic text-xl text-[#C87D87]/30">
-                      {showUnreadOnly ? '— Aucune nouvelle réservation —' : '— Aucune réservation pour le moment —'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-6">
-                    {Object.entries(groupBookingsByUser()).map(([email, data]) => {
-                      const userBookings = showUnreadOnly 
-                        ? data.bookings.filter(b => unreadBookings.some(ub => ub.id === b.id))
-                        : data.bookings;
-                      
-                      if (userBookings.length === 0) return null;
-                      
-                      // Trier les réservations par date (la plus récente d'abord)
-                      const sortedBookings = [...userBookings].sort((a, b) => 
-                        new Date(b.createdAt || b.submittedAt || 0) - new Date(a.createdAt || a.submittedAt || 0)
-                      );
-                      
-                      return (
-                        <div key={email} className="relative bg-white/75 border border-[#C87D87]/15 p-7 card-hover animate-[fadeUp_0.5s_ease_forwards] group overflow-hidden">
-                          
-                          {/* Lace corners */}
-                          <div className="absolute top-2 left-2 w-5 h-5 pointer-events-none">
-                            <div className="absolute top-0 left-0 w-full h-px bg-[#C87D87]/30" />
-                            <div className="absolute top-0 left-0 w-px h-full bg-[#C87D87]/30" />
-                            <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-[#C87D87]/40" />
-                          </div>
-                          <div className="absolute top-2 right-2 w-5 h-5 pointer-events-none">
-                            <div className="absolute top-0 right-0 w-full h-px bg-[#C87D87]/30" />
-                            <div className="absolute top-0 right-0 w-px h-full bg-[#C87D87]/30" />
-                            <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 border-t border-r border-[#C87D87]/40" />
-                          </div>
-
-                          {/* En-tête avec informations utilisateur et compteur */}
-                          <div className="mb-6 pb-4 border-b border-[#C87D87]/10">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#C87D87] to-[#6B7556] flex items-center justify-center text-white font-['Playfair_Display',serif] font-bold text-lg">
-                                  {data.user?.fullName?.charAt(0).toUpperCase() || email.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                  <p className="font-['Playfair_Display',serif] italic text-xl text-[#6B7556]">
-                                    {data.user?.fullName || 'Utilisateur non inscrit'}
-                                  </p>
-                                  <p className="font-['Cormorant_Garamond',serif] text-sm text-[#7a6a5a]/70">{email}</p>
-                                </div>
-                              </div>
-                              
-                              {/* Badge du nombre total de réservations */}
-                              <div className="text-center">
-                                <div className="text-3xl font-['Playfair_Display',serif] italic text-[#C87D87]">
-                                  {data.count}
-                                </div>
-                                <p className="font-['Cormorant_Garamond',serif] text-xs uppercase tracking-wider text-[#7a6a5a]/50">
-                                  Réservation{data.count > 1 ? 's' : ''}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            {/* Statut utilisateur */}
-                            {data.user && (
-                              <div className="mt-3 flex gap-2">
-                                <span className={`px-3 py-1 rounded-full text-xs font-['Cormorant_Garamond',serif] ${
-                                  data.user.suspended 
-                                    ? 'bg-red-100 text-red-600 border border-red-300'
-                                    : 'bg-green-100 text-green-600 border border-green-300'
-                                }`}>
-                                  {data.user.suspended ? 'Suspendu' : 'Actif'}
-                                </span>
-                                <span className={`px-3 py-1 rounded-full text-xs font-['Cormorant_Garamond',serif] ${
-                                  data.user.role === 'admin'
-                                    ? 'bg-[#6B7556]/20 text-[#6B7556] border border-[#6B7556]/30'
-                                    : 'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/25'
-                                }`}>
-                                  {data.user.role === 'admin' ? 'Admin' : 'Membre'}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Liste de toutes les réservations de l'utilisateur */}
-                          <div className="space-y-4">
-                            {sortedBookings.map((booking, idx) => {
-                              const isUnread = unreadBookings.some(b => b.id === booking.id);
-                              
-                              return (
-                                <div key={booking.id || `${email}-${idx}`}
-                                  className={`relative p-4 ${isUnread ? 'bg-red-50/50 border-l-4 border-l-red-400' : 'bg-[#FBEAD6]/20'} border border-[#C87D87]/10 rounded-lg`}>
-                                  
-                                  {/* علامة غير مقروءة */}
-                                  {isUnread && (
-                                    <div className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                                  )}
-                                  
-                                  {/* Numéro de réservation */}
-                                  <div className="absolute top-2 left-2 text-[0.6rem] font-['Cormorant_Garamond',serif] text-[#C87D87]/40">
-                                    #{idx + 1}
-                                  </div>
-
-                                  <div className="grid md:grid-cols-2 gap-4 mt-4">
-                                    <div className="space-y-2 text-sm">
-                                      <p className="flex items-center gap-2">
-                                        <span className="text-[#C87D87] w-24">Activité:</span>
-                                        <span className="text-[#3a3027] font-medium">{booking.activity || booking.activityType || '-'}</span>
-                                      </p>
-                                      <p className="flex items-center gap-2">
-                                        <span className="text-[#C87D87] w-24">Participants:</span>
-                                        <span className="text-[#3a3027]">{booking.participants || '1'}</span>
-                                      </p>
-                                      <p className="flex items-center gap-2">
-                                        <span className="text-[#C87D87] w-24">Date:</span>
-                                        <span className="text-[#3a3027]">{booking.date ? new Date(booking.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
-                                      </p>
-                                      <p className="flex items-center gap-2">
-                                        <span className="text-[#C87D87] w-24">Horaire:</span>
-                                        <span className="text-[#3a3027]">{booking.timeSlot || '-'}</span>
-                                      </p>
-                                      <p className="flex items-center gap-2">
-                                        <span className="text-[#C87D87] w-24">Téléphone:</span>
-                                        <span className="text-[#3a3027]">{booking.phone || '-'}</span>
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <p className="font-['Playfair_Display',serif] italic text-sm text-[#C87D87] mb-2">Demandes spéciales</p>
-                                      <p className="font-['Cormorant_Garamond',serif] text-sm text-[#5a4a3a]/80 leading-relaxed p-3 bg-white/50 border border-[#C87D87]/10 rounded">
-                                        {booking.specialRequests || 'Aucune demande spéciale'}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-[#C87D87]/10">
-                                    <span className="text-xs text-[#C87D87]/50 flex items-center gap-2">
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                      </svg>
-                                      {new Date(booking.createdAt || booking.submittedAt || Date.now()).toLocaleDateString('fr-FR', { 
-                                        hour: '2-digit', 
-                                        minute: '2-digit',
-                                        day: 'numeric', 
-                                        month: 'short', 
-                                        year: 'numeric' 
-                                      })}
-                                    </span>
-                                    
-                                    {/* زر تعليم كمقروء */}
-                                    {isUnread && (
-                                      <button
-                                        onClick={() => markAsRead(booking.id)}
-                                        className="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors font-['Cormorant_Garamond',serif]"
-                                      >
-                                        ✓ Marquer comme lu
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ══ USERS TAB ══ */}
-            {activeTab === 'users' && (
-              <div style={{ animation: 'fadeUp .4s ease forwards' }}>
-
-                <div className="mb-8">
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-xs tracking-[.3em] uppercase mb-1">Members</p>
-                  <h2 className="font-['Playfair_Display',serif] italic text-3xl text-[#3a3027]">All Users</h2>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="w-8 h-px bg-[#C87D87]/40" />
-                    <span className="text-[#C87D87]/40 text-[0.45rem]">✦</span>
-                    <div className="w-8 h-px bg-[#C87D87]/40" />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
-                  <div className="relative flex-1 min-w-[180px] max-w-xs">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#7a6a5a]/40 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                    </svg>
-                    <input
-                      value={userSearch}
-                      onChange={e => setUserSearch(e.target.value)}
-                      placeholder="Search by name or email…"
-                      className="w-full pl-9 pr-4 py-2.5 bg-white/70 border border-[#C87D87]/25 focus:border-[#C87D87] focus:outline-none font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027] placeholder:text-[#7a6a5a]/45 rounded-xl transition-all duration-300"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {[
-                      { value: 'all',   label: 'All'     },
-                      { value: 'user',  label: 'Members' },
-                      { value: 'admin', label: 'Admins'  },
-                    ].map(opt => (
-                      <button key={opt.value} onClick={() => setRoleFilter(opt.value)}
-                        className={`font-['Cormorant_Garamond',serif] italic text-xs px-4 py-2 rounded-full border transition-all duration-200 ${
-                          roleFilter === opt.value
-                            ? opt.value === 'admin'
-                              ? 'bg-[#6B7556] text-white border-[#6B7556]'
-                              : opt.value === 'user'
-                              ? 'bg-[#C87D87] text-white border-[#C87D87]'
-                              : 'bg-[#3a3027] text-white border-[#3a3027]'
-                            : 'text-[#7a6a5a]/70 border-[#C87D87]/25 hover:border-[#C87D87]/50 bg-white/50'
-                        }`}>
-                        {opt.label}
-                        <span className="ml-1.5 opacity-60 text-[0.6rem]">
-                          {opt.value === 'all'
-                            ? users.length
-                            : users.filter(u => u.role === opt.value).length}
+                        <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user.fullName}</p>
+                        <span className="text-amber-400 text-[0.65rem] mt-0.5 block tracking-wider">
+                          {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
                         </span>
-                      </button>
-                    ))}
+                      </div>
+                    </div>
+                    <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-500 flex-shrink-0 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse"/> New
+                    </span>
                   </div>
+                  <div className="font-['Playfair_Display',serif] text-[3rem] text-amber-200/60 leading-none -mt-2 mb-0.5 select-none">"</div>
+                  <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">{r.comment}</p>
+                  <div className="flex gap-2 pt-3 border-t border-amber-100">
+                    <button onClick={() => approveReview(r.id)}
+                      className="flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase py-2 rounded-xl border border-[#6B7556]/30 text-[#6B7556] hover:bg-[#6B7556] hover:text-white hover:border-[#6B7556] transition-all flex items-center justify-center gap-1.5">
+                      ✓ Approve
+                    </button>
+                    <button onClick={() => deleteReview(r.id)}
+                      className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase px-4 py-2 rounded-xl border border-[#C87D87]/25 text-[#C87D87]/50 hover:bg-[#C87D87] hover:text-white hover:border-[#C87D87] transition-all">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-                  <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/60 text-sm flex-shrink-0">
-                    {filteredUsers.length} shown
+      {/* ── PUBLISHED ── */}
+      <div>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
+          <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-[#6B7556]/22 bg-[#6B7556]/8">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/>
+            <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-[#6B7556]">
+              Published · {DEFAULT_REVIEWS.length + approvedReviews.length}
+            </p>
+          </div>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Default reviews — locked */}
+          {DEFAULT_REVIEWS.map((r, i) => (
+            <div key={r.id}
+              className="relative bg-[#fef6ec] rounded-2xl border border-[#C87D87]/15 overflow-hidden shadow-[0_2px_12px_rgba(58,48,39,0.05)]"
+              style={{ animation:`fadeUp .25s ease ${i*50}ms both`, opacity:0.85 }}>
+              <div className="h-0.5 bg-gradient-to-r from-transparent via-[#6B7556]/50 to-transparent"/>
+              <div className="absolute top-0 left-0"><LaceCorner/></div>
+              <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+              <div className="px-5 pt-6 pb-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B7556]/80 to-[#C87D87]/80 flex items-center justify-center text-white font-['Playfair_Display',serif] text-sm flex-shrink-0">
+                      {r.user.fullName.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user.fullName}</p>
+                      <span className="text-[#6B7556] text-[0.65rem] mt-0.5 block tracking-wider">
+                        {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#3a3027]/5 border border-[#3a3027]/8 text-[#7a6a5a]/40 flex-shrink-0 flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    Default
                   </span>
                 </div>
+                <div className="font-['Playfair_Display',serif] text-[3rem] text-[#C87D87]/10 leading-none -mt-2 mb-0.5 select-none">"</div>
+                <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">{r.comment}</p>
+                <div className="flex items-center justify-between pt-3 border-t border-[#C87D87]/10">
+                  <span className="inline-flex items-center gap-1.5 font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase text-[#6B7556] bg-[#6B7556]/8 border border-[#6B7556]/15 px-2.5 py-1 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/> Published
+                  </span>
+                  <span className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] text-[#7a6a5a]/22 tracking-widest">
+                    Non-editable
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
 
-                {usersLoading ? (
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/50 text-sm text-center py-12">Loading…</p>
-                ) : (
-                  <div className="border border-[#C87D87]/15 rounded-2xl overflow-hidden bg-white/40">
-
-                    <div className="grid grid-cols-[1fr_1.4fr_80px_80px_80px_100px] gap-4 px-5 py-3 bg-[#C87D87]/6 border-b border-[#C87D87]/12">
-                      {['Name', 'Email', 'Role', 'Bookings', 'Reviews', 'Action'].map(h => (
-                        <p key={h} className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[.25em] uppercase text-[#7a6a5a]/60">{h}</p>
-                      ))}
-                    </div>
-
-                    {filteredUsers.map((u, i) => {
-                      // Compter les réservations pour cet utilisateur
-                      const userBookingsCount = bookings.filter(b => 
-                        b.email?.toLowerCase() === u.email?.toLowerCase()
-                      ).length;
-
-                      // Vérifier si l'utilisateur a des réservations
-                      const hasBookings = userBookingsCount > 0;
-                      
-                      return (
-                        <div key={u.id}
-                          className={`grid grid-cols-[1fr_1.4fr_80px_80px_80px_100px] gap-4 px-5 py-4 items-center border-b border-[#C87D87]/8 last:border-0 transition-colors duration-200 hover:bg-[#C87D87]/4 ${u.suspended ? 'opacity-50' : ''}`}
-                          style={{ animation: `fadeUp .3s ease ${i * 40}ms both` }}>
-
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-['Playfair_Display',serif] text-xs flex-shrink-0 bg-gradient-to-br ${
-                              u.role === 'admin' ? 'from-[#6B7556]/90 to-[#3a3027]/80' : 'from-[#C87D87]/80 to-[#6B7556]/80'
-                            }`}>
-                              {u.fullName.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{u.fullName}</p>
-                              <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/50">
-                                {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/70 truncate">{u.email}</p>
-
-                          <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[0.6rem] font-['Cormorant_Garamond',serif] tracking-[.15em] uppercase w-fit ${
-                            u.role === 'admin'
-                              ? 'bg-[#6B7556]/15 text-[#6B7556] border border-[#6B7556]/30'
-                              : 'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/25'
-                          }`}>
-                            {u.role}
-                          </span>
-
-                          {/* عمود Bookings avec compteur et icône */}
-                          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027] text-center flex items-center justify-center gap-1">
-                            {hasBookings ? (
-                              <>
-                                <span className="text-green-600">✅</span>
-                                <span className="font-bold">{userBookingsCount}</span>
-                              </>
-                            ) : (
-                              <span className="text-gray-400">—</span>
-                            )}
-                          </p>
-
-                          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027] text-center">
-                            {u._count?.reviews ?? 0}
-                          </p>
-
-                          {u.role !== 'admin' ? (
-                            <button onClick={() => toggleSuspend(u.id, u.suspended)}
-                              className={`font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[.18em] uppercase px-3 py-1.5 rounded-lg border transition-all duration-200 w-fit ${
-                                u.suspended
-                                  ? 'text-[#6B7556] border-[#6B7556]/40 hover:bg-[#6B7556]/10'
-                                  : 'text-[#C87D87] border-[#C87D87]/40 hover:bg-[#C87D87]/10'
-                              }`}>
-                              {u.suspended ? 'Restore' : 'Suspend'}
-                            </button>
-                          ) : (
-                            <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/30">—</span>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {filteredUsers.length === 0 && (
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/45 text-sm text-center py-10">
-                        No members found
-                      </p>
-                    )}
+          {/* DB approved reviews — deletable */}
+                    {/* DB approved reviews — empty state */}
+          {approvedReviews.length === 0 && (
+            <div className="col-span-full relative rounded-2xl overflow-hidden"
+              style={{ background:'linear-gradient(135deg,#fdf0e8 0%,#fef6ec 50%,#fdf0e8 100%)', border:'1px solid rgba(200,125,135,0.18)' }}>
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/45 to-transparent"/>
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/25 to-transparent"/>
+              <div className="absolute top-0 left-0"><LaceCorner/></div>
+              <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+              <div className="absolute bottom-0 left-0" style={{ transform:'scaleY(-1)' }}><LaceCorner/></div>
+              <div className="absolute bottom-0 right-0" style={{ transform:'scale(-1,-1)' }}><LaceCorner flip/></div>
+              <div className="relative flex flex-col items-center justify-center py-14 gap-4 px-8">
+                <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/45 text-xl mb-1.5">No approved reviews yet</p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/40 tracking-wide leading-relaxed text-center">
+                  Approved reviews will automatically appear on the homepage,<br/>
+                  alongside Inora's default reviews.
+                </p>
+                {pendingReviews.length > 0 && (
+                  <div className="flex items-center gap-2 mt-1 px-4 py-2 rounded-full border border-amber-200/50 bg-amber-50/60">
+                    <span className="text-amber-400 text-xs">↑</span>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-amber-600/70 tracking-wide">
+                      {pendingReviews.length} review{pendingReviews.length > 1 ? 's' : ''} awaiting approval
+                    </p>
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* ══ PAYMENTS (Coming Soon) ══ */}
-            {activeTab === 'payments' && (
-              <div className="animate-[fadeIn_0.4s_ease_forwards] flex items-center justify-center min-h-[65vh]">
-                <div className="text-center relative p-16">
-                  <div className="absolute top-0 left-0 w-8 h-8"><div className="absolute top-0 left-0 w-full h-px bg-[#C87D87]/25" /><div className="absolute top-0 left-0 w-px h-full bg-[#C87D87]/25" /></div>
-                  <div className="absolute top-0 right-0 w-8 h-8"><div className="absolute top-0 right-0 w-full h-px bg-[#C87D87]/25" /><div className="absolute top-0 right-0 w-px h-full bg-[#C87D87]/25" /></div>
-                  <div className="absolute bottom-0 left-0 w-8 h-8"><div className="absolute bottom-0 left-0 w-full h-px bg-[#C87D87]/25" /><div className="absolute bottom-0 left-0 w-px h-full bg-[#C87D87]/25" /></div>
-                  <div className="absolute bottom-0 right-0 w-8 h-8"><div className="absolute bottom-0 right-0 w-full h-px bg-[#C87D87]/25" /><div className="absolute bottom-0 right-0 w-px h-full bg-[#C87D87]/25" /></div>
-                  <div className="w-16 h-16 border border-[#C87D87]/20 rotate-45 flex items-center justify-center mx-auto mb-8 bg-white/40">
-                    <div className="-rotate-45 text-[#C87D87]/40">{navItems.find(n => n.id === 'payments')?.icon}</div>
-                  </div>
-                  <div className="flex items-center justify-center gap-3 mb-4">
-                    <div className="w-8 h-px bg-[#C87D87]/20" />
-                    <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.35em] uppercase text-[#C87D87]/35">Coming Soon</span>
-                    <div className="w-8 h-px bg-[#C87D87]/20" />
-                  </div>
-                  <p className="font-['Playfair_Display',serif] italic text-3xl text-[#6B7556] mb-3">Payments</p>
-                  <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/40">This section is being prepared with care.</p>
-                </div>
-              </div>
-            )}
-
-            {/* ══ PROFILE TAB ══ */}
-            {activeTab === 'settings' && (
-              <div className="animate-[fadeUp_0.5s_ease_forwards] max-w-lg">
-                <div className="relative bg-white/65 border border-[#C87D87]/15 overflow-hidden"
-                  style={{ boxShadow: '0 8px 40px rgba(200,125,135,0.1)' }}>
-                  {[['top-2 left-2','top','left'],['top-2 right-2','top','right'],
-                    ['bottom-2 left-2','bottom','left'],['bottom-2 right-2','bottom','right']
-                  ].map(([pos, v, h], i) => (
-                    <div key={i} className={`absolute ${pos} w-6 h-6 pointer-events-none`}>
-                      <div className={`absolute ${v}-0 ${h}-0 w-full h-px bg-[#C87D87]/35`} />
-                      <div className={`absolute ${v}-0 ${h}-0 w-px h-full bg-[#C87D87]/35`} />
-                    </div>
-                  ))}
-                  <div className="relative h-24 bg-gradient-to-r from-[#6B7556]/25 via-[#C87D87]/15 to-[#6B7556]/10">
-                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/60 to-transparent" />
-                    <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/30 to-transparent" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-px bg-[#FBEAD6]/20" />
-                        <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.35em] uppercase text-[#FBEAD6]/35">Admin Profile</span>
-                        <div className="w-12 h-px bg-[#FBEAD6]/20" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="px-10 pb-10 -mt-8">
-                    <div className="flex items-end gap-5 mb-7">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#C87D87] to-[#FBEAD6] flex items-center justify-center text-[#6B7556] font-['Playfair_Display',serif] font-bold text-2xl border-2 border-white"
-                        style={{ boxShadow: '0 4px 20px rgba(200,125,135,0.25)' }}>
-                        {displayName.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="pb-1 flex-1">
-                        <p className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027] leading-tight">{displayName}</p>
-                        <p className="font-['Cormorant_Garamond',serif] text-xs text-[#7a6a5a]/50 tracking-wide">{user?.email}</p>
-                      </div>
-                      <span className="pb-1 font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-[0.2em] uppercase text-white bg-[#6B7556] px-2.5 py-1">Admin</span>
-                    </div>
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="flex-1 h-px bg-gradient-to-r from-[#C87D87]/25 to-transparent" />
-                      <div className="w-1.5 h-1.5 bg-[#C87D87]/30 rotate-45" />
-                      <div className="flex-1 h-px bg-gradient-to-l from-[#C87D87]/25 to-transparent" />
-                    </div>
-                    <div className="text-center py-4">
-                      <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#C87D87]/40">Profile settings coming soon</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
+        </div>
       </div>
+    </div>
+  )}
+
+  {/* ════════════ MY PROFILE ════════════ */}
+  {activeTab === 'profile' && (
+    <div className="max-w-2xl mx-auto space-y-5" style={{ animation:'fadeIn .3s ease both' }}>
+
+      {/* Avatar */}
+      <Panel>
+        <div className="px-7 py-6">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-4">Profile Photo</p>
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#C87D87]/25 flex-shrink-0 bg-[#C87D87]/10 flex items-center justify-center">
+              {avatarUrl
+                ? <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover"/>
+                : <span className="font-['Playfair_Display',serif] italic text-3xl text-[#C87D87]">{displayName.charAt(0).toUpperCase()}</span>
+              }
+            </div>
+            <div>
+              <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar}/>
+              <button onClick={() => avatarRef.current?.click()} disabled={avatarLoad}
+                className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#C87D87] border border-[#C87D87]/35 px-5 py-2.5 rounded-xl hover:bg-[#C87D87]/8 transition-all disabled:opacity-50">
+                {avatarLoad ? 'Uploading…' : 'Change Photo'}
+              </button>
+              <Msg msg={avatarMsg}/>
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      {/* Display Name */}
+      <Panel>
+        <form onSubmit={handleName} className="px-7 py-5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Display Name</p>
+          <Field label="Full Name">
+            <Inp value={nameForm.fullName} onChange={e => setNameForm({ fullName:e.target.value })} placeholder="Your full name"/>
+          </Field>
+          <div className="flex justify-end mt-3">
+            <button type="submit" disabled={nameLoad}
+              className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
+              style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
+              {nameLoad ? 'Saving…' : 'Save Name'}
+            </button>
+          </div>
+          <Msg msg={nameMsg}/>
+        </form>
+      </Panel>
+
+      {/* Email */}
+      <Panel>
+        <form onSubmit={handleEmail} className="px-7 py-5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Email Address</p>
+          <Field label="New Email">
+            <Inp type="email" value={emailForm.email} onChange={e => setEmailForm(f => ({ ...f, email:e.target.value }))} placeholder="new@email.com"/>
+          </Field>
+          <Field label="Password">
+            <Inp type="password" value={emailForm.currentPassword} onChange={e => setEmailForm(f => ({ ...f, currentPassword:e.target.value }))} placeholder="Current password"/>
+          </Field>
+          <div className="flex justify-end mt-3">
+            <button type="submit" disabled={emailLoad}
+              className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
+              style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
+              {emailLoad ? 'Saving…' : 'Update Email'}
+            </button>
+          </div>
+          <Msg msg={emailMsg}/>
+        </form>
+      </Panel>
+
+      {/* Password */}
+      <Panel>
+        <form onSubmit={handlePassword} className="px-7 py-5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Change Password</p>
+          <Field label="Current">
+            <Inp type="password" value={passForm.currentPassword} onChange={e => setPassForm(f => ({ ...f, currentPassword:e.target.value }))} placeholder="Current password"/>
+          </Field>
+          <Field label="New">
+            <Inp type="password" value={passForm.newPassword} onChange={e => setPassForm(f => ({ ...f, newPassword:e.target.value }))} placeholder="New password"/>
+          </Field>
+          <Field label="Confirm">
+            <Inp type="password" value={passForm.confirmPassword} onChange={e => setPassForm(f => ({ ...f, confirmPassword:e.target.value }))} placeholder="Confirm new password"/>
+          </Field>
+          <div className="flex justify-end mt-3">
+            <button type="submit" disabled={passLoad}
+              className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-[#FBEAD6] px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
+              style={{ background:'linear-gradient(135deg,#C87D87,#b36d77)', boxShadow:'0 4px 16px rgba(200,125,135,0.3)' }}>
+              {passLoad ? 'Saving…' : 'Update Password'}
+            </button>
+          </div>
+          <Msg msg={passMsg}/>
+        </form>
+      </Panel>
+
+      {/* Danger Zone */}
+      <div className="rounded-2xl overflow-hidden border border-red-200/60 relative">
+        <div className="h-0.5 bg-gradient-to-r from-transparent via-red-300/50 to-transparent"/>
+        <div className="absolute top-0 left-0"><LaceCorner danger/></div>
+        <div className="absolute top-0 right-0"><LaceCorner flip danger/></div>
+        <div className="px-7 py-5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-red-400/70 mb-3">Danger Zone</p>
+          {!showDelete ? (
+            <button onClick={() => setShowDelete(true)}
+              className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.22em] uppercase text-red-400 border border-red-300/50 px-5 py-2.5 rounded-xl hover:bg-red-50 transition-all">
+              Delete Account
+            </button>
+          ) : (
+            <form onSubmit={handleDelete} className="space-y-3">
+              <Field label="Password">
+                <Inp type="password" value={deleteForm.password} onChange={e => setDeleteForm(f => ({ ...f, password:e.target.value }))} placeholder="Confirm password"/>
+              </Field>
+              <Field label="Admin Code">
+                <Inp value={deleteForm.adminCode} onChange={e => setDeleteForm(f => ({ ...f, adminCode:e.target.value }))} placeholder="Admin deletion code"/>
+              </Field>
+              <div className="flex gap-3 justify-end mt-2">
+                <button type="button" onClick={() => setShowDelete(false)}
+                  className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-widest uppercase text-[#7a6a5a]/50 border border-[#3a3027]/10 px-5 py-2.5 rounded-xl hover:bg-[#3a3027]/5 transition-all">
+                  Cancel
+                </button>
+                <button type="submit" disabled={deleteLoad}
+                  className="font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-widest uppercase text-white px-5 py-2.5 rounded-xl bg-red-400 hover:bg-red-500 transition-all disabled:opacity-50">
+                  {deleteLoad ? 'Deleting…' : 'Confirm Delete'}
+                </button>
+              </div>
+              <Msg msg={deleteMsg}/>
+            </form>
+          )}
+        </div>
+      </div>
+
+    </div>
+  )}{/* end activeTab === 'profile' */}
+
+          </div>{/* end p-7 */}
+        </main>
+      </div>{/* end min-h-screen flex */}
+ {/* ════════════ BOOKING DETAIL MODAL ════════════ */}
+{selectedBooking && (() => {
+  const isPaid    = selectedBooking.paymentStatus === 'PAID';
+  const isPending = selectedBooking.paymentStatus === 'PENDING';
+  const payBadge  = isPaid
+    ? { label:'Paid',    bg:'bg-emerald-50',  border:'border-emerald-200',  text:'text-emerald-600', dot:'bg-emerald-400'  }
+    : isPending
+    ? { label:'Pending', bg:'bg-amber-50',    border:'border-amber-200',    text:'text-amber-600',   dot:'bg-amber-400'   }
+    : { label:'Unpaid',  bg:'bg-[#C87D87]/8', border:'border-[#C87D87]/20', text:'text-[#C87D87]/70',dot:'bg-[#C87D87]/40' };
+
+  return (
+    <div className="bmodal-bg fixed inset-0 z-50 flex items-center justify-center px-4"
+      onClick={() => setSelectedBooking(null)}>
+      <div className="bg-[#FBEAD6] w-full max-w-2xl max-h-[88vh] overflow-y-auto rounded-2xl shadow-2xl relative"
+        style={{ animation:'fadeInScale .3s ease both' }}
+        onClick={e => e.stopPropagation()}>
+
+        <div className="h-1 bg-gradient-to-r from-[#C87D87] via-[#b36d77] to-[#C87D87] rounded-t-2xl"/>
+
+        <div className="px-7 py-6">
+
+          {/* Header */}
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <p className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] tracking-[0.4em] uppercase text-[#C87D87]/50 mb-1">
+                Booking #{selectedBooking.id}
+              </p>
+              <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027]">
+                {selectedBooking.fullName || selectedBooking.user?.fullName}
+              </h3>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase ${payBadge.bg} ${payBadge.border} ${payBadge.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${payBadge.dot}`}/>
+                {payBadge.label}
+              </span>
+              <button onClick={() => setSelectedBooking(null)}
+                className="w-8 h-8 rounded-full bg-[#C87D87]/10 flex items-center justify-center text-[#C87D87]/60 hover:bg-[#C87D87]/20 transition-all text-lg flex-shrink-0">
+                ×
+              </button>
+            </div>
+          </div>
+
+          {/* Status control */}
+          <div className="mb-6">
+            <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#7a6a5a]/50 mb-2">
+              Update Status
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {['pending','confirmed','completed','cancelled'].map(st => {
+                const cfg    = statusCfg[st];
+                const active = selectedBooking.status === st;
+                return (
+                  <button key={st} onClick={() => updateBookingStatus(selectedBooking.id, st)}
+                    className={`font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase px-3 py-1.5 rounded-xl border transition-all ${
+                      active
+                        ? `${cfg.bg} ${cfg.border} ${cfg.text} font-bold`
+                        : 'bg-white/50 border-[#3a3027]/10 text-[#7a6a5a]/60 hover:border-[#C87D87]/30'
+                    }`}>
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Two-column details */}
+          <Panel>
+            <div className="px-5 py-1 grid grid-cols-2 gap-x-6">
+              {[
+                { l:'Activity',    v: selectedBooking.activity },
+                { l:'Theme',       v: selectedBooking.activityTheme || '—' },
+                { l:'Date',        v: selectedBooking.date
+                    ? new Date(selectedBooking.date).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+                    : '—' },
+                { l:'Time',        v: selectedBooking.timeSlot || '—' },
+                { l:'Guests',      v: selectedBooking.participants },
+                { l:'Setting',     v: (() => { const s = SETTINGS_MAP[selectedBooking.setting]; return s ? `${s.icon} ${s.label}` : selectedBooking.setting || '—'; })() },
+                { l:'Email',       v: selectedBooking.email },
+                { l:'Phone',       v: selectedBooking.phone },
+                { l:'Contact via', v: selectedBooking.preferredContact },
+                { l:'Total',       v: selectedBooking.totalPrice > 0 ? `${selectedBooking.totalPrice} MAD` : '—' },
+                { l:'Allergies',   v: selectedBooking.allergies || '—' },
+                { l:'Requests',    v: selectedBooking.specialRequests || '—' },
+              ].map(({ l, v }) => (
+                <Field key={l} label={l}>
+                  <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027]">{v}</p>
+                </Field>
+              ))}
+            </div>
+          </Panel>
+
+          {/* Payment summary */}
+          <div className="mt-4 rounded-2xl border border-[#6B7556]/30 overflow-hidden"
+            style={{ background:'rgba(107,117,86,0.08)' }}>
+            <div className="px-5 py-2.5 border-b border-[#6B7556]/15"
+              style={{ background:'rgba(107,117,86,0.12)' }}>
+              <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#6B7556]/70">
+                Payment
+              </p>
+            </div>
+            <div className="flex items-center justify-between px-5 py-3.5">
+              <div>
+                <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold">
+                  {selectedBooking.advancePaid ? `${selectedBooking.advancePaid} MAD` : '—'}
+                </p>
+                <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] text-[#7a6a5a]/50 mt-0.5">
+                  {selectedBooking.paidAt
+                    ? `Paid on ${new Date(selectedBooking.paidAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}`
+                    : 'No payment recorded'
+                  }
+                </p>
+              </div>
+              {(() => {
+                const isPaid2    = selectedBooking.paymentStatus === 'PAID';
+                const isPending2 = selectedBooking.paymentStatus === 'PENDING';
+                const badge = isPaid2
+                  ? { label:'Paid',    bg:'bg-emerald-50',  border:'border-emerald-200',  text:'text-emerald-600', dot:'bg-emerald-400'  }
+                  : isPending2
+                  ? { label:'Pending', bg:'bg-amber-50',    border:'border-amber-200',    text:'text-amber-600',   dot:'bg-amber-400'   }
+                  : { label:'Unpaid',  bg:'bg-white/30',    border:'border-[#6B7556]/25', text:'text-[#6B7556]/70',dot:'bg-[#6B7556]/40' };
+                return (
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase ${badge.bg} ${badge.border} ${badge.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}/>
+                    {badge.label}
+                  </span>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Export PDF */}
+          <button onClick={() => exportBookingPDF(selectedBooking)}
+            className="w-full mt-4 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase text-[#6B7556] border border-[#6B7556]/30 py-3 rounded-2xl hover:bg-[#6B7556]/8 transition-all flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+            Export as PDF
+          </button>
+
+          {/* Delete */}
+          <button onClick={() => deleteBooking(selectedBooking.id)}
+            className="w-full mt-3 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase text-red-400 border border-red-200 py-3 rounded-2xl hover:bg-red-50 transition-all">
+            Delete Booking
+          </button>
+
+        </div>
+      </div>
+    </div>
+  );
+})()}
+
+
+{/* ════════════ USER DETAIL MODAL ════════════ */}
+{selectedUser && (
+  <div className="bmodal-bg fixed inset-0 z-50 flex items-start justify-end"
+    onClick={() => setSelectedUser(null)}>
+    <div className="bg-[#FBEAD6] w-full max-w-md h-full overflow-y-auto shadow-2xl relative"
+      style={{ animation:'slideIn .3s ease both' }}
+      onClick={e => e.stopPropagation()}>
+
+      <div className="h-1 bg-gradient-to-r from-[#6B7556] via-[#C87D87] to-[#6B7556]"/>
+
+      <div className="px-7 py-6">
+
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl overflow-hidden ${selectedUser.role === 'admin' ? 'bg-[#6B7556]' : 'bg-[#C87D87]'}`}>
+              {selectedUser.avatarUrl
+                ? <img src={resolveAvatar(selectedUser.avatarUrl)} alt={selectedUser.fullName} className="w-full h-full object-cover"/>
+                : selectedUser.fullName?.charAt(0).toUpperCase()
+              }
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-['Playfair_Display',serif] italic text-xl text-[#3a3027]">{selectedUser.fullName}</h3>
+                {selectedUser.isDeleted && <DeletedBadge/>}
+              </div>
+              <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55">{selectedUser.email}</p>
+            </div>
+          </div>
+          <button onClick={() => setSelectedUser(null)}
+            className="w-8 h-8 rounded-full bg-[#C87D87]/10 flex items-center justify-center text-[#C87D87]/60 hover:bg-[#C87D87]/20 transition-all text-lg">
+            ×
+          </button>
+        </div>
+
+        {/* Suspend / Unsuspend */}
+        <div className="flex gap-2 mb-6">
+          <button onClick={() => toggleSuspend(selectedUser.id, selectedUser.suspended)}
+            className={`flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase py-2.5 rounded-xl border transition-all ${
+              selectedUser.suspended
+                ? 'border-[#6B7556]/40 text-[#6B7556] hover:bg-[#6B7556] hover:text-white'
+                : 'border-amber-300/60 text-amber-600 hover:bg-amber-50'
+            }`}>
+            {selectedUser.suspended ? 'Unsuspend' : 'Suspend'}
+          </button>
+        </div>
+
+        {/* Stats */}
+        <Panel>
+          <div className="px-5 py-1">
+            {[
+              { l:'Role',     v: selectedUser.role },
+              { l:'Joined',   v: new Date(selectedUser.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' }) },
+              { l:'Bookings', v: `${userBookings(selectedUser).length} total` },
+              { l:'Payments', v: `${userPayments(selectedUser).length} transactions` },
+              { l:'Reviews',  v: `${userReviews(selectedUser).length} submitted` },
+            ].map(({ l, v }) => (
+              <Field key={l} label={l}>
+                <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027]">{v}</p>
+              </Field>
+            ))}
+          </div>
+        </Panel>
+
+        {/* Booking history */}
+        {userBookings(selectedUser).length > 0 && (
+          <div className="mt-5">
+            <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#7a6a5a]/50 mb-3">
+              Booking History
+            </p>
+            <div className="space-y-2">
+              {userBookings(selectedUser).map(b => {
+                const s = getStatus(b.status);
+                return (
+                  <div key={b.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/50 border border-[#C87D87]/10">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{b.activity}</p>
+                      <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/50">
+                        {b.date ? new Date(b.date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—'}
+                        {b.timeSlot ? ` · ${b.timeSlot}` : ''}
+                      </p>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase ${s.bg} ${s.border} ${s.text}`}>
+                      <span className={`w-1 h-1 rounded-full ${s.dot}`}/>{s.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  </div>
+)}
+
     </>
   );
 }

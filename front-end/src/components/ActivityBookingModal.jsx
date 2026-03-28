@@ -10,12 +10,11 @@ export default function ActivityBookingModal({ isOpen, onClose, activity }) {
     fullName: '',
     email: '',
     phone: '',
-    participants: '4',
+    participants: 4, // 👈 رقم وليس نص
     date: '',
     timeSlot: '',
     // اختيارات النشاط
     activityType: '',
-    activityTheme: '',
     // أسئلة إضافية
     allergies: '',
     specialRequests: '',
@@ -33,35 +32,11 @@ export default function ActivityBookingModal({ isOpen, onClose, activity }) {
     '18:00 - 20:30'
   ];
 
-  // أنواع الأنشطة المقترحة
+  // 3 أنواع أنشطة فقط
   const activityTypes = [
-    { value: 'peinture', label: '🎨 Atelier Peinture', description: 'Vins et pinceaux, acrylique, aquarelle...' },
-    { value: 'crochet', label: '🧶 Atelier Crochet', description: 'Apprenez à crocheter, projets collectifs' },
-    { value: 'cuisine', label: '🍳 Atelier Cuisine', description: 'Cuisine du monde, pâtisserie, pain' },
-    { value: 'degustation', label: '🍷 Dégustation', description: 'Vins, fromages, chocolats' },
-    { value: 'poterie', label: '🏺 Poterie & Céramique', description: 'Modelage, tournage' },
-    { value: 'fleurs', label: '💐 Composition florale', description: 'Bouquets, centres de table' },
-    { value: 'autre', label: '✨ Autre activité', description: 'Proposez votre idée' }
-  ];
-
-  // Thèmes pour la peinture (exemple)
-  const paintingThemes = [
-    'Paysage marin',
-    'Coucher de soleil',
-    'Abstrait',
-    'Portrait',
-    'Nature morte',
-    'Liberté'
-  ];
-
-  // Thèmes pour le crochet
-  const crochetThemes = [
-    'Écharpe / Bonnet',
-    'Amigurumi (peluche)',
-    'Plaid / Couverture',
-    'Décoration maison',
-    'Vêtement',
-    'Sac / Accessoire'
+    { value: 'peinture', label: '🎨 Peinture & Dessin', description: 'Vins et pinceaux, acrylique, aquarelle, pastel...' },
+    { value: 'crochet', label: '🧶 Crochet & Tricot', description: 'Apprenez à crocheter, amigurumi, projets collectifs' },
+    { value: 'poterie', label: '🏺 Poterie & Céramique', description: 'Modelage, tournage, sculpture' }
   ];
 
   // Méthodes de contact
@@ -75,40 +50,39 @@ export default function ActivityBookingModal({ isOpen, onClose, activity }) {
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type } = e.target;
+    
+    // إذا كان الحقل هو عدد المشاركين، نحوله إلى رقم
+    if (name === 'participants') {
+      setFormData({ ...formData, [name]: parseInt(value) || 1 });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  console.log('📤 Envoi de la réservation:', formData);
-  
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bookings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-
-    const data = await res.json();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    console.log('📤 Envoi de la réservation:', formData);
     
-    if (res.ok) {
-      alert(`✅ Réservation confirmée ! Nous contacterons ${formData.fullName} dans les 24h.`);
-      onClose();
-      setStep(1);
-    } else {
-      alert(`❌ Erreur: ${data.message || 'Problème lors de la réservation'}`);
-    }
-  } catch (error) {
-    console.error('❌ Erreur réseau:', error);
-    alert('❌ Impossible de contacter le serveur. Vérifie ta connexion.');
-  }
-};
-  // Fonction pour obtenir les thèmes selon l'activité choisie
-  const getThemesForActivity = () => {
-    switch(formData.activityType) {
-      case 'peinture': return paintingThemes;
-      case 'crochet': return crochetThemes;
-      default: return [];
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(`✅ Réservation confirmée ! Nous contacterons ${formData.fullName} dans les 24h.`);
+        onClose();
+        setStep(1);
+      } else {
+        alert(`❌ Erreur: ${data.message || 'Problème lors de la réservation'}`);
+      }
+    } catch (error) {
+      console.error('❌ Erreur réseau:', error);
+      alert('❌ Impossible de contacter le serveur. Vérifie ta connexion.');
     }
   };
 
@@ -149,7 +123,7 @@ export default function ActivityBookingModal({ isOpen, onClose, activity }) {
               </button>
             </div>
 
-            {/* Progress Steps avec numéros */}
+            {/* Progress Steps - 5 étapes */}
             <div className="flex items-center justify-between mt-2">
               {[1, 2, 3, 4, 5].map((num) => (
                 <div key={num} className="flex items-center">
@@ -190,7 +164,7 @@ export default function ActivityBookingModal({ isOpen, onClose, activity }) {
                 exit={{ x: -20, opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                {/* ÉTAPE 1: Choix de l'activité */}
+                {/* ÉTAPE 1: Choix de l'activité (3 activités) */}
                 {step === 1 && (
                   <div className="space-y-6">
                     <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027] mb-4">
@@ -289,7 +263,7 @@ export default function ActivityBookingModal({ isOpen, onClose, activity }) {
                   </div>
                 )}
 
-                {/* ÉTAPE 3: Date, horaire et nombre */}
+                {/* ÉTAPE 3: Date, horaire et nombre - avec barre corrigée */}
                 {step === 3 && (
                   <div className="space-y-6">
                     <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027] mb-4">
@@ -360,33 +334,13 @@ export default function ActivityBookingModal({ isOpen, onClose, activity }) {
                   </div>
                 )}
 
-                {/* ÉTAPE 4: Personnalisation (thèmes si disponibles) */}
+                {/* ÉTAPE 4: Personnalisation (sans thème optionnel) */}
                 {step === 4 && (
                   <div className="space-y-6">
                     <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027] mb-4">
                       Personnalisez votre expérience
                     </h3>
                     
-                    {/* Thèmes selon l'activité */}
-                    {getThemesForActivity().length > 0 && (
-                      <div>
-                        <label className="block font-['Cormorant_Garamond',serif] text-[#6B7556] mb-2">
-                          Choisissez un thème (optionnel)
-                        </label>
-                        <select
-                          name="activityTheme"
-                          value={formData.activityTheme}
-                          onChange={handleChange}
-                          className="w-full p-3 border border-[#C87D87]/30 rounded-xl bg-white/50 focus:outline-none focus:border-[#C87D87] font-['Cormorant_Garamond',serif]"
-                        >
-                          <option value="">Pas de préférence</option>
-                          {getThemesForActivity().map(theme => (
-                            <option key={theme} value={theme}>{theme}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
                     <div>
                       <label className="block font-['Cormorant_Garamond',serif] text-[#6B7556] mb-2">
                         Allergies ou restrictions alimentaires
@@ -458,12 +412,6 @@ export default function ActivityBookingModal({ isOpen, onClose, activity }) {
                             {activityTypes.find(t => t.value === formData.activityType)?.label || activity?.title || 'Non spécifié'}
                           </span>
                         </div>
-                        {formData.activityTheme && (
-                          <div className="flex justify-between">
-                            <span className="text-[#C87D87]">Thème:</span>
-                            <span className="text-[#3a3027]">{formData.activityTheme}</span>
-                          </div>
-                        )}
                         <div className="flex justify-between">
                           <span className="text-[#C87D87]">Participant·e:</span>
                           <span className="text-[#3a3027]">{formData.fullName || 'Non spécifié'}</span>

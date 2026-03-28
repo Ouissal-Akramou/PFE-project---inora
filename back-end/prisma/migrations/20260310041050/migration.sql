@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Booking" ADD COLUMN     "advancePaid" DOUBLE PRECISION,
+ADD COLUMN     "paidAt" TIMESTAMP(3),
+ADD COLUMN     "paymentStatus" TEXT NOT NULL DEFAULT 'PENDING';

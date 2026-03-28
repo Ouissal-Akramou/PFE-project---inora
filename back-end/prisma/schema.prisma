@@ -7,114 +7,143 @@ datasource db {
   provider = "postgresql"
 }
 
-// ✅ Enum from Hasna's code
+// ─── Enums ───────────────────────────────────────────────────────
 enum Status {
   OPEN
   CLOSED
 }
 
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+// ─── Models ──────────────────────────────────────────────────────
+
 model User {
-  id                String             @id @default(cuid())
-  fullName          String
-  email             String             @unique
-  password          String
-  role              String             @default("member")
-  suspended         Boolean            @default(false)
-  avatarUrl         String?
-  createdAt         DateTime           @default(now())
-  gatheringRequests GatheringRequest[]
-  drafts            Draft[]
-  reviews           Review[]
-  // ✅ From Hasna's code (chat features)
-  conversations     Conversation[]     @relation("UserConversations")
-  claimedConvos     Conversation[]     @relation("ClaimedConversations")
-  sentMessages      Message[]          @relation("SentMessages")
+  id            String         @id @default(cuid())
+  fullName      String
+  email         String         @unique
+  password      String
+  role          String         @default("member")
+  suspended     Boolean        @default(false)
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+  drafts        Draft[]
+  reviews       Review[]
+  conversations Conversation[] @relation("UserConversations")
+  claimedConvos Conversation[] @relation("ClaimedConversations")
+  sentMessages  Message[]      @relation("SentMessages")
+  bookings      Booking[]
+  notifications Notification[]
 }
 
-model GatheringRequest {
-  id              String    @id @default(cuid())
-  userId          String
-  occasion        String
-  activity        String
-  guestCount      Int
-  preferredDate   DateTime
-  alternateDate   DateTime?
-  location        String
-  duration        String
-  specialRequests String?
-  status          String    @default("pending")
-  totalPrice      Float?
-  advanceAmount   Float?
-  advancePaid     Boolean   @default(false)
-  remainingPaid   Boolean   @default(false)
-  advancePaidAt   DateTime?
-  createdAt       DateTime  @default(now())
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  review          Review?
-}
-
+// Draft stores auto-saved form state as JSON before submission
 model Draft {
   id          String   @id @default(cuid())
   userId      String
-  formData    Json
+  formData    Json                   // full form state saved as-is
   lastSavedAt DateTime @updatedAt
   createdAt   DateTime @default(now())
+
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Review {
-  id                 String            @id @default(cuid())
-  userId             String
-  gatheringRequestId String?           @unique
-  comment            String
-  rating             Int
-  approved           Boolean           @default(false)
-  createdAt          DateTime          @default(now())
-  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gatheringRequest   GatheringRequest? @relation(fields: [gatheringRequestId], references: [id])
+  id        String   @id @default(cuid())
+  userId    String
+  bookingId Int?     @unique
+  comment   String
+  rating    Int
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 }
 
-// ✅ From Hasna's code (chat features)
 model Conversation {
-  id           Int       @id @default(autoincrement())
-  userId       String
-  user         User      @relation("UserConversations", fields: [userId], references: [id])
-  subject      String?
-  status       Status    @default(OPEN)
-  claimedById  String?
-  claimedBy    User?     @relation("ClaimedConversations", fields: [claimedById], references: [id])
-  messages     Message[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  userId      String
+  subject     String?
+  status      Status    @default(OPEN)
+  claimedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation("UserConversations",  fields: [userId],      references: [id])
+  claimedBy   User?     @relation("ClaimedConversations", fields: [claimedById], references: [id])
+  messages    Message[]
 }
 
-// ✅ From Hasna's code (chat features)
 model Message {
-  id             Int          @id @default(autoincrement())
-  conversationId Int
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  conversationId String
   senderId       String
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
   body           String
   createdAt      DateTime     @default(now())
   readAt         DateTime?
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
 }
 
-// ✅ From your code (booking feature)
 model Booking {
-  id               String   @id @default(cuid())
+  id               Int           @id @default(autoincrement())
+  userId           String?
+
+  // ── Core booking fields ──────────────────────────────────────
   fullName         String
   email            String
   phone            String
-  activity         String?
-  participants     Int      @default(1)
+  activity         String
+  participants     Int           @default(1)
   date             DateTime?
   timeSlot         String?
+  setting          String?       // ← NEW: venue/setting preference
   allergies        String?
   specialRequests  String?
   additionalNotes  String?
-  preferredContact String   @default("telephone")
+  preferredContact String        @default("telephone")
   activityTheme    String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+
+  // ── Draft fields ─────────────────────────────────────────────
+  isDraft          Boolean       @default(true)   // ← NEW: true until submitted
+  draftId          String?       // ← NEW: links to originating Draft (nullable after submit)
+
+  // ── Status ───────────────────────────────────────────────────
+  // kept as String for backward compat with your existing "pending" values;
+  // swap to BookingStatus enum once you migrate existing rows
+  status           String        @default("pending")
+
+  // ── Payment ──────────────────────────────────────────────────
+  paymentStatus    String        @default("PENDING")
+  advancePaid      Float?
+  paidAt           DateTime?
+
+  // ── Timestamps ───────────────────────────────────────────────
+  createdAt        DateTime      @default(now())
+
+  // ── Relations ────────────────────────────────────────────────
+  user             User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notifications    Notification[]
+  review           Review?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  bookingId Int?
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 }
