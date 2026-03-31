@@ -64,9 +64,11 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await fetch(`${API}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-    setUser(null);
-  };
+  await fetch(`${API}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+  setUser(null);
+  router.push('/');     // ← redirect to landing page
+  router.refresh();     // ← force re-render so Navbar/DraftBanner reset
+};
 
   return (
     <AuthContext.Provider value={{ user, setUser, login, register, logout, loading, refreshUser }}>
