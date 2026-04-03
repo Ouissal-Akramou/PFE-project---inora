@@ -107,21 +107,20 @@ export const login = async (req, res) => {
       }
     }
 
-    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' }); // ← Changé 1h → 7d
+    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000  // ← Changé 1h → 7 jours
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     console.log('✅ Login successful for:', email);
     
-    // 🔥 AJOUTE LE TOKEN DANS LA RÉPONSE JSON
     return res.status(200).json({
       message: "Login successful",
-      token: accessToken,  // ← AJOUTE CETTE LIGNE
+      token: accessToken,
       user: {
         id: user.id,
         fullName: user.fullName,
@@ -154,7 +153,17 @@ export const logout = async (req, res) => {
 // ══════════════════════════════════════════
 export const getMe = async (req, res) => {
   try {
-    const token = req.cookies.token;
+    // Essayer cookie d'abord
+    let token = req.cookies?.token;
+    
+    // Si pas de token dans cookie, essayer header Authorization
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+    
     if (!token) return res.status(401).json({ message: 'No token' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -266,7 +275,7 @@ export const resetPassword = async (req, res) => {
 };
 
 // ══════════════════════════════════════════
-//  ADMIN — GET ALL USERS
+//  HELPER — GET LOGGED IN USER
 // ══════════════════════════════════════════
 export const getLoggedInUser = async (req) => {
   try {
@@ -287,6 +296,37 @@ export const getLoggedInUser = async (req) => {
   } catch (error) {
     console.error('getLoggedInUser error:', error.message);
     return null;
+  }
+};
+
+// ══════════════════════════════════════════
+//  ADMIN — GET ALL USERS
+// ══════════════════════════════════════════
+export const getAdminUsers = async (req, res) => {
+  try {
+    // Vérifier que l'utilisateur est admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        createdAt: true,
+        isDeleted: true,
+        suspended: true,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(users);
+  } catch (error) {
+    console.error('getAdminUsers error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
@@ -420,4 +460,4 @@ export const deleteAccount = async (req, res) => {
     console.error(e);
     res.status(500).json({ message: 'Something went wrong.' });
   }
-};// force redeploy Sat Mar 28 22:33:21 +01 2026
+};
