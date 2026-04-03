@@ -107,18 +107,21 @@ export const login = async (req, res) => {
       }
     }
 
-    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' }); // ← Changé 1h → 7d
 
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      maxAge: 60 * 60 * 1000
+      maxAge: 7 * 24 * 60 * 60 * 1000  // ← Changé 1h → 7 jours
     });
 
     console.log('✅ Login successful for:', email);
+    
+    // 🔥 AJOUTE LE TOKEN DANS LA RÉPONSE JSON
     return res.status(200).json({
       message: "Login successful",
+      token: accessToken,  // ← AJOUTE CETTE LIGNE
       user: {
         id: user.id,
         fullName: user.fullName,
@@ -265,35 +268,25 @@ export const resetPassword = async (req, res) => {
 // ══════════════════════════════════════════
 //  ADMIN — GET ALL USERS
 // ══════════════════════════════════════════
-export const getAdminUsers = async (req, res) => {
+export const getLoggedInUser = async (req) => {
   try {
-    if (req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
-
-    const users = await prisma.user.findMany({
-      select: {
-        id:        true,
-        fullName:  true,
-        email:     true,
-        role:      true,
-        suspended: true,
-        isDeleted: true,
-        avatarUrl: true,
-        createdAt: true,
-        _count: {
-          select: {
-            bookings:      true,
-            reviews:       true,
-            conversations: true,
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json(users);
+    // Essayer cookie d'abord
+    let token = req.cookies?.token;
+    
+    // Si pas de token dans cookie, essayer header Authorization
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+    
+    if (!token) return null;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return await prisma.user.findUnique({ where: { id: decoded.id } });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Something went wrong' });
+    console.error('getLoggedInUser error:', error.message);
+    return null;
   }
 };
 
