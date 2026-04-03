@@ -2,9 +2,20 @@ import { prisma } from '../lib/prisma.js';
 import jwt from 'jsonwebtoken';
 
 // ── Helpers ──────────────────────────────────────────
+// MODIFIÉ : supporte cookie ET header Authorization
 export const getLoggedInUser = async (req) => {
   try {
-    const token = req.cookies?.token;
+    // Essayer cookie d'abord
+    let token = req.cookies?.token;
+    
+    // Si pas de token dans cookie, essayer header Authorization
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+    
     if (!token) return null;
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return await prisma.user.findUnique({ where: { id: decoded.id } });
@@ -34,6 +45,12 @@ export const getMyBookings = async (req, res) => {
 // ── GET /api/bookings/paid ────────────────────────────
 export const getPaidBookings = async (req, res) => {
   try {
+    // Vérifier que l'utilisateur est admin
+    const user = await getLoggedInUser(req);
+    if (!user || user.role !== 'admin') {
+      return res.status(401).json({ message: 'Unauthorized - Admin only' });
+    }
+
     const paid = await prisma.booking.findMany({
       where: {
         paymentStatus: 'PAID',
@@ -62,6 +79,12 @@ export const getPaidBookings = async (req, res) => {
 // ── GET /api/bookings — clean list for overview widget ──
 export const getAllBookings = async (req, res) => {
   try {
+    // Vérifier que l'utilisateur est admin
+    const user = await getLoggedInUser(req);
+    if (!user || user.role !== 'admin') {
+      return res.status(401).json({ message: 'Unauthorized - Admin only' });
+    }
+
     const bookings = await prisma.booking.findMany({
       where: {
         isDraft: false,
@@ -100,7 +123,17 @@ export const createBooking = async (req, res) => {
 
     let userId = null;
     try {
-      const token = req.cookies?.token;
+      // Essayer cookie d'abord
+      let token = req.cookies?.token;
+      
+      // Si pas de token dans cookie, essayer header Authorization
+      if (!token && req.headers.authorization) {
+        const authHeader = req.headers.authorization;
+        if (authHeader.startsWith('Bearer ')) {
+          token = authHeader.split(' ')[1];
+        }
+      }
+      
       if (token) {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         userId = decoded.id;
@@ -186,6 +219,12 @@ export const updateBookingStatus = async (req, res) => {
   const { status } = req.body;
 
   try {
+    // Vérifier que l'utilisateur est admin
+    const user = await getLoggedInUser(req);
+    if (!user || user.role !== 'admin') {
+      return res.status(401).json({ message: 'Unauthorized - Admin only' });
+    }
+
     const booking = await prisma.booking.update({
       where:   { id: bookingId },
       data:    { status },
@@ -264,6 +303,12 @@ export const deleteBooking = async (req, res) => {
   if (isNaN(bookingId)) return res.status(400).json({ message: 'Invalid ID' });
 
   try {
+    // Vérifier que l'utilisateur est admin
+    const user = await getLoggedInUser(req);
+    if (!user || user.role !== 'admin') {
+      return res.status(401).json({ message: 'Unauthorized - Admin only' });
+    }
+
     await prisma.booking.delete({ where: { id: bookingId } });
     res.json({ message: 'Booking deleted' });
   } catch (err) {
@@ -275,6 +320,12 @@ export const deleteBooking = async (req, res) => {
 // ── GET /api/bookings/all — full history for admin ────
 export const getAllBookingsHistory = async (req, res) => {
   try {
+    // Vérifier que l'utilisateur est admin
+    const user = await getLoggedInUser(req);
+    if (!user || user.role !== 'admin') {
+      return res.status(401).json({ message: 'Unauthorized - Admin only' });
+    }
+
     const bookings = await prisma.booking.findMany({
       where: { isDraft: false },
       include: {
