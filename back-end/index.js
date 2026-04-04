@@ -149,14 +149,14 @@ cron.schedule('*/15 * * * *', async () => {
   }
 });
 
-// ── CORS (MODIFIÉ - ZIDNA http://localhost:3000) ─────────────────
+// ── CORS ─────────────────────────────────────────────────────────
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     const allowedOrigins = [
       'https://gleaming-trust-production-e46f.up.railway.app',
-      'http://localhost:3000',    // ← ZID HADI (frontend default)
-      'http://localhost:3001',    // ← 3001
+      'http://localhost:3000',
+      'http://localhost:3001',
       FRONTEND_URL,
       /\.railway\.app$/,
       /\.up\.railway\.app$/,
@@ -197,6 +197,18 @@ app.get('/health', (req, res) =>
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() })
 );
 
+// ── DEBUG: Check JWT_SECRET (Remove after fixing) ─────────────────
+app.get('/api/debug/jwt', (req, res) => {
+  res.json({
+    jwtSecretExists: !!process.env.JWT_SECRET,
+    jwtSecretLength: process.env.JWT_SECRET?.length || 0,
+    jwtSecretFirstChar: process.env.JWT_SECRET?.charAt(0) || 'none',
+    nodeEnv: process.env.NODE_ENV,
+    jwtResetSecretExists: !!process.env.JWT_RESET_SECRET,
+    frontendUrl: FRONTEND_URL,
+  });
+});
+
 // ── Routes ───────────────────────────────────────────────────────
 app.use('/api/auth',          auth);
 app.use('/api/reviews',       reviewRoutes);
@@ -226,7 +238,7 @@ app.use((err, req, res, next) => {
 httpServer.listen(PORT, '::', () => {
   console.log('=================================');
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Environment: process.env.NODE_ENV || 'development'`);
+  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌍 Frontend URL: ${FRONTEND_URL}`);
   console.log(`🔌 Socket.io enabled`);
   console.log(`⏰ Cron jobs active`);
