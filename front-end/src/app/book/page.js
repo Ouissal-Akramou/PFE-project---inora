@@ -21,9 +21,9 @@ const TIME_SLOTS = [
 ];
 
 const SETTINGS = [
-  { key: 'wildflowers',      label: 'Wild Flowers',     desc: 'Fresh stems & scattered petals', icon: '✿' },
-  { key: 'candlelight',      label: 'Candlelight Only', desc: 'Warm glow, no harsh lighting',   icon: '◍' },
-  { key: 'minimal',          label: 'Clean & Minimal',  desc: 'Neutral tones, no fuss',         icon: '❦' },
+  { key: 'wildflowers', label: 'Wild Flowers',     desc: 'Fresh stems & scattered petals', icon: '✿' },
+  { key: 'candlelight', label: 'Candlelight Only', desc: 'Warm glow, no harsh lighting',   icon: '◍' },
+  { key: 'minimal',     label: 'Clean & Minimal',  desc: 'Neutral tones, no fuss',         icon: '❦' },
 ];
 
 const CONTACT_PREFS = ['telephone', 'email', 'whatsapp'];
@@ -44,6 +44,12 @@ function getPricing(participants) {
   return { rate: 100, label: 'large group rate' };
 }
 
+// ─── Auth headers helper (for useDraft which is outside AuthContext) ───
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
 // ─── Draft hook ────────────────────────────────────────────────────
 function useDraft() {
   const [draftId, setDraftId]     = useState(null);
@@ -53,7 +59,10 @@ function useDraft() {
 
   const loadDraft = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/drafts`, { credentials: 'include' });
+      const res = await fetch(`${API}/api/drafts`, {
+        credentials: 'include',
+        headers: { ...getAuthHeaders() },
+      });
       if (!res.ok) return null;
       const data = await res.json();
       if (data?.id) { setDraftId(data.id); return data.formData || null; }
@@ -67,8 +76,12 @@ function useDraft() {
       setSaving(true);
       try {
         const res = await fetch(`${API}/api/drafts`, {
-          method: 'POST', credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
           body: JSON.stringify({ formData }),
         });
         if (!res.ok) return;
@@ -80,7 +93,9 @@ function useDraft() {
 
   const submitBooking = useCallback(async (bookingId) => {
     const res = await fetch(`${API}/api/bookings/${bookingId}/submit`, {
-      method: 'PATCH', credentials: 'include',
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { ...getAuthHeaders() },
     });
     if (!res.ok) throw new Error('Submit failed');
     return res.json();
@@ -88,7 +103,11 @@ function useDraft() {
 
   const deleteDraft = useCallback(async (id) => {
     if (!id) return;
-    await fetch(`${API}/api/drafts/${id}`, { method: 'DELETE', credentials: 'include' });
+    await fetch(`${API}/api/drafts/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { ...getAuthHeaders() },
+    });
   }, []);
 
   return { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft };
@@ -177,7 +196,9 @@ function LoadingScreen() {
 function BookContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading } = useAuth();
+
+  // ✅ جبنا authFetch من AuthContext
+  const { user, loading, authFetch } = useAuth();
 
   const preselectedActivity = searchParams.get('activity') || '';
 
@@ -226,12 +247,13 @@ function BookContent() {
     saveDraft(updated);
   };
 
+  // ✅ handleSubmit — استعمل authFetch عوض fetch عادي
   const handleSubmit = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch(`${API}/api/bookings`, {
-        method: 'POST', credentials: 'include',
+      const res = await authFetch(`${API}/api/bookings`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, isDraft: true }),
       });
