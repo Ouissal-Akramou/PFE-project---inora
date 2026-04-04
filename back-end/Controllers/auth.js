@@ -164,17 +164,16 @@ export const logout = async (req, res) => {
 // ══════════════════════════════════════════
 export const getMe = async (req, res) => {
   try {
-    console.log('🔍 [getMe] Request received');
-    console.log('🔍 [getMe] Cookies:', req.cookies ? Object.keys(req.cookies) : 'No cookies');
-    console.log('🔍 [getMe] Authorization header:', req.headers.authorization ? 'YES' : 'NO');
-    
     let token = req.cookies?.token;
+    
+    console.log('🔍 [getMe] Cookie token exists:', !!token);
     
     if (!token && req.headers.authorization) {
       const authHeader = req.headers.authorization;
+      console.log('🔍 [getMe] Authorization header exists:', !!authHeader);
       if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.split(' ')[1];
-        console.log('🔍 [getMe] Token from Authorization header (first 20 chars):', token.substring(0, 20) + '...');
+        console.log('🔍 [getMe] Token from header (first 20 chars):', token.substring(0, 20) + '...');
       }
     }
     
@@ -183,12 +182,11 @@ export const getMe = async (req, res) => {
       return res.status(401).json({ message: 'No token' });
     }
 
-    console.log('🔍 [getMe] Token found, attempting verify...');
+    console.log('🔍 [getMe] Verifying token with JWT_SECRET...');
     
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('✅ [getMe] Token verified successfully');
-      console.log('✅ [getMe] Decoded user id:', decoded.id);
+      console.log('✅ [getMe] Token verified, user id:', decoded.id);
       
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
@@ -205,23 +203,22 @@ export const getMe = async (req, res) => {
       });
 
       if (!user || user.isDeleted) {
-        console.log('❌ [getMe] User not found or deleted');
-        res.clearCookie("token", getCookieOptions());
+        console.log('❌ [getMe] User not found');
         return res.status(401).json({ message: 'Account not found.' });
       }
 
       if (user.suspended) {
         console.log('❌ [getMe] User suspended');
-        res.clearCookie("token", getCookieOptions());
-        return res.status(403).json({ message: 'Your account has been suspended.' });
+        return res.status(403).json({ message: 'Account suspended.' });
       }
 
       console.log('✅ [getMe] User found:', user.email);
       res.json({ user });
     } catch (jwtError) {
-      console.error('❌ [getMe] JWT verification failed:', jwtError.message);
-      console.error('❌ [getMe] JWT_SECRET used:', process.env.JWT_SECRET ? 'YES (length: ' + process.env.JWT_SECRET.length + ')' : 'NO');
-      res.status(401).json({ message: 'Invalid token: ' + jwtError.message });
+      console.error('❌ [getMe] JWT Error:', jwtError.message);
+      console.error('❌ [getMe] Token used:', token.substring(0, 30) + '...');
+      console.error('❌ [getMe] JWT_SECRET length:', process.env.JWT_SECRET?.length);
+      res.status(401).json({ message: 'Invalid token' });
     }
   } catch (error) {
     console.error('❌ [getMe] Error:', error);
