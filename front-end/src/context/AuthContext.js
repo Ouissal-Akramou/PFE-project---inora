@@ -10,12 +10,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // 🔥 Fonction pour récupérer le token
+  // Fonction pour récupérer le token
   const getToken = () => {
     return localStorage.getItem('token');
   };
 
-  // 🔥 Fonction pour faire des appels authentifiés
+  // Fonction pour faire des appels authentifiés
   const authFetch = async (url, options = {}) => {
     const token = getToken();
     return fetch(url, {
@@ -104,12 +104,14 @@ export function AuthProvider({ children }) {
     // 🔥 SUPPRIMER LE TOKEN
     localStorage.removeItem('token');
     setUser(null);
+    router.push('/');     // ← redirect to landing page
+    router.refresh();     // ← force re-render so Navbar/DraftBanner reset
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, setUser, login, register, logout, loading, refreshUser, 
-      authFetch, getToken  // ← Exporter aussi ces fonctions
+      authFetch, getToken
     }}>
       {children}
     </AuthContext.Provider>

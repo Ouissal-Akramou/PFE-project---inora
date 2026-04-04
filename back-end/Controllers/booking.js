@@ -217,6 +217,7 @@ export const updateBookingStatus = async (req, res) => {
   if (isNaN(bookingId)) return res.status(400).json({ message: 'Invalid booking ID' });
 
   const { status } = req.body;
+  const io = req.app.get('io'); // ← grab io instance
 
   try {
     // Vérifier que l'utilisateur est admin
@@ -231,11 +232,9 @@ export const updateBookingStatus = async (req, res) => {
       include: { user: true },
     });
 
-    // ── helper: resolve userId from booking or email ──
     const resolveUserId = async () => {
       if (booking.userId) return booking.userId;
       if (!booking.email) return null;
-
       const found = await prisma.user.findUnique({ where: { email: booking.email } });
       if (found) {
         await prisma.booking.update({ where: { id: bookingId }, data: { userId: found.id } });
@@ -248,7 +247,7 @@ export const updateBookingStatus = async (req, res) => {
     if (status === 'confirmed') {
       const targetUserId = await resolveUserId();
       if (targetUserId) {
-        await prisma.notification.create({
+        const notif = await prisma.notification.create({
           data: {
             userId:    targetUserId,
             type:      'BOOKING_CONFIRMED',
@@ -263,7 +262,19 @@ export const updateBookingStatus = async (req, res) => {
             read:      false,
           },
         });
-        console.log(`✅ Notification BOOKING_CONFIRMED → userId: ${targetUserId}`);
+
+        // ← THIS WAS MISSING
+        io?.to(`user_${targetUserId}`).emit('notification', {
+          id:        notif.id,
+          type:      notif.type,
+          title:     notif.title,
+          message:   notif.message,
+          bookingId: notif.bookingId,
+          actionUrl: notif.actionUrl,
+          createdAt: notif.createdAt,
+        });
+
+        console.log(`✅ Notification BOOKING_CONFIRMED emitted → userId: ${targetUserId}`);
       } else {
         console.warn(`⚠️ No user found for booking ${bookingId} — no notification sent`);
       }
@@ -273,20 +284,30 @@ export const updateBookingStatus = async (req, res) => {
     if (status === 'completed') {
       const targetUserId = await resolveUserId();
       if (targetUserId) {
-        await prisma.notification.create({
+        const notif = await prisma.notification.create({
           data: {
             userId:    targetUserId,
             type:      'REVIEW_REQUEST',
             title:     '✨ How was your experience?',
             message:   `Your "${booking.activity || 'gathering'}" is complete! Share your thoughts and help our community grow.`,
-            actionUrl: `/review?bookingId=${booking.id}`,
+            actionUrl: `/reviews/new?bookingId=${booking.id}`,
             bookingId: booking.id,
             read:      false,
           },
         });
-        console.log(`✅ Notification REVIEW_REQUEST → userId: ${targetUserId}`);
-      } else {
-        console.warn(`⚠️ No user found for booking ${bookingId} — review notification not sent`);
+
+        // ← THIS WAS MISSING TOO
+        io?.to(`user_${targetUserId}`).emit('notification', {
+          id:        notif.id,
+          type:      notif.type,
+          title:     notif.title,
+          message:   notif.message,
+          bookingId: notif.bookingId,
+          actionUrl: notif.actionUrl,
+          createdAt: notif.createdAt,
+        });
+
+        console.log(`✅ Notification REVIEW_REQUEST emitted → userId: ${targetUserId}`);
       }
     }
 

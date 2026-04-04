@@ -35,9 +35,6 @@ model User {
   deletedAt   DateTime?
   drafts        Draft[]
   reviews       Review[]
-  conversations Conversation[] @relation("UserConversations")
-  claimedConvos Conversation[] @relation("ClaimedConversations")
-  sentMessages  Message[]      @relation("SentMessages")
   bookings      Booking[]
   notifications Notification[]
 }
@@ -66,31 +63,6 @@ model Review {
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 }
 
-model Conversation {
-  id          String    @id @default(cuid())
-  userId      String
-  subject     String?
-  status      Status    @default(OPEN)
-  claimedById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  user        User      @relation("UserConversations",  fields: [userId],      references: [id])
-  claimedBy   User?     @relation("ClaimedConversations", fields: [claimedById], references: [id])
-  messages    Message[]
-}
-
-model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  senderId       String
-  body           String
-  createdAt      DateTime     @default(now())
-  readAt         DateTime?
-
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
-}
 
 model Booking {
   id               Int           @id @default(autoincrement())
@@ -124,7 +96,7 @@ model Booking {
   paymentStatus    String        @default("PENDING")
   advancePaid      Float?
   paidAt           DateTime?
-
+  paymentMode   String?   // 'advance' | 'full'
   // ── Timestamps ───────────────────────────────────────────────
   createdAt        DateTime      @default(now())
 
@@ -141,6 +113,7 @@ model Notification {
   type      String
   title     String
   message   String
+  actionUrl String? 
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 

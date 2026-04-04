@@ -1,22 +1,45 @@
 'use client';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-export default function ReviewForm({ gatheringId }) {
+export default function ReviewForm() {
+  const searchParams = useSearchParams();
+  const bookingId = searchParams.get('bookingId'); // ← read from URL
+
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [hoveredStar, setHoveredStar] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
   const submitReview = async () => {
-    await fetch(`${API_URL}/api/reviews`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ rating, comment, gatheringId }),
-    });
-    setSubmitted(true);
+    setError('');
+    if (comment.trim().length < 10) {
+      return setError('Please write at least 10 characters.');
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ rating, comment, bookingId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        return setError(data.message || 'Something went wrong.');
+      }
+      setSubmitted(true);
+    } catch (e) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -67,6 +90,13 @@ export default function ReviewForm({ gatheringId }) {
         <div className="w-10 h-px bg-[#C87D87] mx-auto mt-3" />
       </div>
 
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-500 text-sm text-center rounded">
+          {error}
+        </div>
+      )}
+
       {/* ── STAR RATING ── */}
       <div className="mb-8">
         <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#7a6a5a] text-center mb-4">
@@ -115,9 +145,10 @@ export default function ReviewForm({ gatheringId }) {
       {/* ── SUBMIT ── */}
       <button
         onClick={submitReview}
-        className="w-full font-['Cormorant_Garamond',serif] text-sm tracking-[0.22em] uppercase text-white bg-[#6B7556] border border-[#6B7556] py-3 hover:bg-[#C87D87] hover:border-[#C87D87] transition-all duration-300"
+        disabled={loading}
+        className="w-full font-['Cormorant_Garamond',serif] text-sm tracking-[0.22em] uppercase text-white bg-[#6B7556] border border-[#6B7556] py-3 hover:bg-[#C87D87] hover:border-[#C87D87] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Submit Review
+        {loading ? 'Submitting...' : 'Submit Review'}
       </button>
 
       {/* Footer note */}

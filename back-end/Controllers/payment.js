@@ -3,10 +3,11 @@ import { prisma }    from '../lib/prisma.js';
 
 const stripe          = new Stripe(process.env.STRIPE_SECRET_KEY);
 const ADVANCE_AMOUNT  = 250;
+const PRICE_PER_PERSON = 150; // must match your frontend constant
 
 // ── POST /api/payments/create-intent ────────────────────────────
 export const createPaymentIntent = async (req, res) => {
-  const { bookingId } = req.body;
+  const { bookingId, payMode } = req.body; // ← also receive payMode here
 
   if (!bookingId)
     return res.status(400).json({ error: 'bookingId required' });
@@ -25,14 +26,19 @@ export const createPaymentIntent = async (req, res) => {
     if (booking.paymentStatus === 'PAID')
       return res.status(400).json({ error: 'Already paid' });
 
+    const participants  = parseInt(booking.participants) || 1;
+    const totalAmount   = participants * PRICE_PER_PERSON;
+    const amountToPay   = payMode === 'full' ? totalAmount : ADVANCE_AMOUNT;
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount:      ADVANCE_AMOUNT * 100,
-      currency:    'usd',
+      amount:   amountToPay * 100, // ← charge the right amount
+      currency: 'usd',
       metadata: {
         bookingId: String(bookingId),
-        userId:    req.user.id,
+        userId:    String(req.user.id),
+        payMode:   payMode ?? 'advance', // ← store it in metadata too
       },
-      description: `Avance réservation — ${booking.activity}`,
+      description: `Réservation Inora — ${booking.activity} (${payMode === 'full' ? 'full' : 'advance'})`,
     });
 
     res.json({ clientSecret: paymentIntent.client_secret });
@@ -45,7 +51,7 @@ export const createPaymentIntent = async (req, res) => {
 
 // ── POST /api/payments/confirm ───────────────────────────────────
 export const confirmPayment = async (req, res) => {
-  const { paymentIntentId, bookingId } = req.body;
+  const { paymentIntentId, bookingId, payMode } = req.body; // ← destructure payMode
 
   if (!paymentIntentId || !bookingId)
     return res.status(400).json({ error: 'paymentIntentId and bookingId required' });
@@ -59,11 +65,19 @@ export const confirmPayment = async (req, res) => {
     if (paymentIntent.metadata.bookingId !== String(bookingId))
       return res.status(403).json({ error: 'Booking mismatch' });
 
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+    });
+
+    const participants = parseInt(booking?.participants) || 1;
+    const totalAmount  = participants * PRICE_PER_PERSON; // ← now defined
+
     const updated = await prisma.booking.update({
       where: { id: parseInt(bookingId) },
       data: {
         paymentStatus: 'PAID',
-        advancePaid:   ADVANCE_AMOUNT,
+        paymentMode:   payMode ?? 'advance', // ← now defined
+        advancePaid:   payMode === 'full' ? totalAmount : ADVANCE_AMOUNT,
         paidAt:        new Date(),
       },
     });

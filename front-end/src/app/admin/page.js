@@ -26,7 +26,7 @@ const TIME_SLOTS = [
 const SETTINGS_MAP = {
   garden:  { label:'Sunlit Garden',    icon:'❧' },
   indoor:  { label:'Cosy Indoor',      icon:'⌂' },
-  terrace: { label:'Open-Air Terrace', icon:'◻' },
+  terrace: { label:'Open-Air Terrace', ic0o00n:'◻' },
 };
 
 const LaceCorner = ({ flip = false, danger = false }) => (
@@ -152,6 +152,79 @@ const exportBookingPDF = (b) => {
   doc.save(`booking-${b.id}-${(b.fullName || 'client').replace(/\s+/g,'_')}.pdf`);
 };
 
+
+// ── Loading Screen (matches booking page) ────────────────────────────────────
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden"
+      style={{ background: 'linear-gradient(150deg, #C87D87 0%, #b36d77 45%, #a55e6a 80%, #9a5060 100%)' }}>
+      <style>{`
+        @keyframes lacePulse { 0%,100%{opacity:.45} 50%{opacity:1} }
+        @keyframes laceRotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes laceCounter { from{transform:rotate(0deg)} to{transform:rotate(-360deg)} }
+        @keyframes floatOrb { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+      `}</style>
+      <div className="absolute top-10 left-10 w-64 h-64 rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle,rgba(251,234,214,0.10) 0%,transparent 70%)', animation: 'floatOrb 10s ease-in-out infinite', filter: 'blur(18px)' }} />
+      <div className="absolute bottom-10 right-10 w-72 h-72 rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle,rgba(58,48,39,0.15) 0%,transparent 70%)', animation: 'floatOrb 13s ease-in-out infinite 2s', filter: 'blur(22px)' }} />
+      <div className="relative z-10 flex flex-col items-center gap-5">
+        <div className="relative w-24 h-24 flex items-center justify-center">
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 96 96"
+            style={{ animation: 'laceRotate 8s linear infinite' }}>
+            <circle cx="48" cy="48" r="44" fill="none" stroke="#FBEAD6" strokeWidth="0.6" strokeOpacity="0.35" strokeDasharray="3 5"/>
+            {[0,30,60,90,120,150,180,210,240,270,300,330].map((a,i) => {
+              const rad = a * Math.PI / 180;
+              return (
+                <g key={i}>
+                  <line
+                    x1={48+Math.cos(rad)*20} y1={48+Math.sin(rad)*20}
+                    x2={48+Math.cos(rad)*44} y2={48+Math.sin(rad)*44}
+                    stroke="#FBEAD6" strokeWidth="0.5" strokeOpacity="0.28"/>
+                  <circle
+                    cx={48+Math.cos(rad)*44} cy={48+Math.sin(rad)*44}
+                    r="1.2" fill="#FBEAD6" fillOpacity="0.45"/>
+                </g>
+              );
+            })}
+          </svg>
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 96 96"
+            style={{ animation: 'laceCounter 6s linear infinite' }}>
+            <circle cx="48" cy="48" r="30" fill="none" stroke="#FBEAD6" strokeWidth="0.7" strokeOpacity="0.38"/>
+            {[0,45,90,135,180,225,270,315].map((a,i) => {
+              const rad = a * Math.PI / 180;
+              return (
+                <g key={i}>
+                  <circle
+                    cx={48+Math.cos(rad)*30} cy={48+Math.sin(rad)*30}
+                    r="2" fill="none" stroke="#FBEAD6" strokeWidth="0.5" strokeOpacity="0.50"/>
+                  <line
+                    x1={48+Math.cos(rad)*30} y1={48+Math.sin(rad)*30}
+                    x2={48+Math.cos(rad)*20} y2={48+Math.sin(rad)*20}
+                    stroke="#FBEAD6" strokeWidth="0.4" strokeOpacity="0.28"/>
+                </g>
+              );
+            })}
+          </svg>
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 96 96"
+            style={{ animation: 'lacePulse 2s ease-in-out infinite' }}>
+            <circle cx="48" cy="48" r="14" fill="none" stroke="#FBEAD6" strokeWidth="0.6" strokeOpacity="0.42"/>
+            <rect x="43" y="43" width="10" height="10" transform="rotate(45 48 48)"
+              fill="none" stroke="#FBEAD6" strokeWidth="0.7" strokeOpacity="0.62"/>
+            <circle cx="48" cy="48" r="2.5" fill="#FBEAD6" fillOpacity="0.52"/>
+          </svg>
+        </div>
+        <div className="flex flex-col items-center gap-1.5">
+          <p className="font-['Playfair_Display',serif] italic text-[#FBEAD6]/75 text-xl">Inora</p>
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/40 text-[0.7rem] tracking-[0.4em] uppercase">
+            Loading admin panel
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   const { user, setUser, logout } = useAuth();
   const router = useRouter();
@@ -168,7 +241,7 @@ const authFetch = async (url, options = {}) => {
     });
   };
   const [activeTab,          setActiveTab]          = useState('overview');
-  const [pageReady,          setPageReady]          = useState(false);
+  const [pageReady,          setPageReady]          = useState(null);
   const [collapsed,          setCollapsed]          = useState(false);
   const [approvedReviews,    setApprovedReviews]    = useState([]);
   const [pendingReviews,     setPendingReviews]     = useState([]);
@@ -441,6 +514,8 @@ await authFetch(`${API}/api/bookings/${id}`, { method:'DELETE' });
   const sideW  = collapsed ? 'w-[72px]' : 'w-64';
   const mainML = collapsed ? 'ml-[72px]' : 'ml-64';
 
+  if (!pageReady) return <LoadingScreen />;
+
   return (
     <>
       <style>{`
@@ -478,7 +553,7 @@ await authFetch(`${API}/api/bookings/${id}`, { method:'DELETE' });
         ::-webkit-scrollbar-thumb { background:rgba(200,125,135,0.30); border-radius:8px; }
       `}</style>
 
-      <div className={`min-h-screen flex font-['Cormorant_Garamond',serif] transition-opacity duration-500 ${pageReady?'opacity-100':'opacity-0'}`}>
+      <div className="min-h-screen flex font-['Cormorant_Garamond',serif]">
 
         {/* ═══════════ SIDEBAR ═══════════ */}
         <aside className={`pink-sidebar fixed top-0 left-0 h-full z-40 flex flex-col transition-all duration-300 ${sideW} overflow-hidden`}

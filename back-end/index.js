@@ -124,7 +124,7 @@ cron.schedule('*/15 * * * *', async () => {
         type:      'FEEDBACK_REQUEST',
         title:     '✨ How was your experience?',
         message:   `Your "${b.activity || 'session'}" just ended. Share your thoughts — it helps our community grow.`,
-        actionUrl: `/review?bookingId=${b.id}`,
+        actionUrl: `/reviews/new?bookingId=${b.id}`,
         read:      false,
       }));
 
