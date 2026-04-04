@@ -27,7 +27,7 @@ const fileFilter = (req, file, cb) => {
 };
 export const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// Helper function for cookie options
+// ⚠️ MODIFICATION: Simplified cookie options (no domain)
 const getCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === 'production';
   return {
@@ -35,7 +35,7 @@ const getCookieOptions = () => {
     secure: isProduction,        // true f railway (HTTPS), false f localhost
     sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    domain: isProduction ? '.railway.app' : undefined,
+    // domain removed - let browser handle it
   };
 };
 
@@ -121,7 +121,6 @@ export const login = async (req, res) => {
 
     const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    // ⚠️ MODIFICATION: Dynamic cookie options
     res.cookie("token", accessToken, getCookieOptions());
 
     console.log('✅ Login successful for:', email);
