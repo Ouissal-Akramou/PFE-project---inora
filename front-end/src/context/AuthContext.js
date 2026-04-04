@@ -5,27 +5,40 @@ import { useRouter } from 'next/navigation';
 const API = process.env.NEXT_PUBLIC_API_URL;
 const AuthContext = createContext(null);
 
+// Helper function to get cookie value
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // ⚠️ MODIFICATION 1: N7eydo getToken (ma3adch localStorage)
-  // const getToken = () => {
-  //   return localStorage.getItem('token');
-  // };
-
-  // ⚠️ MODIFICATION 2: authFetch mbeddel (ma3adch yjib token mn localStorage)
+  // MODIFIED: authFetch with Authorization header fallback
   const authFetch = async (url, options = {}) => {
+    // Try to get token from cookie first, then localStorage
+    let token = getCookie('token');
+    if (!token) {
+      token = localStorage.getItem('token');
+    }
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     return fetch(url, {
       ...options,
-      credentials: 'include', // ← HAD CHI KAYB3AT L COOKIE AUTOMATIQUEMENT
-      headers: {
-        'Content-Type': 'application/json',
-        // ⚠️ N7EYDO had l Authorization (cookie fiha token)
-        // ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers,
-      },
+      credentials: 'include',
+      headers,
     });
   };
 
@@ -53,7 +66,7 @@ export function AuthProvider({ children }) {
 
   const refreshUser = () => fetchMe().catch(() => {});
 
-  // ⚠️ MODIFICATION 3: LOGIN (n7eydo localStorage)
+  // MODIFIED: Login with localStorage fallback
   const login = async (email, password, selectedRole, adminCode) => {
     const res = await fetch(`${API}/api/auth/login`, {
       method:      'POST',
@@ -68,16 +81,22 @@ export function AuthProvider({ children }) {
     }
     const data = await res.json();
     
-    // ⚠️ COMMENTI HADI (ma3adch nkhzno token f localStorage)
-    // if (data.token) {
-    //   localStorage.setItem('token', data.token);
-    // }
+    // Store token in localStorage as fallback for cross-domain
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    } else {
+      // Try to get token from cookie
+      const tokenFromCookie = getCookie('token');
+      if (tokenFromCookie) {
+        localStorage.setItem('token', tokenFromCookie);
+      }
+    }
     
     setUser(data.user ?? data);
     return data;
   };
 
-  // ⚠️ MODIFICATION 4: REGISTER (n7eydo localStorage)
+  // MODIFIED: Register with localStorage fallback
   const register = async (fullName, email, password, adminCode) => {
     const res = await fetch(`${API}/api/auth/register`, {
       method:      'POST',
@@ -92,30 +111,28 @@ export function AuthProvider({ children }) {
     }
     const data = await res.json();
     
-    // ⚠️ COMMENTI HADI (register ma3adch kayrj3 token)
-    // if (data.token) {
-    //   localStorage.setItem('token', data.token);
-    // }
+    // Store token if returned
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    }
     
     setUser(data.user ?? data);
     return data;
   };
 
-  // ⚠️ MODIFICATION 5: LOGOUT (n7eydo localStorage)
+  // MODIFIED: Logout with localStorage cleanup
   const logout = async () => {
     await fetch(`${API}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-    // ⚠️ COMMENTI HADI (cookie kaytms7 mn backend)
-    // localStorage.removeItem('token');
+    localStorage.removeItem('token');
     setUser(null);
-    router.push('/');     // ← redirect to landing page
-    router.refresh();     // ← force re-render so Navbar/DraftBanner reset
+    router.push('/');
+    router.refresh();
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, setUser, login, register, logout, loading, refreshUser, 
-      authFetch, // ⚠️ getToken m7yodi (ma3adch mawjod)
-      // getToken // ← N7EYDO HADI (optionnel)
+      authFetch
     }}>
       {children}
     </AuthContext.Provider>

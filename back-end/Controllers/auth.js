@@ -27,15 +27,14 @@ const fileFilter = (req, file, cb) => {
 };
 export const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ⚠️ MODIFICATION: Simplified cookie options (no domain)
+// Cookie options (no domain for cross-domain compatibility)
 const getCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === 'production';
   return {
     httpOnly: true,
-    secure: isProduction,        // true f railway (HTTPS), false f localhost
+    secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    // domain removed - let browser handle it
   };
 };
 
@@ -77,7 +76,7 @@ export const register = async (req, res) => {
 };
 
 // ══════════════════════════════════════════
-//  LOGIN
+//  LOGIN (MODIFIED - RETURNS TOKEN IN RESPONSE)
 // ══════════════════════════════════════════
 export const login = async (req, res) => {
   try {
@@ -121,12 +120,15 @@ export const login = async (req, res) => {
 
     const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
+    // Set cookie (for same-domain)
     res.cookie("token", accessToken, getCookieOptions());
 
     console.log('✅ Login successful for:', email);
     
+    // ⚠️ MODIFICATION: Return token in response body for cross-domain
     return res.status(200).json({
       message: "Login successful",
+      token: accessToken,  // ← RAJ3O (bach frontend ykhzeno f localStorage)
       user: {
         id: user.id,
         fullName: user.fullName,
@@ -155,7 +157,7 @@ export const logout = async (req, res) => {
 };
 
 // ══════════════════════════════════════════
-//  GET ME
+//  GET ME (supports both cookie and Authorization header)
 // ══════════════════════════════════════════
 export const getMe = async (req, res) => {
   try {
