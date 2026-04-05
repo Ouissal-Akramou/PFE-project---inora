@@ -10,7 +10,7 @@ import {
   resetPassword,
   getAdminUsers,
   toggleSuspendUser,
-} from '../Controllers/authController.js';
+} from '../Controllers/auth.js'; 
 
 const router = express.Router();
 

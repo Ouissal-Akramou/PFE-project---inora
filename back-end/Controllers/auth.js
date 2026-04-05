@@ -7,26 +7,6 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-// ══════════════════════════════════════════
-//  MULTER — avatar upload config
-// ══════════════════════════════════════════
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = 'uploads/avatars';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `avatar-${req.user.id}-${Date.now()}${ext}`);
-  },
-});
-const fileFilter = (req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-  allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error('Only images allowed'));
-};
-export const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
-
 // Cookie options
 const getCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -38,9 +18,9 @@ const getCookieOptions = () => {
   };
 };
 
-// ══════════════════════════════════════════
-//  REGISTER
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// REGISTER
+// ──────────────────────────────────────────────────────────────────
 export const register = async (req, res) => {
   try {
     const { fullName, email, password, adminCode } = req.body;
@@ -75,9 +55,9 @@ export const register = async (req, res) => {
   }
 };
 
-// ══════════════════════════════════════════
-//  LOGIN (WITH DEBUG)
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// LOGIN
+// ──────────────────────────────────────────────────────────────────
 export const login = async (req, res) => {
   try {
     const { email, password, role, adminCode } = req.body;
@@ -86,13 +66,11 @@ export const login = async (req, res) => {
 
     const user = await prisma.user.findFirst({ where: { email } });
     if (!user) {
-      console.log('❌ [login] User not found:', email);
       return res.status(400).json({ message: 'Invalid email' });
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
-      console.log('❌ [login] Invalid password for:', email);
       return res.status(400).json({ message: 'Invalid password' });
     }
 
@@ -101,7 +79,6 @@ export const login = async (req, res) => {
     }
 
     if (user.suspended) {
-      console.log('❌ [login] Account suspended:', email);
       return res.status(403).json({ message: 'Account suspended' });
     }
 
@@ -110,25 +87,15 @@ export const login = async (req, res) => {
     }
 
     if (role === 'admin') {
-      if (!adminCode) {
-        return res.status(403).json({ message: 'Admin code is required' });
-      }
-      if (adminCode !== process.env.ADMIN_SECRET_CODE) {
+      if (!adminCode || adminCode !== process.env.ADMIN_SECRET_CODE) {
         return res.status(403).json({ message: 'Invalid admin code' });
       }
     }
 
     const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     
-    console.log('🔐 [login] Generated token (first 20 chars):', accessToken.substring(0, 20) + '...');
-    console.log('🔐 [login] JWT_SECRET exists:', process.env.JWT_SECRET ? 'YES' : 'NO');
-
-    // Set cookie
     res.cookie("token", accessToken, getCookieOptions());
 
-    console.log('✅ [login] Login successful for:', email);
-    
-    // Return token in response for localStorage
     return res.status(200).json({
       message: "Login successful",
       token: accessToken,
@@ -146,9 +113,9 @@ export const login = async (req, res) => {
   }
 };
 
-// ══════════════════════════════════════════
-//  LOGOUT
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// LOGOUT
+// ──────────────────────────────────────────────────────────────────
 export const logout = async (req, res) => {
   try {
     res.clearCookie("token", getCookieOptions());
@@ -159,76 +126,111 @@ export const logout = async (req, res) => {
   }
 };
 
-// ══════════════════════════════════════════
-//  GET ME (WITH DEBUG)
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// GET ME
+// ──────────────────────────────────────────────────────────────────
 export const getMe = async (req, res) => {
   try {
     let token = req.cookies?.token;
     
-    console.log('🔍 [getMe] Cookie token exists:', !!token);
-    
     if (!token && req.headers.authorization) {
       const authHeader = req.headers.authorization;
-      console.log('🔍 [getMe] Authorization header exists:', !!authHeader);
       if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.split(' ')[1];
-        console.log('🔍 [getMe] Token from header (first 20 chars):', token.substring(0, 20) + '...');
       }
     }
     
     if (!token) {
-      console.log('❌ [getMe] No token found');
-      return res.status(401).json({ message: 'No token' });
+      return res.status(401).json({ message: 'No token provided' });
     }
 
-    console.log('🔍 [getMe] Verifying token with JWT_SECRET...');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('✅ [getMe] Token verified, user id:', decoded.id);
-      
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          role: true,
-          avatarUrl: true,
-          createdAt: true,
-          isDeleted: true,
-          suspended: true,
-        }
-      });
-
-      if (!user || user.isDeleted) {
-        console.log('❌ [getMe] User not found');
-        return res.status(401).json({ message: 'Account not found.' });
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        createdAt: true,
+        isDeleted: true,
+        suspended: true,
       }
+    });
 
-      if (user.suspended) {
-        console.log('❌ [getMe] User suspended');
-        return res.status(403).json({ message: 'Account suspended.' });
-      }
-
-      console.log('✅ [getMe] User found:', user.email);
-      res.json({ user });
-    } catch (jwtError) {
-      console.error('❌ [getMe] JWT Error:', jwtError.message);
-      console.error('❌ [getMe] Token used:', token.substring(0, 30) + '...');
-      console.error('❌ [getMe] JWT_SECRET length:', process.env.JWT_SECRET?.length);
-      res.status(401).json({ message: 'Invalid token' });
+    if (!user || user.isDeleted) {
+      return res.status(401).json({ message: 'Account not found.' });
     }
+
+    if (user.suspended) {
+      return res.status(403).json({ message: 'Account suspended.' });
+    }
+
+    res.json({ user });
+    
   } catch (error) {
-    console.error('❌ [getMe] Error:', error);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
     res.status(401).json({ message: 'Invalid token' });
   }
 };
 
-// ══════════════════════════════════════════
-//  FORGOT PASSWORD
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// GET PROFILE (for /api/profile/me)
+// ──────────────────────────────────────────────────────────────────
+export const getProfile = async (req, res) => {
+  try {
+    let token = req.cookies?.token;
+    
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        phone: true,
+        avatarUrl: true,
+        createdAt: true,
+        isDeleted: true,
+        suspended: true,
+      }
+    });
+
+    if (!user || user.isDeleted) {
+      return res.status(401).json({ message: 'Account not found.' });
+    }
+
+    if (user.suspended) {
+      return res.status(403).json({ message: 'Account suspended.' });
+    }
+
+    res.json({ user });
+    
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────
+// FORGOT PASSWORD
+// ──────────────────────────────────────────────────────────────────
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -244,22 +246,13 @@ export const forgotPassword = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
     await transporter.sendMail({
-      from:    `"Support" <${process.env.EMAIL_USER}>`,
-      to:      user.email,
+      from: `"Support" <${process.env.EMAIL_USER}>`,
+      to: user.email,
       subject: "Password Reset",
-      html: `
-        <h2>Password Reset</h2>
-        <p>You requested a password reset.</p>
-        <p>Click the button below:</p>
-        <a href="${resetLink}"
-           style="padding:10px 20px;background:#4CAF50;color:white;text-decoration:none;border-radius:5px;">
-           Reset Password
-        </a>
-        <p>This link expires in 15 minutes.</p>
-      `
+      html: `<h2>Password Reset</h2><p>Click <a href="${resetLink}">here</a> to reset your password.</p>`
     });
 
     return res.status(200).json({ message: "If the email exists, a reset link has been sent" });
@@ -270,9 +263,9 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-// ══════════════════════════════════════════
-//  RESET PASSWORD
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// RESET PASSWORD
+// ──────────────────────────────────────────────────────────────────
 export const resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
@@ -282,12 +275,10 @@ export const resetPassword = async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     if (!user) return res.status(400).json({ message: 'Invalid token' });
 
-    if (user.isDeleted) return res.status(403).json({ message: 'This account no longer exists.' });
-
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.user.update({
       where: { id: user.id },
-      data:  { password: hashedPassword }
+      data: { password: hashedPassword }
     });
 
     return res.status(200).json({ message: 'Password reset successful' });
@@ -295,39 +286,13 @@ export const resetPassword = async (req, res) => {
   } catch (error) {
     if (error.name === 'TokenExpiredError')
       return res.status(400).json({ message: 'Reset token expired' });
-    if (error.name === 'JsonWebTokenError')
-      return res.status(400).json({ message: 'Invalid reset token' });
-    console.error(error);
     return res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
-// ══════════════════════════════════════════
-//  HELPER — GET LOGGED IN USER
-// ══════════════════════════════════════════
-export const getLoggedInUser = async (req) => {
-  try {
-    let token = req.cookies?.token;
-    
-    if (!token && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        token = authHeader.split(' ')[1];
-      }
-    }
-    
-    if (!token) return null;
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return await prisma.user.findUnique({ where: { id: decoded.id } });
-  } catch (error) {
-    console.error('getLoggedInUser error:', error.message);
-    return null;
-  }
-};
-
-// ══════════════════════════════════════════
-//  ADMIN — GET ALL USERS
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// ADMIN - GET ALL USERS
+// ──────────────────────────────────────────────────────────────────
 export const getAdminUsers = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -350,14 +315,14 @@ export const getAdminUsers = async (req, res) => {
 
     res.json(users);
   } catch (error) {
-    console.error('getAdminUsers error:', error);
+    console.error(error);
     res.status(500).json({ message: 'Something went wrong' });
   }
 };
 
-// ══════════════════════════════════════════
-//  ADMIN — SUSPEND / UNSUSPEND USER
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// ADMIN - TOGGLE SUSPEND USER
+// ──────────────────────────────────────────────────────────────────
 export const toggleSuspendUser = async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
@@ -365,124 +330,12 @@ export const toggleSuspendUser = async (req, res) => {
     const { suspended } = req.body;
     const updated = await prisma.user.update({
       where: { id: req.params.id },
-      data:  { suspended }
+      data: { suspended }
     });
 
     res.json(updated);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Something went wrong' });
-  }
-};
-
-// ══════════════════════════════════════════
-//  PROFILE — UPDATE AVATAR
-// ══════════════════════════════════════════
-export const updateAvatar = async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'No file uploaded.' });
-
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-
-    const current = await prisma.user.findUnique({
-      where:  { id: req.user.id },
-      select: { avatarUrl: true }
-    });
-    if (current?.avatarUrl) {
-      const oldPath = `.${current.avatarUrl}`;
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
-
-    await prisma.user.update({ where: { id: req.user.id }, data: { avatarUrl } });
-
-    res.json({ message: 'Avatar updated.', avatarUrl });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Something went wrong.' });
-  }
-};
-
-// ══════════════════════════════════════════
-//  PROFILE — UPDATE NAME
-// ══════════════════════════════════════════
-export const updateName = async (req, res) => {
-  try {
-    const { fullName } = req.body;
-    if (!fullName?.trim()) return res.status(400).json({ message: 'Name is required.' });
-    const updated = await prisma.user.update({
-      where: { id: req.user.id },
-      data:  { fullName }
-    });
-    res.json({ message: 'Name updated.', fullName: updated.fullName });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Something went wrong.' });
-  }
-};
-
-// ══════════════════════════════════════════
-//  PROFILE — UPDATE EMAIL
-// ══════════════════════════════════════════
-export const updateEmail = async (req, res) => {
-  try {
-    const { email, currentPassword } = req.body;
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-
-    const valid = await bcrypt.compare(currentPassword, user.password);
-    if (!valid) return res.status(400).json({ message: 'Incorrect password.' });
-
-    const exists = await prisma.user.findFirst({
-      where: { email, NOT: { id: req.user.id } }
-    });
-    if (exists) return res.status(400).json({ message: 'Email already in use.' });
-
-    await prisma.user.update({ where: { id: req.user.id }, data: { email } });
-    res.json({ message: 'Email updated.' });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Something went wrong.' });
-  }
-};
-
-// ══════════════════════════════════════════
-//  PROFILE — UPDATE PASSWORD
-// ══════════════════════════════════════════
-export const updatePassword = async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-
-    const valid = await bcrypt.compare(currentPassword, user.password);
-    if (!valid) return res.status(400).json({ message: 'Incorrect current password.' });
-
-    const hashed = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({ where: { id: req.user.id }, data: { password: hashed } });
-    res.json({ message: 'Password updated.' });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Something went wrong.' });
-  }
-};
-
-// ══════════════════════════════════════════
-//  PROFILE — DELETE ACCOUNT
-// ══════════════════════════════════════════
-export const deleteAccount = async (req, res) => {
-  try {
-    const { password, adminCode } = req.body;
-
-    if (adminCode !== process.env.ADMIN_SECRET_CODE)
-      return res.status(403).json({ message: 'Invalid admin code.' });
-
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(400).json({ message: 'Incorrect password.' });
-
-    await prisma.user.update({ where: { id: req.user.id }, data: { isDeleted: true } });
-    res.clearCookie('token', getCookieOptions());
-    res.json({ message: 'Account deleted.' });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Something went wrong.' });
   }
 };
