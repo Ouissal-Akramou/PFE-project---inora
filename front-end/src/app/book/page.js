@@ -44,14 +44,8 @@ function getPricing(participants) {
   return { rate: 100, label: 'large group rate' };
 }
 
-// ─── Auth headers helper (for useDraft which is outside AuthContext) ───
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
-};
-
-// ─── Draft hook ────────────────────────────────────────────────────
-function useDraft() {
+// ─── Draft hook (modified to use authFetch) ────────────────────────
+function useDraft(authFetch) {
   const [draftId, setDraftId]     = useState(null);
   const [saving, setSaving]       = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
@@ -59,29 +53,22 @@ function useDraft() {
 
   const loadDraft = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/drafts`, {
-        credentials: 'include',
-        headers: { ...getAuthHeaders() },
-      });
+      const res = await authFetch(`${API}/api/drafts`);
       if (!res.ok) return null;
       const data = await res.json();
       if (data?.id) { setDraftId(data.id); return data.formData || null; }
     } catch {}
     return null;
-  }, []);
+  }, [authFetch]);
 
   const saveDraft = useCallback((formData) => {
     clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       setSaving(true);
       try {
-        const res = await fetch(`${API}/api/drafts`, {
+        const res = await authFetch(`${API}/api/drafts`, {
           method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders(),
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ formData }),
         });
         if (!res.ok) return;
@@ -89,26 +76,22 @@ function useDraft() {
         if (data?.id) { setDraftId(data.id); setLastSaved(new Date()); }
       } finally { setSaving(false); }
     }, 1200);
-  }, []);
+  }, [authFetch]);
 
   const submitBooking = useCallback(async (bookingId) => {
-    const res = await fetch(`${API}/api/bookings/${bookingId}/submit`, {
+    const res = await authFetch(`${API}/api/bookings/${bookingId}/submit`, {
       method: 'PATCH',
-      credentials: 'include',
-      headers: { ...getAuthHeaders() },
     });
     if (!res.ok) throw new Error('Submit failed');
     return res.json();
-  }, []);
+  }, [authFetch]);
 
   const deleteDraft = useCallback(async (id) => {
     if (!id) return;
-    await fetch(`${API}/api/drafts/${id}`, {
+    await authFetch(`${API}/api/drafts/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
-      headers: { ...getAuthHeaders() },
     });
-  }, []);
+  }, [authFetch]);
 
   return { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft };
 }
@@ -197,8 +180,8 @@ function BookContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
-  // ✅ جبنا authFetch من AuthContext
   const { user, loading, authFetch } = useAuth();
+  const { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft } = useDraft(authFetch);
 
   const preselectedActivity = searchParams.get('activity') || '';
 
@@ -207,8 +190,6 @@ function BookContent() {
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
-
-  const { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft } = useDraft();
 
   useEffect(() => { if (!loading && !user) router.push('/sign-up'); }, [user, loading, router]);
 
@@ -247,7 +228,6 @@ function BookContent() {
     saveDraft(updated);
   };
 
-  // ✅ handleSubmit — استعمل authFetch عوض fetch عادي
   const handleSubmit = async () => {
     setError(null);
     setSubmitting(true);
