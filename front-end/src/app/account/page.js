@@ -264,7 +264,7 @@ export default function Admin() {
   const [nameLoad,   setNameLoad]   = useState(false);
   const [emailForm,  setEmailForm]  = useState({ email:'', currentPassword:'' });
   const [emailMsg,   setEmailMsg]   = useState({ type:'', text:'' });
-  const [emailLoad,  setEmailLoad]   = useState(false);
+  const [emailLoad,  setEmailLoad]  = useState(false);
   const [passForm,   setPassForm]   = useState({ currentPassword:'', newPassword:'', confirmPassword:'' });
   const [passMsg,    setPassMsg]    = useState({ type:'', text:'' });
   const [passLoad,   setPassLoad]   = useState(false);
@@ -330,34 +330,58 @@ export default function Admin() {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      console.log('Fetching users from bookings as fallback...');
+      let usersList = [];
+      
+      // Essayer d'abord l'endpoint admin/users
+      try {
+        const usersRes = await fetch(`${API}/api/admin/users`, { credentials: 'include' });
+        if (usersRes.ok) {
+          const data = await usersRes.json();
+          usersList = Array.isArray(data) ? data : [];
+          setUsers(usersList);
+          return;
+        }
+      } catch (e) {
+        console.log('Admin users endpoint not available, using fallback');
+      }
+
+      // Fallback: extraire des bookings
       const bookingsRes = await fetch(`${API}/api/bookings/all`, { credentials: 'include' });
       
       if (bookingsRes.ok) {
-        const bookings = await bookingsRes.json();
+        const bookingsData = await bookingsRes.json();
         const uniqueUsers = new Map();
         
-        bookings.forEach(booking => {
-          if (booking.user && booking.user.id && !uniqueUsers.has(booking.user.id)) {
-            uniqueUsers.set(booking.user.id, {
-              id: booking.user.id,
-              fullName: booking.user.fullName || 'Unknown',
-              email: booking.user.email,
-              role: booking.user.role || 'user',
-              avatarUrl: booking.user.avatarUrl || null,
-              createdAt: booking.user.createdAt || booking.createdAt || new Date().toISOString(),
-              isDeleted: booking.user.isDeleted || false,
-              suspended: booking.user.suspended || false,
-              bookingsCount: 1
-            });
-          } else if (booking.email && !uniqueUsers.has(booking.email)) {
+        bookingsData.forEach(booking => {
+          // Cas 1: booking.user existe
+          if (booking.user && booking.user.id) {
+            if (!uniqueUsers.has(booking.user.id)) {
+              uniqueUsers.set(booking.user.id, {
+                id: booking.user.id,
+                fullName: booking.user.fullName || 'Unknown',
+                email: booking.user.email,
+                role: booking.user.role || 'user',
+                avatarUrl: booking.user.avatarUrl || null,
+                createdAt: booking.user.createdAt || booking.createdAt,
+                isDeleted: booking.user.isDeleted || false,
+                suspended: booking.user.suspended || false,
+                bookingsCount: 1
+              });
+            } else {
+              const existing = uniqueUsers.get(booking.user.id);
+              existing.bookingsCount = (existing.bookingsCount || 0) + 1;
+              uniqueUsers.set(booking.user.id, existing);
+            }
+          } 
+          // Cas 2: booking sans user (guest)
+          else if (booking.email && !uniqueUsers.has(booking.email)) {
             uniqueUsers.set(booking.email, {
               id: booking.email,
               fullName: booking.fullName || 'Guest',
               email: booking.email,
               role: 'user',
               avatarUrl: null,
-              createdAt: booking.createdAt || new Date().toISOString(),
+              createdAt: booking.createdAt,
               isDeleted: false,
               suspended: false,
               bookingsCount: 1
@@ -369,15 +393,13 @@ export default function Admin() {
           }
         });
         
-        const usersList = Array.from(uniqueUsers.values());
-        console.log(`Extracted ${usersList.length} unique users from ${bookings.length} bookings`);
+        usersList = Array.from(uniqueUsers.values());
         setUsers(usersList);
       } else {
-        console.error('Failed to fetch bookings');
         setUsers([]);
       }
     } catch (err) {
-      console.error('Error in fetchUsers fallback:', err);
+      console.error('Error in fetchUsers:', err);
       setUsers([]);
     } finally { 
       setUsersLoading(false); 
@@ -415,11 +437,13 @@ export default function Admin() {
     await fetch(`${API}/api/reviews/${id}/approve`, { method:'PATCH', credentials:'include' });
     fetchReviews();
   };
+  
   const deleteReview = async (id) => {
     if (!confirm('Delete this review?')) return;
     await fetch(`${API}/api/reviews/${id}`, { method:'DELETE', credentials:'include' });
     fetchReviews();
   };
+  
   const toggleSuspend = async (id, suspended) => {
     try {
       const res = await fetch(`${API}/api/auth/admin/users/${id}/suspend`, {
@@ -438,6 +462,7 @@ export default function Admin() {
       console.error('Error toggling suspend:', err);
     }
   };
+  
   const updateBookingStatus = async (id, status) => {
     await fetch(`${API}/api/bookings/${id}/status`, {
       method:'PATCH', credentials:'include',
@@ -449,10 +474,12 @@ export default function Admin() {
     if (selectedBooking?.id === id) setSelectedBooking(b => ({ ...b, status }));
   };
   
+  // Show confirmation modal instead of direct delete
   const confirmDeleteBooking = (booking) => {
     setShowDeleteConfirm(booking);
   };
 
+  // Actual delete function
   const deleteBooking = async (id) => {
     try {
       const res = await fetch(`${API}/api/bookings/${id}`, { 
@@ -642,7 +669,7 @@ export default function Admin() {
 
       <div className="min-h-screen flex font-['Cormorant_Garamond',serif]">
 
-        {/* ═══════════ SIDEBAR — DESKTOP ═══════════ */}
+        {/* ═══════════ SIDEBAR — DESKTOP (hidden on mobile if menu closed) ═══════════ */}
         <aside className={`pink-sidebar fixed top-0 left-0 h-full z-40 flex flex-col transition-all duration-300
           ${collapsed ? 'w-[72px]' : 'w-64'}
           ${!isMobileMenuOpen ? 'hidden md:flex' : 'flex w-64'}
@@ -789,7 +816,7 @@ export default function Admin() {
 
           <div className="p-4 md:p-7" style={{ animation:'fadeUp .4s ease both' }}>
 
-            {/* OVERVIEW TAB */}
+            {/* OVERVIEW TAB CONTENT - same as before, keeping it concise */}
             {activeTab === 'overview' && (
               <div className="space-y-6" style={{ animation:'fadeIn .3s ease both' }}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -881,7 +908,7 @@ export default function Admin() {
               </div>
             )}
 
-            {/* BOOKINGS TAB - simplified version */}
+            {/* BOOKINGS TAB - simplified for brevity, keep your existing code */}
             {activeTab === 'bookings' && (
               <div style={{ animation:'fadeIn .3s ease both' }}>
                 <Panel>
@@ -897,6 +924,7 @@ export default function Admin() {
                     </p>
                   </div>
 
+                  {/* Header - hidden on mobile, shown as grid on larger screens */}
                   <div className="hidden lg:grid grid-cols-[2fr_1.6fr_0.8fr_1fr_1fr_0.8fr_0.6fr] gap-4 px-6 py-3 border-b border-[#C87D87]/8"
                     style={{ background:'rgba(200,125,135,0.04)' }}>
                     {['Client','Activity · Setting','Guests','Date · Time','Status','Payment','Export'].map(h => (
@@ -983,6 +1011,54 @@ export default function Admin() {
                             </span>
                           </div>
                         </div>
+                        {/* Desktop layout */}
+                        <div className="hidden lg:grid grid-cols-[2fr_1.6fr_0.8fr_1fr_1fr_0.8fr_0.6fr] gap-4 items-center">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
+                              {b.user?.avatarUrl
+                                ? <img src={resolveAvatar(b.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                                : (b.fullName || b.user?.fullName || '?').charAt(0).toUpperCase()
+                              }
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">
+                                  {b.fullName || b.user?.fullName}
+                                </p>
+                                {b.user?.isDeleted && <DeletedBadge/>}
+                              </div>
+                              <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45 truncate">{b.email}</p>
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] truncate">{b.activity}</p>
+                            <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#C87D87]/55 truncate mt-0.5">
+                              {[setting ? `${setting.icon} ${setting.label}` : b.setting, b.activityTheme].filter(Boolean).join(' · ')}
+                            </p>
+                          </div>
+                          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] text-center">{b.participants}</p>
+                          <div>
+                            <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#5a4a3a]">
+                              {b.date ? new Date(b.date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
+                            </p>
+                            {b.timeSlot && (
+                              <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#C87D87]/60 mt-0.5">{b.timeSlot}</p>
+                            )}
+                          </div>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${s.bg} ${s.border} ${s.text}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>{s.label}
+                          </span>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${payBadge.bg} ${payBadge.border} ${payBadge.text}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${payBadge.dot}`}/>{payBadge.label}
+                          </span>
+                          <button
+                            onClick={e => { e.stopPropagation(); exportBookingPDF(b); }}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl border border-[#6B7556]/25 bg-[#6B7556]/8 text-[#6B7556]/60 hover:bg-[#6B7556] hover:text-white hover:border-[#6B7556] transition-all duration-300 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -990,7 +1066,7 @@ export default function Admin() {
               </div>
             )}
 
-            {/* MEMBERS TAB */}
+            {/* MEMBERS TAB - simplified */}
             {activeTab === 'members' && (
               <div style={{ animation:'fadeIn .3s ease both' }}>
                 <div className="relative mb-5 max-w-xs">
@@ -1045,6 +1121,33 @@ export default function Admin() {
                             </div>
                           </div>
                         </div>
+                        {/* Desktop layout */}
+                        <div className="hidden lg:grid grid-cols-[2fr_2fr_80px_55px_55px_55px] gap-4 items-center">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${u.role==='admin' ? 'bg-[#6B7556]' : 'bg-[#C87D87]'}`}>
+                              {u.avatarUrl
+                                ? <img src={resolveAvatar(u.avatarUrl)} alt={u.fullName} className="w-full h-full object-cover rounded-full"/>
+                                : u.fullName?.charAt(0).toUpperCase()
+                              }
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{u.fullName}</p>
+                                {u.isDeleted && <DeletedBadge/>}
+                              </div>
+                              <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45">
+                                {new Date(u.createdAt).toLocaleDateString('en-GB', { month:'short', year:'numeric' })}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 truncate">{u.email}</p>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-widest uppercase w-fit ${u.role==='admin' ? 'bg-[#6B7556]/12 text-[#4a5240] border border-[#6B7556]/25' : 'bg-[#C87D87]/10 text-[#C87D87] border border-[#C87D87]/22'}`}>
+                            {u.role}
+                          </span>
+                          <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] text-center font-semibold">{ub.length}</p>
+                          <p className="font-['Cormorant_Garamond',serif] text-sm text-[#6B7556] text-center font-semibold">{up.length}</p>
+                          <p className="font-['Cormorant_Garamond',serif] text-sm text-[#C87D87] text-center font-semibold">{ur.length}</p>
+                        </div>
                       </div>
                     );
                   })}
@@ -1053,7 +1156,7 @@ export default function Admin() {
               </div>
             )}
 
-            {/* PAYMENTS TAB */}
+            {/* PAYMENTS TAB - simplified */}
             {activeTab === 'payments' && (
               <div className="space-y-5" style={{ animation:'fadeIn .3s ease both' }}>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1125,6 +1228,34 @@ export default function Admin() {
                           </div>
                         </div>
                       </div>
+                      {/* Desktop layout */}
+                      <div className="hidden lg:grid grid-cols-[2fr_1.4fr_0.5fr_0.9fr_0.8fr_0.7fr_0.8fr] gap-3 items-center">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-[#C87D87]/15 flex items-center justify-center text-[#C87D87] font-bold text-xs flex-shrink-0 overflow-hidden">
+                            {p.user?.avatarUrl
+                              ? <img src={resolveAvatar(p.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                              : (p.user?.fullName || p.fullName || '?').charAt(0).toUpperCase()
+                            }
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-['Cormorant_Garamond',serif] text-sm text-[#3a3027] font-semibold truncate">{p.user?.fullName || p.fullName}</p>
+                              {p.user?.isDeleted && <DeletedBadge/>}
+                            </div>
+                            <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-[#7a6a5a]/45 truncate">{p.email}</p>
+                          </div>
+                        </div>
+                        <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] truncate">{p.activity}</p>
+                        <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] text-center">{p.participants}</p>
+                        <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55">
+                          {p.date ? new Date(p.date).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '—'}
+                        </p>
+                        <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#C87D87]/65 truncate">{p.timeSlot}</p>
+                        <p className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/55 capitalize truncate">
+                          {SETTINGS_MAP[p.setting]?.label || p.setting}
+                        </p>
+                        <p className="font-['Playfair_Display',serif] italic text-base text-[#6B7556]">{(p.totalPrice || p.advancePaid || 0)} MAD</p>
+                      </div>
                     </div>
                   ))}
                 </Panel>
@@ -1132,226 +1263,233 @@ export default function Admin() {
             )}
 
             {/* REVIEWS TAB - simplified */}
-            {activeTab === 'reviews' && (
-              <div className="space-y-6" style={{ animation: 'fadeIn .3s ease both' }}>
-                {/* PENDING */}
-                <div>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
-                    <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-amber-200/60 bg-amber-50/60">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"/>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-amber-600">
-                        Awaiting Approval · {pendingReviews.length}
-                      </p>
-                    </div>
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
-                  </div>
-
-                  {pendingReviews.length === 0 ? (
-                    <div className="relative rounded-2xl border border-dashed border-[#C87D87]/20 bg-[#fef6ec] py-10 flex flex-col items-center gap-2 overflow-hidden">
-                      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/25 to-transparent"/>
-                      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/15 to-transparent"/>
-                      <div className="absolute top-2 left-2"><LaceCorner/></div>
-                      <div className="absolute top-2 right-2"><LaceCorner flip/></div>
-                      <div className="w-12 h-12 rounded-full border border-[#C87D87]/18 bg-[#C87D87]/6 flex items-center justify-center">
-                        <span className="text-[#C87D87]/35 text-lg">✦</span>
+            {activeTab === 'reviews' && (() => {
+              const responsiveVisibleCount = typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 3;
+              const responsiveCarouselMax = Math.max(0, allPublished.length - responsiveVisibleCount);
+              const responsiveVisibleReviews = allPublished.slice(carouselIdx, carouselIdx + responsiveVisibleCount);
+              return (
+                <div className="space-y-6" style={{ animation: 'fadeIn .3s ease both' }}>
+                  {/* PENDING REVIEWS */}
+                  <div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
+                      <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-amber-200/60 bg-amber-50/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"/>
+                        <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-amber-600">
+                          Awaiting Approval · {pendingReviews.length}
+                        </p>
                       </div>
-                      <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/35 text-base">No pending reviews</p>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-[#7a6a5a]/30 tracking-widest">
-                        New submitted reviews will appear here
-                      </p>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-300/40 to-transparent"/>
                     </div>
-                  ) : (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {pendingReviews.map((r, i) => (
-                        <div key={r.id}
-                          className="relative bg-[#fef6ec] rounded-2xl border border-amber-200/50 overflow-hidden shadow-[0_2px_12px_rgba(200,125,135,0.06)]"
-                          style={{ animation: `fadeUp .25s ease ${i * 60}ms both` }}>
-                          <div className="h-0.5 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent"/>
-                          <div className="absolute top-0 left-0"><LaceCorner/></div>
-                          <div className="absolute top-0 right-0"><LaceCorner flip/></div>
-                          <div className="px-5 pt-6 pb-5">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-full border border-amber-200/60 overflow-hidden flex-shrink-0 bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-sm">
-                                  {r.user?.avatarUrl
-                                    ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
-                                    : r.user?.fullName?.charAt(0).toUpperCase()
-                                  }
+
+                    {pendingReviews.length === 0 ? (
+                      <div className="relative rounded-2xl border border-dashed border-[#C87D87]/20 bg-[#fef6ec] py-10 flex flex-col items-center gap-2 overflow-hidden">
+                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/25 to-transparent"/>
+                        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/15 to-transparent"/>
+                        <div className="absolute top-2 left-2"><LaceCorner/></div>
+                        <div className="absolute top-2 right-2"><LaceCorner flip/></div>
+                        <div className="w-12 h-12 rounded-full border border-[#C87D87]/18 bg-[#C87D87]/6 flex items-center justify-center">
+                          <span className="text-[#C87D87]/35 text-lg">✦</span>
+                        </div>
+                        <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/35 text-base">No pending reviews</p>
+                        <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-[#7a6a5a]/30 tracking-widest">
+                          New submitted reviews will appear here
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {pendingReviews.map((r, i) => (
+                          <div key={r.id}
+                            className="relative bg-[#fef6ec] rounded-2xl border border-amber-200/50 overflow-hidden shadow-[0_2px_12px_rgba(200,125,135,0.06)]"
+                            style={{ animation: `fadeUp .25s ease ${i * 60}ms both` }}>
+                            <div className="h-0.5 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent"/>
+                            <div className="absolute top-0 left-0"><LaceCorner/></div>
+                            <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+                            <div className="px-5 pt-6 pb-5">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-9 h-9 rounded-full border border-amber-200/60 overflow-hidden flex-shrink-0 bg-amber-50 flex items-center justify-center text-amber-600 font-bold text-sm">
+                                    {r.user?.avatarUrl
+                                      ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                                      : r.user?.fullName?.charAt(0).toUpperCase()
+                                    }
+                                  </div>
+                                  <div>
+                                    <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user?.fullName}</p>
+                                    <span className="text-amber-400 text-[0.65rem] mt-0.5 block tracking-wider">
+                                      {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user?.fullName}</p>
-                                  <span className="text-amber-400 text-[0.65rem] mt-0.5 block tracking-wider">
-                                    {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                                <div className="flex flex-col items-end gap-1.5">
+                                  <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-500 flex items-center gap-1">
+                                    <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse"/> New
+                                  </span>
+                                  <span className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] text-[#7a6a5a]/35">
+                                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
                                   </span>
                                 </div>
                               </div>
-                              <div className="flex flex-col items-end gap-1.5">
-                                <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-500 flex items-center gap-1">
-                                  <span className="w-1 h-1 rounded-full bg-amber-400 animate-pulse"/> New
+                              {r.activity && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-3 rounded-lg bg-[#C87D87]/8 border border-[#C87D87]/15 font-['Cormorant_Garamond',serif] italic text-[0.62rem] text-[#C87D87]/65">
+                                  {r.activity}
                                 </span>
-                                <span className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] text-[#7a6a5a]/35">
-                                  {r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
-                                </span>
+                              )}
+                              <div className="font-['Playfair_Display',serif] text-[3rem] text-amber-200/60 leading-none -mt-2 mb-0.5 select-none">"</div>
+                              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">{r.comment}</p>
+                              <div className="flex gap-2 pt-3 border-t border-amber-100">
+                                <button onClick={() => approveReview(r.id)}
+                                  className="flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase py-2 rounded-xl border border-[#6B7556]/30 text-[#6B7556] hover:bg-[#6B7556] hover:text-white hover:border-[#6B7556] transition-all flex items-center justify-center gap-1.5">
+                                  ✓ Approve
+                                </button>
+                                <button onClick={() => deleteReview(r.id)}
+                                  className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase px-4 py-2 rounded-xl border border-[#C87D87]/25 text-[#C87D87]/50 hover:bg-[#C87D87] hover:text-white hover:border-[#C87D87] transition-all">
+                                  ✕
+                                </button>
                               </div>
-                            </div>
-                            {r.activity && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-3 rounded-lg bg-[#C87D87]/8 border border-[#C87D87]/15 font-['Cormorant_Garamond',serif] italic text-[0.62rem] text-[#C87D87]/65">
-                                {r.activity}
-                              </span>
-                            )}
-                            <div className="font-['Playfair_Display',serif] text-[3rem] text-amber-200/60 leading-none -mt-2 mb-0.5 select-none">"</div>
-                            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-5">{r.comment}</p>
-                            <div className="flex gap-2 pt-3 border-t border-amber-100">
-                              <button onClick={() => approveReview(r.id)}
-                                className="flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase py-2 rounded-xl border border-[#6B7556]/30 text-[#6B7556] hover:bg-[#6B7556] hover:text-white hover:border-[#6B7556] transition-all flex items-center justify-center gap-1.5">
-                                ✓ Approve
-                              </button>
-                              <button onClick={() => deleteReview(r.id)}
-                                className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase px-4 py-2 rounded-xl border border-[#C87D87]/25 text-[#C87D87]/50 hover:bg-[#C87D87] hover:text-white hover:border-[#C87D87] transition-all">
-                                ✕
-                              </button>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* PUBLISHED CAROUSEL */}
-                <div>
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
-                    <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-[#6B7556]/22 bg-[#6B7556]/8">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/>
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-[#6B7556]">
-                        Published · {allPublished.length}
-                      </p>
-                    </div>
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {allPublished.length === 0 ? (
-                    <div className="relative rounded-2xl border border-dashed border-[#6B7556]/20 bg-[#fef6ec] py-10 flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 rounded-full border border-[#6B7556]/18 bg-[#6B7556]/6 flex items-center justify-center">
-                        <span className="text-[#6B7556]/35 text-lg">✦</span>
+                  {/* PUBLISHED REVIEWS CAROUSEL */}
+                  <div>
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
+                      <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-[#6B7556]/22 bg-[#6B7556]/8">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#6B7556]"/>
+                        <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] tracking-[0.3em] uppercase text-[#6B7556]">
+                          Published · {allPublished.length}
+                        </p>
                       </div>
-                      <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/35 text-base">No published reviews yet</p>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#6B7556]/35 to-transparent"/>
                     </div>
-                  ) : (
-                    <div>
-                      <div className="relative">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 overflow-hidden">
-                          {visibleReviews.map((r, i) => {
-                            const isDefault = !r.id || typeof r.id === 'string';
-                            return (
-                              <div key={r.id ?? r.name ?? i}
-                                className="rev-card relative"
-                                style={{ animation: 'fadeIn .3s ease both' }}>
-                                <div className="absolute top-0 left-0"><LaceCorner/></div>
-                                <div className="absolute top-0 right-0"><LaceCorner flip/></div>
-                                <div className="pt-5">
-                                  <div className="flex items-start justify-between mb-4">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-9 h-9 rounded-full border border-[#C87D87]/22 overflow-hidden flex-shrink-0 bg-[#C87D87]/10 flex items-center justify-center text-[#C87D87] font-bold text-sm">
-                                        {r.user?.avatarUrl
-                                          ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
-                                          : (r.user?.fullName || r.name || '?').charAt(0).toUpperCase()
-                                        }
+
+                    {allPublished.length === 0 ? (
+                      <div className="relative rounded-2xl border border-dashed border-[#6B7556]/20 bg-[#fef6ec] py-10 flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 rounded-full border border-[#6B7556]/18 bg-[#6B7556]/6 flex items-center justify-center">
+                          <span className="text-[#6B7556]/35 text-lg">✦</span>
+                        </div>
+                        <p className="font-['Playfair_Display',serif] italic text-[#3a3027]/35 text-base">No published reviews yet</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="relative">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 overflow-hidden">
+                            {responsiveVisibleReviews.map((r, i) => {
+                              const isDefault = !r.id || typeof r.id === 'string';
+                              return (
+                                <div key={r.id ?? r.name ?? i}
+                                  className="rev-card relative"
+                                  style={{ animation: 'fadeIn .3s ease both' }}>
+                                  <div className="absolute top-0 left-0"><LaceCorner/></div>
+                                  <div className="absolute top-0 right-0"><LaceCorner flip/></div>
+                                  <div className="pt-5">
+                                    <div className="flex items-start justify-between mb-4">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-9 h-9 rounded-full border border-[#C87D87]/22 overflow-hidden flex-shrink-0 bg-[#C87D87]/10 flex items-center justify-center text-[#C87D87] font-bold text-sm">
+                                          {r.user?.avatarUrl
+                                            ? <img src={resolveAvatar(r.user.avatarUrl)} alt="" className="w-full h-full object-cover"/>
+                                            : (r.user?.fullName || r.name || '?').charAt(0).toUpperCase()
+                                          }
+                                        </div>
+                                        <div>
+                                          <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user?.fullName || r.name}</p>
+                                          <span className="text-[#C87D87]/65 text-[0.65rem] mt-0.5 block tracking-wider">
+                                            {'★'.repeat(r.rating || r.stars || 5)}{'☆'.repeat(5 - (r.rating || r.stars || 5))}
+                                          </span>
+                                        </div>
                                       </div>
-                                      <div>
-                                        <p className="font-['Playfair_Display',serif] text-sm text-[#3a3027] leading-none">{r.user?.fullName || r.name}</p>
-                                        <span className="text-[#C87D87]/65 text-[0.65rem] mt-0.5 block tracking-wider">
-                                          {'★'.repeat(r.rating || r.stars || 5)}{'☆'.repeat(5 - (r.rating || r.stars || 5))}
-                                        </span>
+                                      <div className="flex flex-col items-end gap-1.5">
+                                        {isDefault ? (
+                                          <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#6B7556]/8 border border-[#6B7556]/20 text-[#6B7556]/60">
+                                            Curated
+                                          </span>
+                                        ) : (
+                                          <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#6B7556]/10 border border-[#6B7556]/25 text-[#6B7556]">
+                                            Live
+                                          </span>
+                                        )}
+                                        {r.createdAt && (
+                                          <span className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] text-[#7a6a5a]/35">
+                                            {new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
-                                    <div className="flex flex-col items-end gap-1.5">
-                                      {isDefault ? (
-                                        <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#6B7556]/8 border border-[#6B7556]/20 text-[#6B7556]/60">
-                                          Curated
-                                        </span>
-                                      ) : (
-                                        <span className="font-['Cormorant_Garamond',serif] text-[0.5rem] tracking-widest uppercase px-2 py-0.5 rounded-full bg-[#6B7556]/10 border border-[#6B7556]/25 text-[#6B7556]">
-                                          Live
-                                        </span>
-                                      )}
-                                      {r.createdAt && (
-                                        <span className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] text-[#7a6a5a]/35">
-                                          {new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                                        </span>
-                                      )}
-                                    </div>
+                                    {(r.activity || r.activityLabel) && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-3 rounded-lg bg-[#C87D87]/8 border border-[#C87D87]/15 font-['Cormorant_Garamond',serif] italic text-[0.62rem] text-[#C87D87]/65">
+                                        {r.activity || r.activityLabel}
+                                      </span>
+                                    )}
+                                    <div className="font-['Playfair_Display',serif] text-[3rem] text-[#C87D87]/15 leading-none -mt-2 mb-0.5 select-none">"</div>
+                                    <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-4">
+                                      {r.comment || r.text}
+                                    </p>
+                                    {!isDefault && (
+                                      <div className="pt-3 border-t border-[#C87D87]/8">
+                                        <button onClick={() => deleteReview(r.id)}
+                                          className="w-full font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase py-1.5 rounded-xl border border-[#C87D87]/15 text-[#C87D87]/35 hover:bg-[#C87D87]/8 hover:text-[#C87D87]/60 hover:border-[#C87D87]/25 transition-all">
+                                          Remove
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
-                                  {(r.activity || r.activityLabel) && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 mb-3 rounded-lg bg-[#C87D87]/8 border border-[#C87D87]/15 font-['Cormorant_Garamond',serif] italic text-[0.62rem] text-[#C87D87]/65">
-                                      {r.activity || r.activityLabel}
-                                    </span>
-                                  )}
-                                  <div className="font-['Playfair_Display',serif] text-[3rem] text-[#C87D87]/15 leading-none -mt-2 mb-0.5 select-none">"</div>
-                                  <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] leading-[1.8] line-clamp-4 mb-4">
-                                    {r.comment || r.text}
-                                  </p>
-                                  {!isDefault && (
-                                    <div className="pt-3 border-t border-[#C87D87]/8">
-                                      <button onClick={() => deleteReview(r.id)}
-                                        className="w-full font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase py-1.5 rounded-xl border border-[#C87D87]/15 text-[#C87D87]/35 hover:bg-[#C87D87]/8 hover:text-[#C87D87]/60 hover:border-[#C87D87]/25 transition-all">
-                                        Remove
-                                      </button>
-                                    </div>
-                                  )}
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
+
+                          {carouselIdx > 0 && (
+                            <button onClick={carouselPrev}
+                              className="absolute -left-3 md:-left-5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#fef6ec] border border-[#C87D87]/25 shadow-[0_2px_12px_rgba(200,125,135,0.15)] flex items-center justify-center text-[#C87D87]/60 hover:text-[#C87D87] hover:border-[#C87D87]/45 transition-all">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
+                              </svg>
+                            </button>
+                          )}
+                          {carouselIdx < responsiveCarouselMax && (
+                            <button onClick={carouselNext}
+                              className="absolute -right-3 md:-right-5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#fef6ec] border border-[#C87D87]/25 shadow-[0_2px_12px_rgba(200,125,135,0.15)] flex items-center justify-center text-[#C87D87]/60 hover:text-[#C87D87] hover:border-[#C87D87]/45 transition-all">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                              </svg>
+                            </button>
+                          )}
                         </div>
 
-                        {carouselIdx > 0 && (
-                          <button onClick={carouselPrev}
-                            className="absolute -left-3 md:-left-5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#fef6ec] border border-[#C87D87]/25 shadow-[0_2px_12px_rgba(200,125,135,0.15)] flex items-center justify-center text-[#C87D87]/60 hover:text-[#C87D87] hover:border-[#C87D87]/45 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
-                            </svg>
-                          </button>
+                        {allPublished.length > responsiveVisibleCount && (
+                          <div className="flex items-center justify-center gap-2 mt-6">
+                            {Array.from({ length: Math.ceil(allPublished.length / responsiveVisibleCount) }).map((_, idx) => (
+                              <button key={idx} onClick={() => setCarouselIdx(idx * responsiveVisibleCount)}
+                                className="transition-all duration-200 rounded-full"
+                                style={{
+                                  width:  carouselIdx === idx * responsiveVisibleCount ? '20px' : '6px',
+                                  height: '6px',
+                                  background: carouselIdx === idx * responsiveVisibleCount ? '#6B7556' : 'rgba(107,117,86,0.25)',
+                                }}
+                              />
+                            ))}
+                          </div>
                         )}
-                        {carouselIdx < carouselMax && (
-                          <button onClick={carouselNext}
-                            className="absolute -right-3 md:-right-5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#fef6ec] border border-[#C87D87]/25 shadow-[0_2px_12px_rgba(200,125,135,0.15)] flex items-center justify-center text-[#C87D87]/60 hover:text-[#C87D87] hover:border-[#C87D87]/45 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-                            </svg>
-                          </button>
-                        )}
+
+                        <p className="text-center font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-widest text-[#7a6a5a]/35 mt-2">
+                          {carouselIdx + 1}–{Math.min(carouselIdx + responsiveVisibleCount, allPublished.length)} of {allPublished.length}
+                        </p>
                       </div>
-
-                      {allPublished.length > visibleCount && (
-                        <div className="flex items-center justify-center gap-2 mt-6">
-                          {Array.from({ length: Math.ceil(allPublished.length / visibleCount) }).map((_, idx) => (
-                            <button key={idx} onClick={() => setCarouselIdx(idx * visibleCount)}
-                              className="transition-all duration-200 rounded-full"
-                              style={{
-                                width:  carouselIdx === idx * visibleCount ? '20px' : '6px',
-                                height: '6px',
-                                background: carouselIdx === idx * visibleCount ? '#6B7556' : 'rgba(107,117,86,0.25)',
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      <p className="text-center font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-widest text-[#7a6a5a]/35 mt-2">
-                        {carouselIdx + 1}–{Math.min(carouselIdx + visibleCount, allPublished.length)} of {allPublished.length}
-                      </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* PROFILE TAB - simplified */}
             {activeTab === 'profile' && (
               <div className="max-w-2xl mx-auto space-y-5" style={{ animation:'fadeIn .3s ease both' }}>
+
+                {/* Avatar */}
                 <Panel>
                   <div className="px-4 md:px-7 py-6">
                     <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-4">Profile Photo</p>
@@ -1374,6 +1512,7 @@ export default function Admin() {
                   </div>
                 </Panel>
 
+                {/* Display Name */}
                 <Panel>
                   <form onSubmit={handleName} className="px-4 md:px-7 py-5">
                     <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Display Name</p>
@@ -1391,6 +1530,7 @@ export default function Admin() {
                   </form>
                 </Panel>
 
+                {/* Email */}
                 <Panel>
                   <form onSubmit={handleEmail} className="px-4 md:px-7 py-5">
                     <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Email Address</p>
@@ -1411,6 +1551,7 @@ export default function Admin() {
                   </form>
                 </Panel>
 
+                {/* Password */}
                 <Panel>
                   <form onSubmit={handlePassword} className="px-4 md:px-7 py-5">
                     <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-1">Change Password</p>
@@ -1434,6 +1575,7 @@ export default function Admin() {
                   </form>
                 </Panel>
 
+                {/* Danger Zone */}
                 <div className="rounded-2xl overflow-hidden border border-red-200/60 relative">
                   <div className="h-0.5 bg-gradient-to-r from-transparent via-red-300/50 to-transparent"/>
                   <div className="absolute top-0 left-0"><LaceCorner danger/></div>
@@ -1468,14 +1610,15 @@ export default function Admin() {
                     )}
                   </div>
                 </div>
+
               </div>
             )}
 
-          </div>
+          </div>{/* end p-7 */}
         </main>
-      </div>
+      </div>{/* end min-h-screen flex */}
 
-      {/* Booking Detail Modal */}
+      {/* ════════════ BOOKING DETAIL MODAL ════════════ */}
       {selectedBooking && (() => {
         const isPaid    = selectedBooking.paymentStatus === 'PAID';
         const isPending = selectedBooking.paymentStatus === 'PENDING';
@@ -1495,6 +1638,8 @@ export default function Admin() {
               <div className="h-1 bg-gradient-to-r from-[#C87D87] via-[#b36d77] to-[#C87D87] rounded-t-2xl"/>
 
               <div className="px-4 md:px-7 py-6">
+
+                {/* Header */}
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <p className="font-['Cormorant_Garamond',serif] italic text-[0.55rem] tracking-[0.4em] uppercase text-[#C87D87]/50 mb-1">
@@ -1518,13 +1663,13 @@ export default function Admin() {
 
                 {/* Status control */}
                 <div className="mb-6">
-                  <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#7a6a5a80] mb-3">
+                  <p className="font-[CormorantGaramond,serif] text-[0.58rem] tracking-widest uppercase text-[#7a6a5a80] mb-3">
                     Update Status
                   </p>
                   {selectedBooking.status === 'pending' && (
                     <button
                       onClick={() => updateBookingStatus(selectedBooking.id, 'confirmed')}
-                      className="w-full flex items-center justify-center gap-2 font-['Cormorant_Garamond',serif] text-[0.72rem] tracking-[0.22em] uppercase text-[#FBEAD6] py-3 rounded-2xl transition-all duration-300 mb-3"
+                      className="w-full flex items-center justify-center gap-2 font-[CormorantGaramond,serif] text-[0.72rem] tracking-[0.22em] uppercase text-[#FBEAD6] py-3 rounded-2xl transition-all duration-300 mb-3"
                       style={{
                         background: 'linear-gradient(135deg, #6B7556 0%, #4a5240 100%)',
                         boxShadow: '0 5px 20px rgba(107,117,86,0.30)',
@@ -1543,7 +1688,7 @@ export default function Admin() {
                       const active = selectedBooking.status === st;
                       return (
                         <button key={st} onClick={() => updateBookingStatus(selectedBooking.id, st)}
-                          className={`font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 rounded-xl border transition-all
+                          className={`font-[CormorantGaramond,serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 rounded-xl border transition-all
                             ${active
                               ? `${cfg.bg} ${cfg.border} ${cfg.text} font-bold`
                               : 'bg-white/50 border-[#3a302710] text-[#7a6a5a60] hover:border-[#C87D8730]'
@@ -1556,7 +1701,7 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* Booking Details */}
+                {/* Two-column details */}
                 <Panel>
                   <div className="px-4 md:px-5 py-1 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
                     {[
@@ -1631,7 +1776,7 @@ export default function Admin() {
                   Export as PDF
                 </button>
 
-                {/* Delete button */}
+                {/* Delete button - opens confirmation modal */}
                 <button 
                   onClick={() => confirmDeleteBooking(selectedBooking)}
                   className="w-full mt-3 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase text-red-400 border border-red-200 py-3 rounded-2xl hover:bg-red-50 transition-all"
@@ -1645,7 +1790,7 @@ export default function Admin() {
         );
       })()}
 
-      {/* Delete Confirmation Modal */}
+      {/* ════════════ DELETE CONFIRMATION MODAL ════════════ */}
       {showDeleteConfirm && (
         <div className="bmodal-bg fixed inset-0 z-[60] flex items-center justify-center px-4"
           onClick={() => setShowDeleteConfirm(null)}>
@@ -1656,21 +1801,25 @@ export default function Admin() {
             <div className="h-1 bg-gradient-to-r from-red-400 via-red-500 to-red-400 rounded-t-2xl"/>
 
             <div className="p-6 text-center">
+              {/* Warning Icon */}
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
                 <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
 
+              {/* Title */}
               <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027] mb-2">
                 Delete Booking?
               </h3>
 
+              {/* Message */}
               <p className="font-['Cormorant_Garamond',serif] text-[0.9rem] text-[#7a6a5a]/80 mb-6">
                 Are you sure you want to delete this booking?<br/>
                 <span className="text-xs text-red-400">This action cannot be undone.</span>
               </p>
 
+              {/* Booking info preview */}
               <div className="bg-[#fdf3e7] rounded-xl p-3 mb-6 text-left border border-[#C87D87]/15">
                 <p className="font-['Cormorant_Garamond',serif] text-xs text-[#7a6a5a]/60">Booking details:</p>
                 <p className="font-['Playfair_Display',serif] italic text-sm text-[#3a3027]">
@@ -1682,6 +1831,7 @@ export default function Admin() {
                 </p>
               </div>
 
+              {/* Buttons */}
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDeleteConfirm(null)}
@@ -1698,13 +1848,14 @@ export default function Admin() {
               </div>
             </div>
 
+            {/* Lace corners for the modal */}
             <div className="absolute top-0 left-0"><LaceCorner danger/></div>
             <div className="absolute top-0 right-0"><LaceCorner flip danger/></div>
           </div>
         </div>
       )}
 
-      {/* User Detail Modal */}
+      {/* ════════════ USER DETAIL MODAL ════════════ */}
       {selectedUser && (
         <div className="bmodal-bg fixed inset-0 z-50 flex items-start justify-end"
           onClick={() => setSelectedUser(null)}>
@@ -1715,6 +1866,8 @@ export default function Admin() {
             <div className="h-1 bg-gradient-to-r from-[#6B7556] via-[#C87D87] to-[#6B7556]"/>
 
             <div className="px-4 md:px-7 py-6">
+
+              {/* Header */}
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl overflow-hidden ${selectedUser.role === 'admin' ? 'bg-[#6B7556]' : 'bg-[#C87D87]'}`}>
@@ -1737,6 +1890,7 @@ export default function Admin() {
                 </button>
               </div>
 
+              {/* Suspend / Unsuspend */}
               <div className="flex gap-2 mb-6">
                 <button onClick={() => toggleSuspend(selectedUser.id, selectedUser.suspended)}
                   className={`flex-1 font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase py-2.5 rounded-xl border transition-all ${
@@ -1748,6 +1902,7 @@ export default function Admin() {
                 </button>
               </div>
 
+              {/* Stats */}
               <Panel>
                 <div className="px-5 py-1">
                   {[
@@ -1764,6 +1919,7 @@ export default function Admin() {
                 </div>
               </Panel>
 
+              {/* Booking history */}
               {userBookings(selectedUser).length > 0 && (
                 <div className="mt-5">
                   <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#7a6a5a]/50 mb-3">
@@ -1790,6 +1946,7 @@ export default function Admin() {
                   </div>
                 </div>
               )}
+
             </div>
           </div>
         </div>
