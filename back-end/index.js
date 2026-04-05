@@ -1,26 +1,26 @@
-import express        from 'express';
-import cors           from 'cors';
+import express from 'express';
+import cors from 'cors';
 import { createServer } from 'http';
-import { Server }     from 'socket.io';
-import cron           from 'node-cron';
-import cookieParser   from 'cookie-parser';
+import { Server } from 'socket.io';
+import cron from 'node-cron';
+import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 
 // Routes
-import auth                from './Routes/auth.js';
-import reviewRoutes        from './Routes/reviews.js';
-import profile             from './Routes/profile.js';
-import bookingRoutes       from './Routes/booking.js';
+import auth from './Routes/auth.js';
+import reviewRoutes from './Routes/reviews.js';
+import profile from './Routes/profile.js';
+import bookingRoutes from './Routes/booking.js';
 import notificationsRouter from './Routes/notifications.js';
-import paymentRoutes       from './Routes/payment.js';
-import draftsRouter        from './Routes/drafts.js';
+import paymentRoutes from './Routes/payment.js';
+import draftsRouter from './Routes/drafts.js';
 
 // Prisma
 import { prisma } from './lib/prisma.js';
 
-const app          = express();
-const PORT         = process.env.PORT || 4000;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const app = express();
+const PORT = process.env.PORT || 4000;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://gleaming-trust-production-e46f.up.railway.app';
 
 // ── HTTP + Socket.io ─────────────────────────────────────────────
 const httpServer = createServer(app);
@@ -59,7 +59,7 @@ cron.schedule('0 * * * *', async () => {
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const result = await prisma.conversation.updateMany({
       where: { status: 'OPEN', updatedAt: { lt: cutoff } },
-      data:  { status: 'CLOSED' },
+      data: { status: 'CLOSED' },
     });
     console.log(`🧹 Closed ${result.count} inactive conversations`);
   } catch (err) {
@@ -74,10 +74,10 @@ cron.schedule('*/15 * * * *', async () => {
 
     const bookings = await prisma.booking.findMany({
       where: {
-        status:        'confirmed',
+        status: 'confirmed',
         paymentStatus: 'PAID',
-        date:          { not: null },
-        timeSlot:      { not: null },
+        date: { not: null },
+        timeSlot: { not: null },
       },
       select: { id: true, date: true, timeSlot: true, userId: true, activity: true },
     });
@@ -96,22 +96,19 @@ cron.schedule('*/15 * * * *', async () => {
 
     const ids = toComplete.map(b => b.id);
 
-    // ── mark as completed ──
     await prisma.booking.updateMany({
       where: { id: { in: ids } },
-      data:  { status: 'completed' },
+      data: { status: 'completed' },
     });
 
-    // ── skip if already reviewed ──
     const existingReviews = await prisma.review.findMany({
-      where:  { bookingId: { in: ids } },
+      where: { bookingId: { in: ids } },
       select: { bookingId: true },
     });
     const alreadyReviewed = new Set(existingReviews.map(r => r.bookingId));
 
-    // ── skip if notification already sent ──
     const existingNotifs = await prisma.notification.findMany({
-      where:  { bookingId: { in: ids }, type: 'FEEDBACK_REQUEST' },
+      where: { bookingId: { in: ids }, type: 'FEEDBACK_REQUEST' },
       select: { bookingId: true },
     });
     const alreadyNotified = new Set(existingNotifs.map(n => n.bookingId));
@@ -119,24 +116,23 @@ cron.schedule('*/15 * * * *', async () => {
     const notifications = toComplete
       .filter(b => b.userId && !alreadyReviewed.has(b.id) && !alreadyNotified.has(b.id))
       .map(b => ({
-        userId:    b.userId,
+        userId: b.userId,
         bookingId: b.id,
-        type:      'FEEDBACK_REQUEST',
-        title:     '✨ How was your experience?',
-        message:   `Your "${b.activity || 'session'}" just ended. Share your thoughts — it helps our community grow.`,
+        type: 'FEEDBACK_REQUEST',
+        title: '✨ How was your experience?',
+        message: `Your "${b.activity || 'session'}" just ended. Share your thoughts — it helps our community grow.`,
         actionUrl: `/reviews/new?bookingId=${b.id}`,
-        read:      false,
+        read: false,
       }));
 
     if (notifications.length > 0) {
       await prisma.notification.createMany({ data: notifications });
 
-      // ── push real-time via Socket.io ──
       notifications.forEach(n => {
         io.to(`user_${n.userId}`).emit('notification', {
-          type:      n.type,
-          title:     n.title,
-          message:   n.message,
+          type: n.type,
+          title: n.title,
+          message: n.message,
           bookingId: n.bookingId,
           actionUrl: n.actionUrl,
         });
@@ -154,7 +150,9 @@ app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     const allowedOrigins = [
+      'https://gleaming-trust-production-e46f.up.railway.app',  // ✅ Your frontend
       'https://pleasant-enthusiasm-production-0c41.up.railway.app',
+      'http://localhost:3000',
       'http://localhost:3001',
       FRONTEND_URL,
       /\.railway\.app$/,
@@ -163,12 +161,17 @@ app.use(cors({
     const isAllowed = allowedOrigins.some(o =>
       o instanceof RegExp ? o.test(origin) : o === origin
     );
-    isAllowed ? callback(null, true) : callback(new Error('Not allowed by CORS'));
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('❌ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
   },
-  credentials:          true,
-  methods:              ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders:       ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders:       ['Set-Cookie'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
   optionsSuccessStatus: 200,
 }));
 
@@ -178,18 +181,20 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
 
+// Logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log('📋 Authorization header:', req.headers.authorization || 'None');
   next();
 });
 
 // ── Health ───────────────────────────────────────────────────────
 app.get('/', (req, res) => res.json({
-  status:      'OK',
-  message:     'Backend running',
-  timestamp:   new Date().toISOString(),
+  status: 'OK',
+  message: 'Backend running',
+  timestamp: new Date().toISOString(),
   environment: process.env.NODE_ENV || 'development',
-  port:        PORT,
+  port: PORT,
 }));
 
 app.get('/health', (req, res) =>
@@ -197,13 +202,13 @@ app.get('/health', (req, res) =>
 );
 
 // ── Routes ───────────────────────────────────────────────────────
-app.use('/api/auth',          auth);
-app.use('/api/reviews',       reviewRoutes);
-app.use('/api/profile',       profile);
-app.use('/api/bookings',      bookingRoutes);
+app.use('/api/auth', auth);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/profile', profile);
+app.use('/api/bookings', bookingRoutes);
 app.use('/api/notifications', notificationsRouter);
-app.use('/api/payments',      paymentRoutes);
-app.use('/api/drafts',        draftsRouter);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/drafts', draftsRouter);
 
 // ── 404 ──────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({
