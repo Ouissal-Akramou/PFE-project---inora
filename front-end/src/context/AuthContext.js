@@ -67,6 +67,31 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { fetchMe(); }, [fetchMe]);
 
+  // ✅ REGISTER FUNCTION - AJOUTÉE
+  const register = async (fullName, email, password, adminCode) => {
+    const res = await fetch(`${API}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ fullName, email, password, adminCode }),
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Registration failed');
+    }
+    
+    const data = await res.json();
+    
+    // Stocker le token après inscription
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      setUser(data.user ?? data);
+    }
+    
+    return data;
+  };
+
   const login = async (email, password, selectedRole, adminCode) => {
     const res = await fetch(`${API}/api/auth/login`, {
       method: 'POST',
@@ -92,7 +117,15 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, authFetch, refreshUser: fetchMe }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      register,  // ✅ EXPOSER register
+      logout, 
+      loading, 
+      authFetch, 
+      refreshUser: fetchMe 
+    }}>
       {children}
     </AuthContext.Provider>
   );

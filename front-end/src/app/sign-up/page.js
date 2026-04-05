@@ -18,7 +18,7 @@ export default function SignUp() {
     if (form.password.length < 6) return setError('Password must be at least 6 characters');
     try {
       await register(form.fullName, form.email, form.password, adminCode || undefined);
-      router.push('/login');
+      router.push('/dashboard'); // ✅ HNA TSHI7AT - CHANGER LOGIN -> DASHBOARD
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     }
