@@ -48,31 +48,27 @@ export default function NewReview() {
     <>
       <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`}</style>
       <div
-        className="min-h-screen bg-[#FBEAD6] flex items-center justify-center p-6"
+        className="min-h-screen bg-[#FBEAD6] flex items-center justify-center p-4 sm:p-6"
         style={{ backgroundImage: CROSSHATCH_SVG }}
       >
-        <div className="text-center max-w-sm" style={{animation:'fadeUp .5s ease both'}}>
-          <div className="w-16 h-16 rounded-full bg-[#6B7556]/15 border border-[#6B7556]/20 flex items-center justify-center mx-auto mb-5">
-            <span className="text-3xl">✨</span>
+        <div className="text-center max-w-sm mx-auto px-4" style={{animation:'fadeUp .5s ease both'}}>
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[#6B7556]/15 border border-[#6B7556]/20 flex items-center justify-center mx-auto mb-4 sm:mb-5">
+            <span className="text-2xl sm:text-3xl">✨</span>
           </div>
-          {/* was text-[0.6rem] text-[#C87D87]/60 → text-sm text-[#C87D87] */}
-          <p className="font-['Cormorant_Garamond',serif] italic text-sm tracking-[0.35em] uppercase text-[#C87D87] mb-2">
+          <p className="font-['Cormorant_Garamond',serif] italic text-xs sm:text-sm tracking-[0.35em] uppercase text-[#C87D87] mb-2">
             Inora · Review
           </p>
-          {/* was text-2xl → text-3xl */}
-          <h2 className="font-['Playfair_Display',serif] italic text-3xl text-[#3a3027] mb-2">
+          <h2 className="font-['Playfair_Display',serif] italic text-2xl sm:text-3xl text-[#3a3027] mb-2">
             Thank you!
           </h2>
-          {/* was text-[#7a6a5a]/70 → text-[#5a4a3a], was default size → text-base */}
-          <p className="font-['Cormorant_Garamond',serif] italic text-base text-[#5a4a3a] mb-1">
+          <p className="font-['Cormorant_Garamond',serif] italic text-sm sm:text-base text-[#5a4a3a] mb-1">
             Your review has been submitted successfully.
           </p>
-          {/* was text-sm text-[#7a6a5a]/45 → text-base text-[#7a6a5a]/65 */}
-          <p className="font-['Cormorant_Garamond',serif] italic text-base text-[#7a6a5a]/65 mb-8">
+          <p className="font-['Cormorant_Garamond',serif] italic text-sm sm:text-base text-[#7a6a5a]/65 mb-6 sm:mb-8">
             It will appear on our homepage once approved by our team.
           </p>
           <button onClick={() => router.push('/')}
-            className="font-['Cormorant_Garamond',serif] tracking-widest uppercase text-sm text-white bg-[#6B7556] px-8 py-3 rounded-xl hover:bg-[#5a6347] transition-all hover:-translate-y-0.5 shadow-sm">
+            className="font-['Cormorant_Garamond',serif] tracking-widest uppercase text-xs sm:text-sm text-white bg-[#6B7556] px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl hover:bg-[#5a6347] transition-all hover:-translate-y-0.5 shadow-sm w-full sm:w-auto">
             Back to homepage
           </button>
         </div>
@@ -83,53 +79,64 @@ export default function NewReview() {
   // ── Form ──
   return (
     <>
-      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <style>{`
+        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        
+        /* Mobile-specific styles */
+        @media (max-width: 640px) {
+          .stars-container {
+            gap: 0.5rem !important;
+          }
+          .star-button {
+            font-size: 1.75rem !important;
+          }
+          .rating-label {
+            font-size: 0.75rem !important;
+          }
+        }
+      `}</style>
       <div
-        className="min-h-screen bg-[#FBEAD6] flex items-center justify-center p-6"
+        className="min-h-screen bg-[#FBEAD6] flex items-center justify-center p-4 sm:p-6"
         style={{ backgroundImage: CROSSHATCH_SVG }}
       >
-        <div className="w-full max-w-md" style={{animation:'fadeUp .4s ease both'}}>
+        <div className="w-full max-w-md mx-auto px-2 sm:px-0" style={{animation:'fadeUp .4s ease both'}}>
 
           <div className="bg-white/70 border border-[#C87D87]/15 rounded-2xl overflow-hidden shadow-sm relative">
 
             {/* top accent line */}
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#C87D87]/60 to-transparent"/>
 
-            <div className="p-8">
-              {/* was text-[0.6rem] text-[#C87D87]/60 → text-sm text-[#C87D87] */}
-              <p className="font-['Cormorant_Garamond',serif] italic text-sm tracking-[0.35em] uppercase text-[#C87D87] mb-1">
+            <div className="p-5 sm:p-6 md:p-8">
+              <p className="font-['Cormorant_Garamond',serif] italic text-xs sm:text-sm tracking-[0.35em] uppercase text-[#C87D87] mb-1">
                 Inora · Feedback
               </p>
-              {/* was text-2xl → text-3xl */}
-              <h1 className="font-['Playfair_Display',serif] italic text-3xl text-[#3a3027] mb-1">
+              <h1 className="font-['Playfair_Display',serif] italic text-2xl sm:text-3xl text-[#3a3027] mb-1">
                 Share your experience
               </h1>
-              {/* was text-sm text-[#7a6a5a]/60 → text-base text-[#7a6a5a] */}
-              <p className="font-['Cormorant_Garamond',serif] italic text-base text-[#7a6a5a] mb-8">
+              <p className="font-['Cormorant_Garamond',serif] italic text-sm sm:text-base text-[#7a6a5a] mb-6 sm:mb-8">
                 Your words help our community grow and inspire future gatherings.
               </p>
 
               {/* Stars */}
-              <div className="mb-7">
-                {/* was text-[0.6rem] text-[#7a6a5a]/50 → text-xs text-[#7a6a5a] font-semibold */}
-                <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#7a6a5a] font-semibold mb-3">
+              <div className="mb-6 sm:mb-7">
+                <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#7a6a5a] font-semibold mb-2 sm:mb-3">
                   Your rating
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="stars-container flex items-center gap-2 sm:gap-3 flex-wrap">
                   {[1, 2, 3, 4, 5].map(n => (
                     <button key={n}
                       onMouseEnter={() => setHovered(n)}
                       onMouseLeave={() => setHovered(0)}
                       onClick={() => setRating(n)}
-                      className="text-4xl transition-all duration-150 hover:scale-125 focus:outline-none leading-none">
+                      className="star-button text-3xl sm:text-4xl transition-all duration-150 hover:scale-125 focus:outline-none focus:ring-2 focus:ring-[#C87D87]/50 rounded-full p-1 leading-none"
+                      aria-label={`Rate ${n} star${n !== 1 ? 's' : ''}`}>
                       <span style={{color: n <= (hovered || rating) ? '#C87D87' : '#ddd0c8'}}>
                         {n <= (hovered || rating) ? '★' : '☆'}
                       </span>
                     </button>
                   ))}
-                  {/* was text-sm text-[#7a6a5a]/60 → text-base text-[#7a6a5a] */}
                   {(hovered || rating) > 0 && (
-                    <span className="font-['Cormorant_Garamond',serif] italic text-base text-[#7a6a5a] ml-1">
+                    <span className="rating-label font-['Cormorant_Garamond',serif] italic text-sm sm:text-base text-[#7a6a5a] ml-0 sm:ml-1">
                       {['','Poor','Fair','Good','Very good','Excellent'][hovered || rating]}
                     </span>
                   )}
@@ -137,27 +144,23 @@ export default function NewReview() {
               </div>
 
               {/* Comment */}
-              <div className="mb-6">
-                {/* was text-[0.6rem] text-[#7a6a5a]/50 → text-xs text-[#7a6a5a] font-semibold */}
+              <div className="mb-5 sm:mb-6">
                 <p className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.2em] uppercase text-[#7a6a5a] font-semibold mb-2">
                   Your comment
                 </p>
-                {/* textarea: was text-sm → text-base, placeholder opacity /35 → /50 */}
                 <textarea
                   value={comment}
                   onChange={e => setComment(e.target.value)}
                   rows={5}
                   maxLength={500}
                   placeholder="Describe your experience — the atmosphere, the activity, the people…"
-                  className="w-full bg-white/60 border border-[#C87D87]/20 rounded-xl px-4 py-3 font-['Cormorant_Garamond',serif] italic text-base text-[#3a3027] placeholder:text-[#7a6a5a]/50 focus:outline-none focus:border-[#C87D87] transition-all resize-none leading-relaxed"
+                  className="w-full bg-white/60 border border-[#C87D87]/20 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 font-['Cormorant_Garamond',serif] italic text-sm sm:text-base text-[#3a3027] placeholder:text-[#7a6a5a]/50 focus:outline-none focus:border-[#C87D87] transition-all resize-none leading-relaxed"
                 />
                 <div className="flex justify-between mt-1.5 px-1">
-                  {/* was text-[0.58rem] /35 → text-xs /60 */}
-                  <span className="font-['Cormorant_Garamond',serif] italic text-xs text-[#7a6a5a]/60">
+                  <span className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-xs text-[#7a6a5a]/60">
                     Min. 10 characters
                   </span>
-                  {/* was text-[0.58rem] /35 → text-xs /60 */}
-                  <span className={`font-['Cormorant_Garamond',serif] italic text-xs transition-colors ${
+                  <span className={`font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-xs transition-colors ${
                     comment.length > 450 ? 'text-[#C87D87]' : 'text-[#7a6a5a]/60'
                   }`}>
                     {comment.length}/500
@@ -167,34 +170,33 @@ export default function NewReview() {
 
               {/* Error */}
               {error && (
-                <div className="mb-5 px-4 py-3 bg-[#C87D87]/8 border border-[#C87D87]/20 rounded-xl">
-                  {/* was text-sm → text-base */}
-                  <p className="font-['Cormorant_Garamond',serif] italic text-base text-[#C87D87]">
+                <div className="mb-5 px-3 sm:px-4 py-2.5 sm:py-3 bg-[#C87D87]/8 border border-[#C87D87]/20 rounded-xl">
+                  <p className="font-['Cormorant_Garamond',serif] italic text-sm sm:text-base text-[#C87D87]">
                     ⚠ {error}
                   </p>
                 </div>
               )}
 
-              {/* Submit: was text-sm → text-base */}
+              {/* Submit */}
               <button
                 onClick={submit}
                 disabled={!rating || comment.trim().length < 10 || loading}
-                className="w-full font-['Cormorant_Garamond',serif] tracking-widest uppercase text-base text-white bg-[#6B7556] py-3.5 rounded-xl hover:bg-[#5a6347] transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 shadow-sm">
+                className="w-full font-['Cormorant_Garamond',serif] tracking-widest uppercase text-sm sm:text-base text-white bg-[#6B7556] py-3 sm:py-3.5 rounded-xl hover:bg-[#5a6347] transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 shadow-sm">
                 {loading ? 'Submitting…' : 'Submit my review'}
               </button>
             </div>
 
             {/* bottom ornament */}
-            <div className="flex items-center justify-center gap-2 py-3 border-t border-[#C87D87]/10">
-              <div className="w-8 h-px bg-[#C87D87]/20"/>
-              <span className="text-[#C87D87]/30 text-[0.5rem]">✦</span>
-              <div className="w-8 h-px bg-[#C87D87]/20"/>
+            <div className="flex items-center justify-center gap-2 py-2.5 sm:py-3 border-t border-[#C87D87]/10">
+              <div className="w-6 sm:w-8 h-px bg-[#C87D87]/20"/>
+              <span className="text-[#C87D87]/30 text-[0.4rem] sm:text-[0.5rem]">✦</span>
+              <div className="w-6 sm:w-8 h-px bg-[#C87D87]/20"/>
             </div>
           </div>
 
-          {/* Back link: was text-sm /45 → text-base /70 */}
+          {/* Back link */}
           <button onClick={() => router.back()}
-            className="mt-4 w-full font-['Cormorant_Garamond',serif] italic text-base text-[#7a6a5a]/70 hover:text-[#7a6a5a] transition-colors text-center">
+            className="mt-4 w-full font-['Cormorant_Garamond',serif] italic text-sm sm:text-base text-[#7a6a5a]/70 hover:text-[#7a6a5a] transition-colors text-center py-2">
             ← Go back
           </button>
         </div>
