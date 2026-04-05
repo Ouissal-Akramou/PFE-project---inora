@@ -318,7 +318,7 @@ export default function AccountPage() {
     if (['personal','bookings','security','danger'].includes(hash)) setActiveSection(hash);
   }, []);
 
-  // ✅ FIXED: Avatar upload without authFetch (to avoid Content-Type JSON)
+  // ✅ Avatar upload - khdam mzyan
   const handleAvatar = async (e) => {
     const file = e.target.files[0]; 
     if (!file) return;
@@ -333,7 +333,6 @@ export default function AccountPage() {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`
-          // ❌ No Content-Type header (browser will set multipart/form-data)
         },
         body: formData
       });
