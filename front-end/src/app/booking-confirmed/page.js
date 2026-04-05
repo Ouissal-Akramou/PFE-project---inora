@@ -49,41 +49,41 @@ export default function BookingConfirmed() {
       `}</style>
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-40 px-5 py-3 flex items-center justify-between"
+      <header className="sticky top-0 z-40 px-3 sm:px-5 py-3 flex items-center justify-between"
         style={{ backgroundColor: '#6B7556', boxShadow: '0 2px 20px rgba(40,50,30,0.18)' }}>
-        <Link href="/" className="font-['Cormorant_Garamond',serif] italic text-[0.85rem]
-          text-[rgba(251,234,214,0.60)] hover:text-[#FBEAD6] transition-colors group flex items-center gap-1.5">
-          <svg className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform"
+        <Link href="/" className="font-['Cormorant_Garamond',serif] italic text-[0.7rem] sm:text-[0.85rem]
+          text-[rgba(251,234,214,0.60)] hover:text-[#FBEAD6] transition-colors group flex items-center gap-1 sm:gap-1.5">
+          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:-translate-x-0.5 transition-transform"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
           </svg>
-          Home
+          <span className="hidden xs:inline">Home</span>
         </Link>
         <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
-          <span className="font-['Playfair_Display',serif] italic text-[#FBEAD6] text-[1.1rem]">Inora</span>
+          <span className="font-['Playfair_Display',serif] italic text-[#FBEAD6] text-[0.9rem] sm:text-[1.1rem]">Inora</span>
         </div>
         <Link href="/account#bookings"
-          className="font-['Cormorant_Garamond',serif] italic text-[0.78rem] tracking-[0.14em] uppercase
+          className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-[0.78rem] tracking-[0.14em] uppercase
             text-[rgba(251,234,214,0.55)] hover:text-[#FBEAD6] transition-colors">
           My Bookings →
         </Link>
       </header>
 
       {/* ── Main full-width layout ── */}
-      <main className="w-full px-6 sm:px-10 pb-16 relative z-10 pt-8">
+      <main className="w-full px-4 sm:px-6 md:px-10 pb-16 relative z-10 pt-6 sm:pt-8">
 
-        {/* Top hero row */}
-        <div className="grid grid-cols-[1fr_auto] gap-8 items-start mb-8 fade-up">
-          <div className="flex items-center gap-6">
-            <div className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center">
+        {/* Top hero row - responsive stack */}
+        <div className="flex flex-col sm:grid sm:grid-cols-[1fr_auto] gap-4 sm:gap-8 items-start mb-6 sm:mb-8 fade-up">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 flex items-center justify-center">
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 64 64"
                 style={{ animation: 'laceRotate 10s linear infinite' }}>
                 <circle cx="32" cy="32" r="30" fill="none" stroke="#6B7556"
                   strokeWidth="0.6" strokeOpacity="0.30" strokeDasharray="3 6"/>
               </svg>
-              <div className="relative w-11 h-11 rounded-full flex items-center justify-center"
+              <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-full flex items-center justify-center"
                 style={{ background: 'rgba(107,117,86,0.12)', border: '1px solid rgba(107,117,86,0.30)' }}>
-                <svg className="w-5 h-5" style={{ animation: 'lacePulse 2.5s ease-in-out infinite' }}
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" style={{ animation: 'lacePulse 2.5s ease-in-out infinite' }}
                   fill="none" viewBox="0 0 24 24" stroke="#6B7556" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round"
                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -92,24 +92,24 @@ export default function BookingConfirmed() {
             </div>
             <div>
               <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/75
-                text-[0.82rem] tracking-[0.28em] uppercase mb-1">✦ Request Received ✦</p>
-              <h1 className="font-['Playfair_Display',serif] italic text-[3rem] text-[#3a3027] leading-none">
+                text-[0.7rem] sm:text-[0.82rem] tracking-[0.28em] uppercase mb-1">✦ Request Received ✦</p>
+              <h1 className="font-['Playfair_Display',serif] italic text-[2rem] sm:text-[3rem] text-[#3a3027] leading-none">
                 We'll be in touch<span className="text-[#C87D87]">.</span>
               </h1>
-              <p className="font-['Cormorant_Garamond',serif] italic text-[#5a4a3a]/80 text-[1.1rem] mt-2">
-                Your booking request has been received and is awaiting confirmation.
+              <p className="font-['Cormorant_Garamond',serif] italic text-[#5a4a3a]/80 text-[0.9rem] sm:text-[1.1rem] mt-1 sm:mt-2">
+                Your booking request has been received.
               </p>
             </div>
           </div>
           {booking && (
-            <div className="text-right fade-up flex-shrink-0">
-              <p className="font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase tracking-[0.2em]
+            <div className="text-left sm:text-right fade-up flex-shrink-0">
+              <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] sm:text-[0.72rem] uppercase tracking-[0.2em]
                 font-semibold mb-1" style={{ color: 'rgba(90,74,58,0.70)' }}>Reference</p>
-              <p className="font-['Playfair_Display',serif] italic text-[1.8rem] text-[#3a3027]">
+              <p className="font-['Playfair_Display',serif] italic text-[1.4rem] sm:text-[1.8rem] text-[#3a3027]">
                 #{String(booking.id).padStart(5,'0')}
               </p>
-              <span className="inline-block mt-1.5 font-['Cormorant_Garamond',serif] italic
-                text-[0.72rem] tracking-[0.12em] uppercase px-2.5 py-1 rounded-full"
+              <span className="inline-block mt-1 font-['Cormorant_Garamond',serif] italic
+                text-[0.65rem] sm:text-[0.72rem] tracking-[0.12em] uppercase px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full"
                 style={{ background:'rgba(209,153,0,0.10)', border:'1px solid rgba(209,153,0,0.25)',
                   color:'rgba(160,118,0,0.85)' }}>
                 ◎ Pending confirmation
@@ -119,7 +119,7 @@ export default function BookingConfirmed() {
         </div>
 
         {/* Divider */}
-        <div className="flex items-center gap-3 mb-7 fade-up">
+        <div className="flex items-center gap-3 mb-6 sm:mb-7 fade-up">
           <div className="flex-1 h-px bg-[#3a3027]/6"/>
           <svg width="8" height="8" viewBox="0 0 8 8">
             <rect x="1" y="1" width="6" height="6" transform="rotate(45 4 4)"
@@ -128,16 +128,16 @@ export default function BookingConfirmed() {
           <div className="flex-1 h-px bg-[#3a3027]/6"/>
         </div>
 
-        {/* Two-column: summary | steps */}
-        <div className="grid grid-cols-[1.1fr_0.9fr] gap-5 mb-6 fade-up">
+        {/* Two-column: summary | steps - responsive stack */}
+        <div className="flex flex-col lg:grid lg:grid-cols-[1.1fr_0.9fr] gap-5 mb-6 fade-up">
 
           {/* Booking summary card */}
-          <div className="rounded-2xl overflow-hidden"
+          <div className="rounded-2xl overflow-hidden order-2 lg:order-1"
             style={{ background:'rgba(255,255,255,0.60)', border:'1px solid rgba(58,48,39,0.08)',
               boxShadow:'0 1px 8px rgba(58,48,39,0.04)' }}>
-            <div className="px-5 py-3"
+            <div className="px-4 sm:px-5 py-3"
               style={{ background:'rgba(255,255,255,0.40)', borderBottom:'1px solid rgba(58,48,39,0.06)' }}>
-              <p className="font-['Cormorant_Garamond',serif] text-[0.75rem] uppercase tracking-[0.22em]
+              <p className="font-['Cormorant_Garamond',serif] text-[0.7rem] sm:text-[0.75rem] uppercase tracking-[0.22em]
                 font-semibold" style={{ color:'rgba(90,74,58,0.85)' }}>Booking Summary</p>
             </div>
             {booking ? (
@@ -149,48 +149,48 @@ export default function BookingConfirmed() {
                   { l:'Guests',   v: `${booking.participants ?? 1} ${(booking.participants??1)===1?'person':'people'}` },
                   { l:'Setting',  v: SETTINGS_MAP[booking.setting] || booking.setting || '—' },
                 ].map(({ l, v }, idx, arr) => (
-                  <div key={l} className="flex justify-between items-baseline px-5 py-2.5"
+                  <div key={l} className="flex justify-between items-baseline px-4 sm:px-5 py-2 sm:py-2.5"
                     style={{ borderBottom: idx < arr.length-1 ? '1px solid rgba(58,48,39,0.05)' : 'none' }}>
-                    <span className="font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase
-                      tracking-[0.14em] flex-shrink-0 mr-3 font-semibold"
+                    <span className="font-['Cormorant_Garamond',serif] text-[0.65rem] sm:text-[0.72rem] uppercase
+                      tracking-[0.14em] flex-shrink-0 mr-2 sm:mr-3 font-semibold"
                       style={{ color:'rgba(90,74,58,0.75)' }}>{l}</span>
-                    <span className="font-['Cormorant_Garamond',serif] italic text-[1.05rem] text-right"
+                    <span className="font-['Cormorant_Garamond',serif] italic text-[0.9rem] sm:text-[1.05rem] text-right break-words max-w-[60%]"
                       style={{ color:'rgba(58,48,39,0.95)' }}>{v}</span>
                   </div>
                 ))}
                 {/* price row */}
-                <div className="px-5 py-3.5 flex items-center justify-between"
+                <div className="px-4 sm:px-5 py-3 sm:py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0"
                   style={{ background:'linear-gradient(135deg,rgba(107,117,86,0.08),rgba(107,117,86,0.03))',
                     borderTop:'1px solid rgba(107,117,86,0.10)' }}>
                   <div>
-                    <p className="font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase
+                    <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] sm:text-[0.72rem] uppercase
                       tracking-[0.14em] font-semibold" style={{ color:'rgba(90,74,58,0.80)' }}>
                       Estimated Total</p>
-                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.92rem] mt-0.5"
+                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.85rem] sm:text-[0.92rem] mt-0.5"
                       style={{ color:'rgba(90,74,58,0.80)' }}>
                       {booking.participants ?? 1} × {pricing?.rate} MAD/person
-                      {pricing?.label && <span className="ml-1.5 text-[#6B7556]/80">· {pricing.label}</span>}
+                      {pricing?.label && <span className="ml-1 text-[#6B7556]/80 block sm:inline sm:ml-1.5">· {pricing.label}</span>}
                     </p>
                     {savedAmt > 0 && (
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.85rem] mt-0.5"
+                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.75rem] sm:text-[0.85rem] mt-0.5"
                         style={{ color:'#6B7556' }}>✦ You save {savedAmt} MAD</p>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right">
                     {savedAmt > 0 && (
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.8rem] line-through mb-0.5"
+                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.7rem] sm:text-[0.8rem] line-through mb-0.5"
                         style={{ color:'rgba(90,74,58,0.35)' }}>
                         {(booking.participants ?? 1) * 150} MAD</p>
                     )}
-                    <p className="font-['Playfair_Display',serif] italic text-[2.2rem] leading-none"
+                    <p className="font-['Playfair_Display',serif] italic text-[1.8rem] sm:text-[2.2rem] leading-none"
                       style={{ color:'#6B7556' }}>{total}</p>
-                    <p className="font-['Cormorant_Garamond',serif] text-[0.68rem] tracking-widest uppercase mt-0.5"
+                    <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.68rem] tracking-widest uppercase mt-0.5"
                       style={{ color:'rgba(107,117,86,0.75)' }}>MAD</p>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="p-5 space-y-3">
+              <div className="p-4 sm:p-5 space-y-3">
                 {[1,2,3,4].map(i => (
                   <div key={i} className="flex justify-between">
                     <div className="h-3 w-16 rounded bg-[#3a3027]/6 animate-pulse"/>
@@ -202,54 +202,54 @@ export default function BookingConfirmed() {
           </div>
 
           {/* Steps */}
-          <div className="flex flex-col gap-3">
-            <p className="font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase tracking-[0.22em]
+          <div className="flex flex-col gap-3 order-1 lg:order-2">
+            <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] sm:text-[0.72rem] uppercase tracking-[0.22em]
               font-semibold px-0.5" style={{ color:'rgba(90,74,58,0.70)' }}>What happens next</p>
             {[
               { icon:'◎', step:'Admin reviews your request',             sub:'Usually within a few hours' },
               { icon:'◈', step:'You receive a confirmation notification', sub:'Check your profile notifications' },
               { icon:'◇', step:'Proceed to payment',                     sub:'A payment link appears in your bookings' },
             ].map((s, i) => (
-              <div key={i} className="flex items-start gap-3.5 px-4 py-3.5 rounded-2xl flex-1"
+              <div key={i} className="flex items-start gap-3 px-3 sm:px-4 py-3 sm:py-3.5 rounded-2xl flex-1"
                 style={{ background:'rgba(255,255,255,0.55)', border:'1px solid rgba(58,48,39,0.08)',
                   boxShadow:'0 1px 6px rgba(58,48,39,0.04)' }}>
-                <span className="text-[#C87D87]/50 text-base mt-0.5 flex-shrink-0">{s.icon}</span>
+                <span className="text-[#C87D87]/50 text-sm sm:text-base mt-0.5 flex-shrink-0">{s.icon}</span>
                 <div className="flex-1">
-                  <p className="font-['Playfair_Display',serif] italic text-[1.05rem] text-[#3a3027] leading-snug">
+                  <p className="font-['Playfair_Display',serif] italic text-[0.9rem] sm:text-[1.05rem] text-[#3a3027] leading-snug">
                     {s.step}</p>
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.88rem] text-[#7a6a5a]/70 mt-0.5">
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.75rem] sm:text-[0.88rem] text-[#7a6a5a]/70 mt-0.5">
                     {s.sub}</p>
                 </div>
-                <span className="font-['Cormorant_Garamond',serif] italic text-[0.68rem] text-[#C87D87]/45 flex-shrink-0">
+                <span className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] sm:text-[0.68rem] text-[#C87D87]/45 flex-shrink-0">
                   0{i+1}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── CTA row ── */}
-        <div className="flex gap-2.5 fade-up">
+        {/* ── CTA row - responsive stack ── */}
+        <div className="flex flex-col sm:flex-row gap-2.5 fade-up">
           <Link href="/"
-            className="font-['Cormorant_Garamond',serif] text-[0.90rem] tracking-[0.16em] uppercase
-              px-7 py-3.5 rounded-xl border border-[#3a3027]/10 text-[#7a6a5a]/75
+            className="order-3 sm:order-1 font-['Cormorant_Garamond',serif] text-[0.85rem] sm:text-[0.90rem] tracking-[0.16em] uppercase
+              px-4 sm:px-7 py-3 sm:py-3.5 rounded-xl border border-[#3a3027]/10 text-[#7a6a5a]/75
               hover:text-[#7a6a5a]/90 hover:bg-white/40 transition-all text-center">
             ← Back to Home
           </Link>
 
           <Link href="/account#bookings"
-            className="flex-1 relative overflow-hidden group font-['Cormorant_Garamond',serif]
-              text-[0.90rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-3.5 rounded-xl
+            className="order-1 sm:order-2 flex-1 relative overflow-hidden group font-['Cormorant_Garamond',serif]
+              text-[0.85rem] sm:text-[0.90rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-3 sm:py-3.5 rounded-xl
               transition-all text-center"
             style={{ background:'linear-gradient(135deg,#C87D87 0%,#b36d77 50%,#C87D87 100%)',
               boxShadow:'0 5px 20px rgba(200,125,135,0.28)' }}>
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent
               -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none"/>
-            <span className="opacity-40 text-[0.5rem]">◆</span> View My Bookings <span className="opacity-40 text-[0.5rem]">◆</span>
+            <span className="opacity-40 text-[0.45rem] sm:text-[0.5rem]">◆</span> View My Bookings <span className="opacity-40 text-[0.45rem] sm:text-[0.5rem]">◆</span>
           </Link>
 
           <Link href="/book"
-            className="font-['Cormorant_Garamond',serif] text-[0.90rem] tracking-[0.16em] uppercase
-              px-7 py-3.5 rounded-xl border border-[#6B7556]/20 text-[#6B7556]/80
+            className="order-2 sm:order-3 font-['Cormorant_Garamond',serif] text-[0.85rem] sm:text-[0.90rem] tracking-[0.16em] uppercase
+              px-4 sm:px-7 py-3 sm:py-3.5 rounded-xl border border-[#6B7556]/20 text-[#6B7556]/80
               hover:text-[#6B7556] hover:bg-[#6B7556]/5 transition-all text-center">
             Book Again →
           </Link>

@@ -38,23 +38,23 @@ const Card = ({ children, danger = false, ...props }) => (
 const DeleteModal = ({ onConfirm, onCancel }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
     style={{ background: 'rgba(58,48,39,0.55)', backdropFilter: 'blur(4px)', animation: 'fadeIn .2s ease both' }}>
-    <div className="bg-[#fef6ec] rounded-2xl border border-red-200/60 shadow-[0_24px_64px_rgba(58,48,39,0.25)] w-full max-w-md relative overflow-hidden"
+    <div className="bg-[#fef6ec] rounded-2xl border border-red-200/60 shadow-[0_24px_64px_rgba(58,48,39,0.25)] w-full max-w-md relative overflow-hidden mx-4"
       style={{ animation: 'fadeUp .25s ease both' }}>
       <div className="h-0.5 bg-gradient-to-r from-transparent via-red-400 to-transparent"/>
       <div className="absolute top-0 left-0"><LaceCorner danger/></div>
       <div className="absolute top-0 right-0"><LaceCorner flip danger/></div>
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-5">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
           </svg>
         </div>
-        <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027] text-center mb-2">Are you sure?</h3>
+        <h3 className="font-['Playfair_Display',serif] italic text-xl sm:text-2xl text-[#3a3027] text-center mb-2">Are you sure?</h3>
         <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-red-400/70 text-center mb-4">This action cannot be undone</p>
-        <p className="font-['Cormorant_Garamond',serif] text-sm text-[#5a4a3a] text-center leading-relaxed mb-8">
+        <p className="font-['Cormorant_Garamond',serif] text-xs sm:text-sm text-[#5a4a3a] text-center leading-relaxed mb-8">
           Your account will be <span className="text-red-500 font-semibold">permanently deleted</span>. Your bookings and payment history will be preserved but your account will no longer be accessible.
         </p>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button onClick={onCancel} className="flex-1 font-['Cormorant_Garamond',serif] text-sm tracking-[0.18em] uppercase text-[#7a6a5a] bg-[#fdf3e7] border border-[#C87D87]/20 px-6 py-3 rounded-xl hover:bg-[#f5e8d4] transition-all">Cancel</button>
           <button onClick={onConfirm} className="flex-1 font-['Cormorant_Garamond',serif] text-sm tracking-[0.18em] uppercase text-white bg-red-500 px-6 py-3 rounded-xl hover:bg-red-600 transition-all shadow-[0_4px_16px_rgba(239,68,68,0.25)] active:scale-[0.98]">Yes, delete my account</button>
         </div>
@@ -67,22 +67,22 @@ const DeleteModal = ({ onConfirm, onCancel }) => (
 const CancelBookingModal = ({ booking, onConfirm, onCancel }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
     style={{ background: 'rgba(58,48,39,0.55)', backdropFilter: 'blur(4px)', animation: 'fadeIn .2s ease both' }}>
-    <div className="bg-[#fef6ec] rounded-2xl border border-[#C87D87]/30 shadow-[0_24px_64px_rgba(58,48,39,0.25)] w-full max-w-md relative overflow-hidden"
+    <div className="bg-[#fef6ec] rounded-2xl border border-[#C87D87]/30 shadow-[0_24px_64px_rgba(58,48,39,0.25)] w-full max-w-md relative overflow-hidden mx-4"
       style={{ animation: 'fadeUp .25s ease both' }}>
       <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/50 to-transparent"/>
       <div className="absolute top-0 left-0"><LaceCorner/></div>
       <div className="absolute top-0 right-0"><LaceCorner flip/></div>
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-5">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </div>
-        <h3 className="font-['Playfair_Display',serif] italic text-2xl text-[#3a3027] text-center mb-2">Cancel Booking?</h3>
+        <h3 className="font-['Playfair_Display',serif] italic text-xl sm:text-2xl text-[#3a3027] text-center mb-2">Cancel Booking?</h3>
         <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.3em] uppercase text-[#C87D87]/70 text-center mb-4">This cannot be undone</p>
         <p className="font-['Cormorant_Garamond',serif] text-sm text-[#5a4a3a] text-center leading-relaxed mb-2">You are about to cancel</p>
         <p className="font-['Playfair_Display',serif] italic text-base text-[#3a3027] text-center mb-8">{booking?.activity || booking?.activityType} · this booking</p>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button onClick={onCancel} className="flex-1 font-['Cormorant_Garamond',serif] text-sm tracking-[0.18em] uppercase text-[#7a6a5a] bg-[#fdf3e7] border border-[#C87D87]/20 px-6 py-3 rounded-xl hover:bg-[#f5e8d4] transition-all">Keep Booking</button>
           <button onClick={onConfirm} className="flex-1 font-['Cormorant_Garamond',serif] text-sm tracking-[0.18em] uppercase text-white bg-amber-500 px-6 py-3 rounded-xl hover:bg-amber-600 transition-all shadow-[0_4px_16px_rgba(245,158,11,0.25)] active:scale-[0.98]">Yes, Cancel</button>
         </div>
@@ -235,7 +235,7 @@ const exportSinglePDF = (booking) => {
 // ─── Shared style constants ──────────────────────────────────────────────────
 const IC = 'w-full px-4 py-3 bg-[#fdf3e7] border border-[#C87D87]/20 focus:border-[#C87D87] focus:ring-2 focus:ring-[#C87D87]/10 focus:outline-none font-[\'Cormorant_Garamond\',serif] italic text-base text-[#3a3027] placeholder:text-[#7a6a5a]/45 transition-all rounded-xl';
 const LC = 'font-[\'Cormorant_Garamond\',serif] text-[0.6rem] tracking-[0.2em] uppercase text-[#7a6a5a]/60 block mb-2 font-semibold';
-const BTN = 'font-[\'Cormorant_Garamond\',serif] text-sm tracking-[0.22em] uppercase text-white bg-[#6B7556] px-8 py-3 rounded-xl hover:bg-[#4a5240] active:scale-[0.98] transition-all duration-300 disabled:opacity-40 inline-block cursor-pointer font-semibold shadow-[0_4px_16px_rgba(107,117,86,0.30)] hover:-translate-y-0.5';
+const BTN = 'font-[\'Cormorant_Garamond\',serif] text-sm tracking-[0.22em] uppercase text-white bg-[#6B7556] px-6 sm:px-8 py-3 rounded-xl hover:bg-[#4a5240] active:scale-[0.98] transition-all duration-300 disabled:opacity-40 inline-block cursor-pointer font-semibold shadow-[0_4px_16px_rgba(107,117,86,0.30)] hover:-translate-y-0.5 w-full sm:w-auto';
 
 const sideNav = [
   { id: 'personal', label: 'Personal Details', sub: 'Name · email · address', icon: 'M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z' },
@@ -267,6 +267,7 @@ export default function AccountPage() {
   const { user, setUser }     = useAuth();
   const router                = useRouter();
   const [activeSection, setActiveSection] = useState('personal');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed]         = useState(false);
   const [profile, setProfile]             = useState(null);
   const [loading, setLoading]             = useState(true);
@@ -416,13 +417,26 @@ export default function AccountPage() {
 
   const displayName = profile?.fullName ?? user?.fullName ?? 'Member';
   const avatarUrl   = profile?.avatarUrl ?? user?.avatarUrl ?? null;
-  const sideW       = collapsed ? 'w-[72px]' : 'w-64';
-  const mainML      = collapsed ? 'ml-[72px]' : 'ml-64';
+
+  // Mobile: sidebar hidden by default, toggle via hamburger
+  // Desktop: sidebar visible, collapsible
+  const isDesktop = typeof window !== 'undefined' ? window.innerWidth >= 768 : true;
+  const [isDesktopView, setIsDesktopView] = useState(true);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktopView(window.innerWidth >= 768);
+      if (window.innerWidth >= 768) setMobileMenuOpen(false);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (loading) return <LoadingScreen/>;
   if (error)   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(160deg,#6B7556 0%,#5a6347 100%)' }}>
-      <p className="font-['Cormorant_Garamond',serif] italic text-white/80 text-lg">{error}</p>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#6B7556 0%,#5a6347 100%)' }}>
+      <p className="font-['Cormorant_Garamond',serif] italic text-white/80 text-lg text-center">{error}</p>
     </div>
   );
 
@@ -431,6 +445,7 @@ export default function AccountPage() {
       <style>{`
         @keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+        @keyframes slideIn { from{transform:translateX(-100%)} to{transform:translateX(0)} }
         .green-sidebar { background: linear-gradient(160deg,#6B7556 0%,#5a6347 60%,#4a5240 100%); }
         .dash-bg {
           background-color: #FBEAD6;
@@ -445,119 +460,191 @@ export default function AccountPage() {
 
       <div className="min-h-screen flex" style={{ animation: 'fadeIn .4s ease both' }}>
 
-        {/* ── SIDEBAR ── */}
-        <aside className={`green-sidebar fixed top-0 left-0 h-full z-40 flex flex-col transition-all duration-300 ${sideW} overflow-hidden flex-shrink-0`} style={{ boxShadow: '6px 0 32px rgba(107,117,86,0.30)' }}>
-          <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/50 to-transparent"/>
+        {/* ── SIDEBAR (Desktop) ── */}
+        {isDesktopView && (
+          <aside className={`green-sidebar fixed top-0 left-0 h-full z-40 flex flex-col transition-all duration-300 ${collapsed ? 'w-[72px]' : 'w-64'} overflow-hidden flex-shrink-0`} style={{ boxShadow: '6px 0 32px rgba(107,117,86,0.30)' }}>
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/50 to-transparent"/>
 
-          {/* Header */}
-          <div className={`flex items-center border-b border-white/10 flex-shrink-0 ${collapsed ? 'justify-center px-0 py-5' : 'justify-between px-6 py-5'}`}>
+            {/* Header */}
+            <div className={`flex items-center border-b border-white/10 flex-shrink-0 ${collapsed ? 'justify-center px-0 py-5' : 'justify-between px-6 py-5'}`}>
+              {!collapsed && (
+                <Link href="/" className="group logo">
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.5rem] tracking-[0.4em] uppercase text-white/50">My Account</p>
+                  <h1 className="font-['Playfair_Display',serif] italic text-2xl text-white leading-tight group-hover:[.logo_&]:text-[#FBEAD6] transition-colors">Inora</h1>
+                </Link>
+              )}
+              <button onClick={() => setCollapsed(c => !c)} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all flex-shrink-0" title={collapsed ? 'Expand' : 'Collapse'}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  {collapsed ? <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/> : <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>}
+                </svg>
+              </button>
+            </div>
+
+            {/* Avatar */}
             {!collapsed && (
-              <Link href="/" className="group logo">
-                <p className="font-['Cormorant_Garamond',serif] italic text-[0.5rem] tracking-[0.4em] uppercase text-white/50">My Account</p>
-                <h1 className="font-['Playfair_Display',serif] italic text-2xl text-white leading-tight group-hover:[.logo_&]:text-[#FBEAD6] transition-colors">Inora</h1>
-              </Link>
+              <div className="px-5 py-4 border-b border-white/8 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <label htmlFor="avatar-upload" className="cursor-pointer group-av flex-shrink-0 relative">
+                    {avatarUrl
+                      ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 transition-opacity hover:opacity-70"/>
+                      : <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm">{displayName.charAt(0).toUpperCase()}</div>
+                    }
+                    {avatarLoading && <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center"><span className="text-white text-[0.5rem] animate-pulse">…</span></div>}
+                    <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} disabled={avatarLoading}/>
+                  </label>
+                  <div className="min-w-0">
+                    <p className="font-['Cormorant_Garamond',serif] text-sm text-white font-semibold truncate">{displayName}</p>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-white/50 truncate">{profile?.email}</p>
+                  </div>
+                </div>
+                {avatarMsg.text && (
+                  <p className={`font-['Cormorant_Garamond',serif] italic text-[0.6rem] mt-2 flex items-center gap-1 ${avatarMsg.type === 'success' ? 'text-[#FBEAD6]/80' : 'text-[#C87D87]/80'}`}>
+                    {avatarMsg.text}
+                  </p>
+                )}
+              </div>
             )}
-            <button onClick={() => setCollapsed(c => !c)} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all flex-shrink-0" title={collapsed ? 'Expand' : 'Collapse'}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                {collapsed ? <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/> : <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>}
-              </svg>
-            </button>
-          </div>
-
-          {/* Avatar */}
-          {!collapsed && (
-            <div className="px-5 py-4 border-b border-white/8 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <label htmlFor="avatar-upload" className="cursor-pointer group-av flex-shrink-0 relative">
+            {collapsed && (
+              <div className="flex justify-center py-3 border-b border-white/8 flex-shrink-0">
+                <label htmlFor="avatar-upload-c" className="cursor-pointer" title="Change photo">
                   {avatarUrl
-                    ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 transition-opacity hover:opacity-70"/>
-                    : <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm">{displayName.charAt(0).toUpperCase()}</div>
+                    ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 hover:opacity-70 transition-opacity"/>
+                    : <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm hover:opacity-70 transition-opacity">{displayName.charAt(0).toUpperCase()}</div>
                   }
-                  {avatarLoading && <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center"><span className="text-white text-[0.5rem] animate-pulse">…</span></div>}
-                  <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} disabled={avatarLoading}/>
+                  <input id="avatar-upload-c" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} disabled={avatarLoading}/>
                 </label>
-                <div className="min-w-0">
-                  <p className="font-['Cormorant_Garamond',serif] text-sm text-white font-semibold truncate">{displayName}</p>
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-white/50 truncate">{profile?.email}</p>
+              </div>
+            )}
+
+            {/* Nav */}
+            <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-hidden">
+              {sideNav.map(item => (
+                <button key={item.id} onClick={() => setActiveSection(item.id)} title={collapsed ? item.label : undefined}
+                  className={`w-full flex items-center rounded-xl text-left relative transition-all duration-200 group ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'} ${activeSection === item.id ? (item.id === 'danger' ? 'bg-red-500/20' : 'bg-white/18') : 'hover:bg-white/10'}`}>
+                  {activeSection === item.id && <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full ${item.id === 'danger' ? 'bg-red-400' : 'bg-[#C87D87]'}`}/>}
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`flex-shrink-0 w-5 h-5 transition-colors ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-300' : 'text-white') : (item.id === 'danger' ? 'text-red-300/50 group-hover:text-red-300' : 'text-white/50 group-hover:text-white/80')}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                    <path strokeLinecap="round" strokeLinejoin="round" d={item.icon}/>
+                  </svg>
+                  {!collapsed && (
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-['Cormorant_Garamond',serif] text-[0.72rem] tracking-[0.15em] uppercase transition-colors ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-200' : 'text-white') : (item.id === 'danger' ? 'text-red-300/60 group-hover:text-red-200' : 'text-white/55 group-hover:text-white/85')}`}>{item.label}</p>
+                      <p className={`font-['Cormorant_Garamond',serif] italic text-[0.6rem] truncate ${item.id === 'danger' ? 'text-red-300/40' : 'text-white/30'}`}>{item.sub}</p>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </nav>
+
+            {/* Logout */}
+            <div className="border-t border-white/8 py-3 px-2 flex-shrink-0">
+              <button onClick={handleLogout} title="Log out" className={`w-full flex items-center rounded-xl text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-all group ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 flex-shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
+                </svg>
+                {!collapsed && <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.15em] uppercase">Log Out</span>}
+              </button>
+            </div>
+          </aside>
+        )}
+
+        {/* ── MOBILE SIDEBAR (Drawer) ── */}
+        {!isDesktopView && mobileMenuOpen && (
+          <>
+            <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setMobileMenuOpen(false)}/>
+            <aside className="green-sidebar fixed top-0 left-0 h-full z-50 w-72 flex flex-col animate-[slideIn_0.3s_ease]">
+              <div className="flex justify-end p-3">
+                <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="px-5 py-4 border-b border-white/8">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    {avatarUrl
+                      ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-white/20"/>
+                      : <div className="w-12 h-12 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-lg">{displayName.charAt(0).toUpperCase()}</div>
+                    }
+                  </div>
+                  <div>
+                    <p className="font-['Cormorant_Garamond',serif] text-base text-white font-semibold">{displayName}</p>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-xs text-white/60">{profile?.email}</p>
+                  </div>
                 </div>
               </div>
-              {avatarMsg.text && (
-                <p className={`font-['Cormorant_Garamond',serif] italic text-[0.6rem] mt-2 flex items-center gap-1 ${avatarMsg.type === 'success' ? 'text-[#FBEAD6]/80' : 'text-[#C87D87]/80'}`}>
-                  {avatarMsg.text}
-                </p>
-              )}
-            </div>
-          )}
-          {collapsed && (
-            <div className="flex justify-center py-3 border-b border-white/8 flex-shrink-0">
-              <label htmlFor="avatar-upload-c" className="cursor-pointer" title="Change photo">
-                {avatarUrl
-                  ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 hover:opacity-70 transition-opacity"/>
-                  : <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm hover:opacity-70 transition-opacity">{displayName.charAt(0).toUpperCase()}</div>
-                }
-                <input id="avatar-upload-c" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} disabled={avatarLoading}/>
-              </label>
-            </div>
-          )}
-
-          {/* Nav */}
-          <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-hidden">
-            {sideNav.map(item => (
-              <button key={item.id} onClick={() => setActiveSection(item.id)} title={collapsed ? item.label : undefined}
-                className={`w-full flex items-center rounded-xl text-left relative transition-all duration-200 group ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'} ${activeSection === item.id ? (item.id === 'danger' ? 'bg-red-500/20' : 'bg-white/18') : 'hover:bg-white/10'}`}>
-                {activeSection === item.id && <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full ${item.id === 'danger' ? 'bg-red-400' : 'bg-[#C87D87]'}`}/>}
-                <svg xmlns="http://www.w3.org/2000/svg" className={`flex-shrink-0 w-5 h-5 transition-colors ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-300' : 'text-white') : (item.id === 'danger' ? 'text-red-300/50 group-hover:text-red-300' : 'text-white/50 group-hover:text-white/80')}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={item.icon}/>
-                </svg>
-                {!collapsed && (
-                  <div className="min-w-0 flex-1">
-                    <p className={`font-['Cormorant_Garamond',serif] text-[0.72rem] tracking-[0.15em] uppercase transition-colors ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-200' : 'text-white') : (item.id === 'danger' ? 'text-red-300/60 group-hover:text-red-200' : 'text-white/55 group-hover:text-white/85')}`}>{item.label}</p>
-                    <p className={`font-['Cormorant_Garamond',serif] italic text-[0.6rem] truncate ${item.id === 'danger' ? 'text-red-300/40' : 'text-white/30'}`}>{item.sub}</p>
-                  </div>
-                )}
-              </button>
-            ))}
-          </nav>
-
-          {/* Logout */}
-          <div className="border-t border-white/8 py-3 px-2 flex-shrink-0">
-            <button onClick={handleLogout} title="Log out" className={`w-full flex items-center rounded-xl text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-all group ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 flex-shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
-              </svg>
-              {!collapsed && <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.15em] uppercase">Log Out</span>}
-            </button>
-          </div>
-        </aside>
+              <nav className="flex-1 px-3 py-4 space-y-1">
+                {sideNav.map(item => (
+                  <button key={item.id} onClick={() => { setActiveSection(item.id); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 transition-all ${activeSection === item.id ? (item.id === 'danger' ? 'bg-red-500/20' : 'bg-white/18') : 'hover:bg-white/10'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-300' : 'text-white') : (item.id === 'danger' ? 'text-red-300/60' : 'text-white/60')}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={item.icon}/>
+                    </svg>
+                    <div className="text-left">
+                      <p className={`font-['Cormorant_Garamond',serif] text-sm tracking-wide ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-200' : 'text-white') : (item.id === 'danger' ? 'text-red-300/70' : 'text-white/70')}`}>{item.label}</p>
+                      <p className={`font-['Cormorant_Garamond',serif] italic text-xs ${item.id === 'danger' ? 'text-red-300/40' : 'text-white/40'}`}>{item.sub}</p>
+                    </div>
+                  </button>
+                ))}
+              </nav>
+              <div className="border-t border-white/8 p-4">
+                <button onClick={handleLogout} className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-white/50 hover:text-red-300 hover:bg-red-500/10 transition-all">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
+                  </svg>
+                  <span className="font-['Cormorant_Garamond',serif] text-sm tracking-wide">Log Out</span>
+                </button>
+              </div>
+            </aside>
+          </>
+        )}
 
         {/* ── MAIN ── */}
-        <main className={`${mainML} flex-1 min-h-screen dash-bg transition-all duration-300`}>
+        <main className={`flex-1 min-h-screen dash-bg transition-all duration-300 ${isDesktopView ? (collapsed ? 'ml-[72px]' : 'ml-64') : 'ml-0'}`}>
           {/* Topbar */}
-          <header className="sticky top-0 z-30 bg-[#6B7556] backdrop-blur-xl border-b border-[#556b43]/30 px-6 py-2 flex items-center justify-between relative" style={{ boxShadow: '0 2px 24px rgba(200,125,135,0.22)' }}>
-            <div className="absolute top-0 left-0 pointer-events-none"><LaceCorner/></div>
-            <div className="absolute top-0 right-0 pointer-events-none"><LaceCorner flip/></div>
-            <div>
+          <header className="sticky top-0 z-30 bg-[#6B7556] backdrop-blur-xl border-b border-[#556b43]/30 px-4 sm:px-6 py-2 flex items-center justify-between relative">
+            <div className="absolute top-0 left-0 pointer-events-none hidden sm:block"><LaceCorner/></div>
+            <div className="absolute top-0 right-0 pointer-events-none hidden sm:block"><LaceCorner flip/></div>
+            
+            {/* Mobile hamburger */}
+            {!isDesktopView && (
+              <button onClick={() => setMobileMenuOpen(true)} className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+              </button>
+            )}
+            
+            <div className={!isDesktopView ? "flex-1 text-center" : ""}>
               <p className="font-['Cormorant_Garamond',serif] italic text-xs tracking-[0.3em] uppercase text-white/60">Inora · {sideNav.find(n => n.id === activeSection)?.label}</p>
             </div>
-            <div className="flex items-center gap-3">
+            
+            <div className="flex items-center gap-2 sm:gap-3">
               {profile?.role && (
-                <span className={`font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase border px-2.5 py-1 rounded-full ${profile.role === 'admin' ? 'bg-white/20 text-white border-white/30' : 'bg-white/15 text-white border-white/25'}`}>
+                <span className={`font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase border px-2 py-1 rounded-full ${profile.role === 'admin' ? 'bg-white/20 text-white border-white/30' : 'bg-white/15 text-white border-white/25'}`}>
                   {profile.role}
                 </span>
               )}
-              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-white/60 hidden md:block">
+              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-white/60 hidden sm:block">
                 {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
+              {/* Mobile avatar */}
+              {!isDesktopView && avatarUrl && (
+                <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-8 h-8 rounded-full object-cover ring-2 ring-white/20"/>
+              )}
+              {!isDesktopView && !avatarUrl && (
+                <div className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm">{displayName.charAt(0).toUpperCase()}</div>
+              )}
             </div>
           </header>
 
-          <div className="p-8" style={{ animation: 'fadeUp .4s ease both' }}>
+          <div className="p-4 sm:p-6 md:p-8" style={{ animation: 'fadeUp .4s ease both' }}>
 
             {/* ── PERSONAL ── */}
             {activeSection === 'personal' && (
               <div className="space-y-4" style={{ animation: 'fadeIn .3s ease forwards' }}>
                 <Card>
-                  <form onSubmit={handleName} className="p-7">
+                  <form onSubmit={handleName} className="p-5 sm:p-7">
                     <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-0.5">Update</p>
                     <h3 className="font-['Playfair_Display',serif] italic text-xl text-[#3a3027] mb-1">Full Name</h3>
                     <div className="w-6 h-px bg-[#C87D87]/40 mb-5"/>
@@ -568,7 +655,7 @@ export default function AccountPage() {
                   </form>
                 </Card>
                 <Card>
-                  <form onSubmit={handleEmail} className="p-7">
+                  <form onSubmit={handleEmail} className="p-5 sm:p-7">
                     <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-0.5">Update</p>
                     <h3 className="font-['Playfair_Display',serif] italic text-xl text-[#3a3027] mb-1">Email Address</h3>
                     <div className="w-6 h-px bg-[#C87D87]/40 mb-5"/>
@@ -596,18 +683,18 @@ export default function AccountPage() {
 
                 {!bookingsLoading && !bookingsError && bookings.length === 0 && (
                   <Card>
-                    <div className="p-12 text-center">
+                    <div className="p-8 sm:p-12 text-center">
                       <h3 className="font-['Playfair_Display',serif] italic text-xl text-[#3a3027] mb-2">No bookings yet</h3>
                       <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a] text-sm mb-6">You haven't made any reservations yet.</p>
-                      <Link href="/gatherings" className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.2em] uppercase text-white bg-[#6B7556] px-7 py-2.5 rounded-xl hover:bg-[#4a5240] transition-all inline-block shadow-[0_4px_16px_rgba(107,117,86,0.28)]">Plan a Gathering</Link>
+                      <Link href="/gatherings" className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.2em] uppercase text-white bg-[#6B7556] px-6 py-2.5 rounded-xl hover:bg-[#4a5240] transition-all inline-block shadow-[0_4px_16px_rgba(107,117,86,0.28)]">Plan a Gathering</Link>
                     </div>
                   </Card>
                 )}
 
                 {!bookingsLoading && !bookingsError && bookings.length > 0 && (
                   <>
-                    {/* Filter chips */}
-                    <div className="flex flex-wrap gap-2">
+                    {/* Filter chips - horizontal scroll on mobile */}
+                    <div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 -mx-1 px-1 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0">
                       {['all', ...Object.keys(bookings.reduce((acc, b) => { acc[b.status?.toLowerCase() ?? 'unknown'] = 1; return acc; }, {}))].map(status => {
                         const s = status === 'all'
                           ? { label: 'All', dot: 'bg-[#C87D87]', text: 'text-[#C87D87]', bg: 'bg-[#C87D87]/10', border: 'border-[#C87D87]/25' }
@@ -615,7 +702,7 @@ export default function AccountPage() {
                         const count = status === 'all' ? bookings.length : bookings.filter(b => b.status?.toLowerCase() === status).length;
                         return (
                           <button key={status} onClick={() => setBookingFilter(status)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all font-['Cormorant_Garamond',serif] text-xs font-semibold ${s.bg} ${s.border} ${s.text} ${bookingFilter === status ? 'ring-2 ring-offset-1 ring-[#C87D87]/30 scale-[1.03]' : 'opacity-70 hover:opacity-100'}`}>
+                            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all font-['Cormorant_Garamond',serif] text-xs font-semibold ${s.bg} ${s.border} ${s.text} ${bookingFilter === status ? 'ring-2 ring-offset-1 ring-[#C87D87]/30 scale-[1.03]' : 'opacity-70 hover:opacity-100'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>
                             {count} · {s.label}
                           </button>
@@ -634,8 +721,8 @@ export default function AccountPage() {
                               <div className={`h-0.5 bg-gradient-to-r from-transparent ${s.dot.replace('bg-','via-')} to-transparent`}/>
                               <div className="absolute top-0 left-0"><LaceCorner/></div>
                               <div className="absolute top-0 right-0"><LaceCorner flip/></div>
-                              <div className="p-6">
-                                <div className="flex items-start justify-between gap-4 mb-4">
+                              <div className="p-4 sm:p-6">
+                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
                                   <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-xl border ${s.border} ${s.bg} flex items-center justify-center flex-shrink-0`}>
                                       <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${s.text}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
@@ -643,43 +730,43 @@ export default function AccountPage() {
                                       </svg>
                                     </div>
                                     <div>
-                                      <h3 className="font-['Playfair_Display',serif] italic text-lg text-[#3a3027]">{booking.activity || booking.activityType} Activity</h3>
+                                      <h3 className="font-['Playfair_Display',serif] italic text-base sm:text-lg text-[#3a3027]">{booking.activity || booking.activityType} Activity</h3>
                                       <p className="font-['Cormorant_Garamond',serif] text-xs text-[#7a6a5a]/50 tracking-widest mt-0.5">#{String(booking.id).padStart(5,'0')}</p>
                                     </div>
                                   </div>
-                                  <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold tracking-[0.15em] uppercase font-['Cormorant_Garamond',serif] flex-shrink-0 ${s.bg} ${s.border} ${s.text}`}>
+                                  <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold tracking-[0.15em] uppercase font-['Cormorant_Garamond',serif] flex-shrink-0 self-start sm:self-auto ${s.bg} ${s.border} ${s.text}`}>
                                     <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`}/>{s.label}
                                   </span>
                                 </div>
 
-                                {/* Info grid */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {/* Info grid - responsive */}
+                                <div className="grid grid-cols-2 gap-2">
                                   {[
                                     { label: 'Date',    value: booking.date    ? new Date(booking.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '—' },
                                     { label: 'Time',    value: booking.timeSlot || '—' },
                                     { label: 'Guests',  value: `${booking.participants || 1} ${parseInt(booking.participants) === 1 ? 'person' : 'people'}` },
                                     { label: 'Contact', value: booking.preferredContact || '—' },
                                   ].map(({ label, value }) => (
-                                    <div key={label} className="bg-[#fdf3e7] rounded-xl px-3 py-2.5 border border-[#C87D87]/8">
-                                      <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] tracking-[0.18em] uppercase text-[#7a6a5a]/50 mb-0.5">{label}</p>
-                                      <p className="font-['Cormorant_Garamond',serif] italic text-base text-[#3a3027] font-semibold">{value}</p>
+                                    <div key={label} className="bg-[#fdf3e7] rounded-xl px-2 sm:px-3 py-2 sm:py-2.5 border border-[#C87D87]/8">
+                                      <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] tracking-[0.18em] uppercase text-[#7a6a5a]/50 mb-0.5">{label}</p>
+                                      <p className="font-['Cormorant_Garamond',serif] italic text-sm sm:text-base text-[#3a3027] font-semibold truncate">{value}</p>
                                     </div>
                                   ))}
                                 </div>
 
                                 {(booking.specialRequests || booking.allergies) && (
-                                  <div className="mt-3 px-4 py-3 bg-[#fdf3e7] rounded-xl border border-[#C87D87]/8">
-                                    {booking.specialRequests && <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a]"><span className="not-italic font-semibold text-[0.6rem] tracking-widest uppercase text-[#7a6a5a]">Requests · </span>{booking.specialRequests}</p>}
-                                    {booking.allergies       && <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a] mt-1"><span className="not-italic font-semibold text-[0.6rem] tracking-widest uppercase text-[#7a6a5a]">Allergies · </span>{booking.allergies}</p>}
+                                  <div className="mt-3 px-3 sm:px-4 py-2 sm:py-3 bg-[#fdf3e7] rounded-xl border border-[#C87D87]/8">
+                                    {booking.specialRequests && <p className="font-['Cormorant_Garamond',serif] italic text-xs sm:text-sm text-[#5a4a3a]"><span className="not-italic font-semibold text-[0.6rem] tracking-widest uppercase text-[#7a6a5a]">Requests · </span>{booking.specialRequests}</p>}
+                                    {booking.allergies       && <p className="font-['Cormorant_Garamond',serif] italic text-xs sm:text-sm text-[#5a4a3a] mt-1"><span className="not-italic font-semibold text-[0.6rem] tracking-widest uppercase text-[#7a6a5a]">Allergies · </span>{booking.allergies}</p>}
                                   </div>
                                 )}
 
-                                {/* Footer row */}
-                                <div className="mt-4 pt-3 border-t border-[#C87D87]/8 flex items-center justify-between flex-wrap gap-3">
-                                  <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/50">
+                                {/* Footer row - responsive wrap */}
+                                <div className="mt-4 pt-3 border-t border-[#C87D87]/8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                  <p className="font-['Cormorant_Garamond',serif] italic text-xs sm:text-sm text-[#7a6a5a]/50">
                                     Booked on {new Date(booking.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                                   </p>
-                                  <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="flex flex-wrap items-center gap-2">
                                     {/* PDF */}
                                     <button onClick={() => exportSinglePDF(booking)} className="inline-flex items-center gap-1.5 font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.15em] uppercase text-[#C87D87] border border-[#C87D87]/25 bg-[#C87D87]/8 px-3 py-1.5 rounded-lg hover:bg-[#C87D87]/15 transition-all">
                                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
@@ -700,20 +787,19 @@ export default function AccountPage() {
 
                                     {/* Awaiting confirm */}
                                     {booking.status?.toLowerCase() === 'pending' && (
-                                      <p className="font-['Cormorant_Garamond',serif] italic text-sm text-amber-500 flex items-center gap-1.5">
+                                      <p className="font-['Cormorant_Garamond',serif] italic text-xs sm:text-sm text-amber-500 flex items-center gap-1.5">
                                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block"/>
                                         Awaiting confirmation
                                       </p>
                                     )}
 
-                                    {/* ✅ UPDATED: Payment badge — full pay vs advance */}
                                     <PaymentBadge booking={booking}/>
 
                                     {/* Pay now */}
                                     {booking.status?.toLowerCase() === 'confirmed' && booking.paymentStatus !== 'PAID' && (
                                       <Link href={`/checkout?bookingId=${booking.id}`} className="inline-flex items-center gap-1.5 font-['Cormorant_Garamond',serif] text-[0.62rem] tracking-[0.18em] uppercase text-white bg-[#6B7556] px-3 py-1.5 rounded-lg hover:bg-[#4a5240] transition-all shadow-[0_3px_10px_rgba(107,117,86,0.28)]">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>
-                                        Proceed to payment
+                                        Pay
                                       </Link>
                                     )}
                                   </div>
@@ -732,7 +818,7 @@ export default function AccountPage() {
             {activeSection === 'security' && (
               <div style={{ animation: 'fadeIn .3s ease forwards' }}>
                 <Card>
-                  <form onSubmit={handlePassword} className="p-7">
+                  <form onSubmit={handlePassword} className="p-5 sm:p-7">
                     <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] tracking-[0.3em] uppercase text-[#C87D87]/60 mb-0.5">Update</p>
                     <h3 className="font-['Playfair_Display',serif] italic text-xl text-[#3a3027] mb-1">Change Password</h3>
                     <div className="w-6 h-px bg-[#C87D87]/40 mb-5"/>
@@ -759,7 +845,7 @@ export default function AccountPage() {
             {activeSection === 'danger' && (
               <div className="space-y-4" style={{ animation: 'fadeIn .3s ease forwards' }}>
                 <Card danger>
-                  <div className="p-6 flex items-start gap-4">
+                  <div className="p-5 sm:p-6 flex flex-col sm:flex-row items-start gap-4">
                     <div className="w-10 h-10 rounded-xl border border-red-200 bg-red-50 flex items-center justify-center flex-shrink-0">
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
@@ -767,14 +853,14 @@ export default function AccountPage() {
                     </div>
                     <div>
                       <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/70 text-[0.58rem] tracking-[0.2em] uppercase mb-1.5">Please read carefully</p>
-                      <p className="font-['Cormorant_Garamond',serif] text-sm text-[#5a4a3a] leading-relaxed">
+                      <p className="font-['Cormorant_Garamond',serif] text-xs sm:text-sm text-[#5a4a3a] leading-relaxed">
                         Deleting your account is <span className="text-red-500 font-semibold">permanent and irreversible</span>. You will be logged out immediately. Your bookings and payment history will be preserved but your account will no longer be accessible.
                       </p>
                     </div>
                   </div>
                 </Card>
                 <Card danger>
-                  <form onSubmit={handleDelete} className="p-7">
+                  <form onSubmit={handleDelete} className="p-5 sm:p-7">
                     <h3 className="font-['Playfair_Display',serif] italic text-xl text-red-500 mb-1">Confirm Deletion</h3>
                     <div className="w-6 h-px bg-red-300 mb-5"/>
                     <label className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-[0.2em] uppercase text-[#7a6a5a]/60 block mb-2 font-semibold">Enter your password to continue</label>
@@ -785,7 +871,7 @@ export default function AccountPage() {
                         {deleteMsg.text}
                       </p>
                     )}
-                    <button type="submit" disabled={deleteLoading || !deleteForm.password} className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.22em] uppercase text-white bg-red-500 px-8 py-3 rounded-xl hover:bg-red-600 active:scale-[0.98] transition-all disabled:opacity-40 cursor-pointer font-semibold shadow-[0_4px_16px_rgba(239,68,68,0.25)] hover:-translate-y-0.5">
+                    <button type="submit" disabled={deleteLoading || !deleteForm.password} className="font-['Cormorant_Garamond',serif] text-sm tracking-[0.22em] uppercase text-white bg-red-500 px-6 sm:px-8 py-3 rounded-xl hover:bg-red-600 active:scale-[0.98] transition-all disabled:opacity-40 cursor-pointer font-semibold shadow-[0_4px_16px_rgba(239,68,68,0.25)] hover:-translate-y-0.5 w-full sm:w-auto">
                       {deleteLoading ? 'Verifying…' : 'Delete My Account'}
                     </button>
                   </form>
