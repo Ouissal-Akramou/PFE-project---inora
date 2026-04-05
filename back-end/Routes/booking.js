@@ -14,19 +14,19 @@ import {
 
 const router = express.Router();
 
-// ── Static/specific routes FIRST (before any /:id) ──
-
 // Admin
-router.get('/all',           isAdmin, getAllBookingsHistory);  // full history
-router.get('/paid',          isAdmin, getPaidBookings);
-router.get('/',              isAdmin, getAllBookings);         // overview
-router.patch('/:id/status',  isAdmin, updateBookingStatus);
-router.delete('/:id',        isAdmin, deleteBooking);
+router.get('/all',  protect, isAdmin, getAllBookingsHistory);
+router.get('/paid', protect, isAdmin, getPaidBookings);
+router.get('/',     protect, isAdmin, getAllBookings);
+
+router.patch('/:id/status', protect, isAdmin, updateBookingStatus);
+router.delete('/:id',       protect, isAdmin, deleteBooking);
 
 // User
-router.get('/my',            protect, getMyBookings);
-router.post('/',             protect, createBooking);
-router.get('/:id',           protect, getBookingById);        // ← /:id always last
-router.patch('/:id/submit',  protect, submitDraft);
+router.get('/my', protect, getMyBookings);
+router.post('/',  protect, createBooking);
+
+router.get('/:id',          protect, getBookingById);
+router.patch('/:id/submit', protect, submitDraft);
 
 export default router;
