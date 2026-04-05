@@ -4,8 +4,7 @@ import { useState, useEffect, Suspense } from 'react'; // ✅ AJOUT : Importer S
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// ✅ NOUVEAU : Composant qui utilise useSearchParams
-function ResetPasswordContent() {
+export default function ResetPassword() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [token, setToken] = useState('');
@@ -14,176 +13,156 @@ function ResetPasswordContent() {
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'; // ✅ AJOUT
-
   useEffect(() => {
-    const urlToken = searchParams.get('token');
-    if (urlToken) setToken(urlToken);
+    const t = searchParams.get('token');
+    if (t) setToken(t);
+    setTokenChecked(true);
   }, [searchParams]);
+
+  if (!tokenChecked) return null;
+  if (!token)        return <InvalidToken />;
+  if (done)          return <SuccessScreen />;
+
+  const strength      = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3;
+  const strengthLabel = ['', 'Too short', 'Good', 'Strong'][strength];
+  const strengthColor = ['', '#C87D87', '#d19900', '#6B7556'][strength];
+  const strengthWidth = [0, 33, 66, 100][strength];
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (password.length < 6) {
-      setMessage('Password must be at least 6 characters');
-      return;
-    }
+    setError('');
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
 
     setLoading(true);
-    setMessage('');
-
     try {
-      const res = await fetch(`${API_URL}/api/auth/reset-password`, { // ✅ CORRIGÉ
+      const res = await fetch('http://localhost:4000/api/auth/reset-password', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json' 
         },
         credentials: 'include',
-        body: JSON.stringify({ token, password }),
+        body:        JSON.stringify({ token, password }),
       });
-
       const data = await res.json();
-      
-      if (res.ok) {
-        setMessage('Password reset successfully! Redirecting to login...');
-        setTimeout(() => {
-          router.push('/login');
-        }, 2500);
-      } else {
-        setMessage(data.message || 'Reset failed. Please try again.');
-      }
-    } catch (err) {
-      setMessage('Something went wrong. Please try again.');
+      if (!res.ok) { setError(data.message || 'Reset failed. Please try again.'); return; }
+      setDone(true);
+      setTimeout(() => router.push('/login'), 2500);
+    } catch {
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
   }
 
-  if (!token) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-12 border border-[#C87D87]/20 text-center">
-          <div className="w-24 h-24 mx-auto mb-8 bg-red-100 rounded-full flex items-center justify-center">
-            <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-[#6B7556] mb-4">Invalid Reset Link</h1>
-          <p className="text-[#C87D87] mb-8">The reset link is invalid or expired.</p>
-          <Link 
-            href="/login"
-            className="inline-block bg-gradient-to-r from-[#6B7556] to-[#556b42] text-white px-8 py-3 rounded-xl font-semibold hover:scale-105 transition-all shadow-lg"
-          >
-            Back to Login
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center -z-20" 
-           style={{ 
-             backgroundImage: "url('https://images.unsplash.com/photo-1517486808906-6ca8b3f04846')" 
-           }}
-      />
-      <div className="absolute inset-0 animate-gradient-bg -z-10 opacity-70"></div>
-      
-      <form onSubmit={handleSubmit} className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-xl shadow-2xl p-10 border border-[#C87D87]/20 relative z-10">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-[#6B7556] mb-2 tracking-tight">
-            Reset Password
-          </h1>
-          <p className="text-[#C87D87] text-lg">
-            Enter your new password below.
-          </p>
-        </div>
+    <Background>
+      <div className="relative z-10" style={{ animation:'formIn 0.9s cubic-bezier(.4,0,.2,1) forwards 0.2s', opacity:0 }}>
+        <form onSubmit={handleSubmit}
+          className="relative w-[370px] bg-[#FBEAD6]/92 backdrop-blur-xl border border-[#FBEAD6]/25 rounded-2xl px-7 py-6 shadow-[0_32px_90px_rgba(10,18,6,0.55)]">
 
-        <div className="space-y-4">
-          <label className="block text-[#6B7556] font-medium mb-2">
-            New Password <span className="text-sm text-[#C87D87]">(6+ characters)</span>
-          </label>
-          <div className="relative">
-            <input
-              type={passwordVisible ? 'text' : 'password'}
-              placeholder="Enter new password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 pr-12 rounded-xl border border-[#C87D87]/30 bg-white/70 backdrop-blur-sm text-[#6B7556] placeholder-[#C87D87] focus:outline-none focus:border-[#C87D87] focus:ring-2 focus:ring-[#C87D87]/30 transition-all duration-200 shadow-sm"
-              required
-              minLength={6}
-            />
-            <button
-              type="button"
-              onClick={() => setPasswordVisible(!passwordVisible)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C87D87] hover:text-[#6B7556] transition-colors"
-            >
-              {passwordVisible ? '🙈' : '👁️'}
-            </button>
+          <div className="absolute inset-0 rounded-2xl border border-[#C87D87]/12 pointer-events-none"/>
+          <div className="absolute inset-[5px] rounded-xl border border-[#C87D87]/8 pointer-events-none"/>
+
+          {/* header */}
+          <div className="text-center mb-5">
+            <Link href="/"
+              className="font-['Playfair_Display',serif] italic text-2xl text-[#C87D87] tracking-widest block mb-2 hover:text-[#a85e6a] transition-colors duration-300">
+              Inora
+            </Link>
+            <OrnamDivider />
+            <p className="font-['Cormorant_Garamond',serif] italic text-[0.6rem] tracking-[0.32em] uppercase text-[#C87D87]/55 mb-1">
+              Account Recovery
+            </p>
+            <h2 className="font-['Playfair_Display',serif] italic text-2xl text-[#5a6347] leading-tight">
+              New Password
+            </h2>
+            <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#7a6a5a]/65 mt-2 leading-snug">
+              Choose a strong password to protect your account.
+            </p>
           </div>
-        </div>
 
-        <button
-          type="submit"
-          disabled={loading || password.length < 6}
-          className="w-full mt-6 py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-[#6B7556] to-[#556b42] hover:scale-[1.02] transition-all duration-200 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Resetting...' : 'Reset Password'}
-        </button>
+          {/* error banner */}
+          {error && (
+            <div className="mb-4 flex items-start gap-2 border border-[#C87D87]/35 bg-[#C87D87]/8 px-3 py-2.5 rounded-lg"
+              style={{ animation:'fadeInUp 0.3s ease forwards' }}>
+              <span className="text-[#C87D87] text-xs flex-shrink-0 mt-0.5">◆</span>
+              <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#C87D87]">{error}</p>
+            </div>
+          )}
 
-        {message && (
-          <p className={`mt-6 p-3 rounded-lg text-center font-medium text-sm ${
-            message.includes('successfully') || message.includes('Redirecting') 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-red-100 text-red-800 border border-red-200'
-          }`}>
-            {message}
-          </p>
-        )}
-
-        <div className="mt-8 text-center">
-          <Link 
-            href="/login" 
-            className="block text-[#C87D87] hover:text-[#6B7556] font-medium transition-colors mb-2"
-          >
-            ← Back to Login
-          </Link>
-        </div>
-      </form>
-
-      <style jsx>{`
-        .animate-gradient-bg {
-          background: linear-gradient(-45deg, #FBEAD6, #C87D87, #6B7556, #C87D87);
-          background-size: 400% 400%;
-          animation: gradientBG 15s ease infinite;
-        }
-        @keyframes gradientBG {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-// ✅ PAGE PRINCIPALE avec Suspense
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center px-4"
-        style={{ background: 'linear-gradient(-45deg, #FBEAD6, #C87D87, #6B7556, #C87D87)' }}>
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 rounded-full border border-[#FBEAD6]/20"/>
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#FBEAD6] animate-spin"/>
+          {/* password field */}
+          <div className="group mb-2">
+            <label className="font-['Cormorant_Garamond',serif] text-xs tracking-[0.18em] uppercase text-[#5a4a3a]/75 font-semibold block mb-1">
+              New Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                placeholder="Enter new password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                className="w-full px-3.5 py-2 pr-10 bg-white/55 border border-[#C87D87]/18 focus:border-[#C87D87]/50 focus:bg-white/70 focus:outline-none rounded-lg font-['Cormorant_Garamond',serif] italic text-sm text-[#3a3027] placeholder:text-[#7a6a5a]/35 transition-all duration-300 group-hover:border-[#C87D87]/28"
+              />
+              <button type="button" onClick={() => setShowPw(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C87D87]/50 hover:text-[#C87D87] transition-colors"
+                aria-label={showPw ? 'Hide password' : 'Show password'}>
+                {showPw ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                )}
+              </button>
+              <div className="absolute bottom-0 left-2 right-2 h-px bg-gradient-to-r from-transparent via-[#C87D87]/40 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"/>
+            </div>
           </div>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/70 tracking-[0.35em] text-xs uppercase">
-            Chargement...
+
+          {/* strength bar */}
+          {password.length > 0 && (
+            <div className="mb-4" style={{ animation:'fadeInUp 0.25s ease forwards' }}>
+              <div className="h-1 w-full bg-[#3a3027]/8 rounded-full overflow-hidden mb-1">
+                <div className="h-full rounded-full transition-all duration-500"
+                  style={{ width:`${strengthWidth}%`, background: strengthColor }}/>
+              </div>
+              <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-right"
+                style={{ color: strengthColor }}>{strengthLabel}</p>
+            </div>
+          )}
+
+          {/* hint */}
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] text-[#7a6a5a]/40 mb-4">
+            Minimum 6 characters — use a mix of letters, numbers &amp; symbols for a stronger password.
           </p>
-        </div>
+
+          {/* submit */}
+          <button type="submit" disabled={loading || password.length < 6}
+            className="w-full mt-1 relative overflow-hidden font-['Cormorant_Garamond',serif] text-sm tracking-[0.28em] uppercase text-white border-0 py-2.5 rounded-xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed group bg-[#6B7556] hover:bg-[#5a6347]">
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              <span className="opacity-50 text-[0.5rem]">◆</span>
+              {loading ? '— Updating —' : 'Set New Password'}
+              <span className="opacity-50 text-[0.5rem]">◆</span>
+            </span>
+            <div className="absolute inset-0 bg-white/0 group-hover:bg-white/8 transition-colors duration-300 rounded-xl"/>
+          </button>
+
+          {/* footer */}
+          <div className="flex items-center gap-3 mt-4 mb-3">
+            <div className="flex-1 h-px bg-[#C87D87]/12"/>
+          </div>
+          <p className="font-['Cormorant_Garamond',serif] italic text-sm text-[#5a4a3a]/70 text-center">
+            Remembered it?{' '}
+            <Link href="/login"
+              className="text-[#C87D87] hover:text-[#6B7556] transition-colors duration-300 border-b border-[#C87D87]/25 pb-px">
+              Back to Sign In
+            </Link>
+          </p>
+        </form>
       </div>
-    }>
-      <ResetPasswordContent />
-    </Suspense>
+    </Background>
   );
 }

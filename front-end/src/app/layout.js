@@ -1,8 +1,6 @@
 import { Playfair_Display, Cormorant_Garamond, Lato } from 'next/font/google';
 import './globals.css';
 import { AuthProvider }    from '../context/AuthContext';
-import ChatWidget          from '@/components/ChatWidget';
-import AdminChatWidget     from '@/components/AdminChatWidget';
 
 const playfair = Playfair_Display({ 
   subsets: ['latin'], 

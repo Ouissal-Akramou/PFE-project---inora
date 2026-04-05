@@ -126,6 +126,7 @@ const exportBookingPDF = (b) => {
     ['Time Slot',         b.timeSlot],
     ['Guests',            b.participants],
     ['Setting',           b.setting],
+    ['Location', b.location],
     ['Preferred Contact', b.preferredContact],
     ['Allergies',         b.allergies],
     ['Special Requests',  b.specialRequests],
@@ -1356,27 +1357,48 @@ await authFetch(`${API}/api/bookings/${id}`, { method:'DELETE' });
 
           {/* Status control */}
           <div className="mb-6">
-            <p className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-widest uppercase text-[#7a6a5a]/50 mb-2">
-              Update Status
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {['pending','confirmed','completed','cancelled'].map(st => {
-                const cfg    = statusCfg[st];
-                const active = selectedBooking.status === st;
-                return (
-                  <button key={st} onClick={() => updateBookingStatus(selectedBooking.id, st)}
-                    className={`font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase px-3 py-1.5 rounded-xl border transition-all ${
-                      active
-                        ? `${cfg.bg} ${cfg.border} ${cfg.text} font-bold`
-                        : 'bg-white/50 border-[#3a3027]/10 text-[#7a6a5a]/60 hover:border-[#C87D87]/30'
-                    }`}>
-                    {cfg.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+  <p className="font-[CormorantGaramond,serif] text-[0.58rem] tracking-widest uppercase text-[#7a6a5a80] mb-3">
+    Update Status
+  </p>
 
+  {/* Confirm — only shown when pending */}
+  {selectedBooking.status === 'pending' && (
+    <button
+      onClick={() => updateBookingStatus(selectedBooking.id, 'confirmed')}
+      className="w-full flex items-center justify-center gap-2 font-[CormorantGaramond,serif] text-[0.72rem] tracking-[0.22em] uppercase text-[#FBEAD6] py-3 rounded-2xl transition-all duration-300 mb-3"
+      style={{
+        background: 'linear-gradient(135deg, #6B7556 0%, #4a5240 100%)',
+        boxShadow: '0 5px 20px rgba(107,117,86,0.30)',
+      }}
+    >
+      {/* checkmark icon */}
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+      Confirm Booking
+    </button>
+  )}
+
+  {/* Other status transitions — compact row */}
+  <div className="flex flex-wrap gap-2">
+    {['pending','completed','cancelled'].map(st => {
+      if (st === 'pending' && selectedBooking.status !== 'pending') return null; // hide pending once past it
+      const cfg = statusCfg[st];
+      const active = selectedBooking.status === st;
+      return (
+        <button key={st} onClick={() => updateBookingStatus(selectedBooking.id, st)}
+          className={`font-[CormorantGaramond,serif] text-[0.58rem] tracking-widest uppercase px-3 py-1.5 rounded-xl border transition-all
+            ${active
+              ? `${cfg.bg} ${cfg.border} ${cfg.text} font-bold`
+              : 'bg-white/50 border-[#3a302710] text-[#7a6a5a60] hover:border-[#C87D8730]'
+            }`}
+        >
+          {cfg.label}
+        </button>
+      );
+    })}
+  </div>
+</div>
           {/* Two-column details */}
           <Panel>
             <div className="px-5 py-1 grid grid-cols-2 gap-x-6">
@@ -1389,6 +1411,7 @@ await authFetch(`${API}/api/bookings/${id}`, { method:'DELETE' });
                 { l:'Time',        v: selectedBooking.timeSlot || '—' },
                 { l:'Guests',      v: selectedBooking.participants },
                 { l:'Setting',     v: (() => { const s = SETTINGS_MAP[selectedBooking.setting]; return s ? `${s.icon} ${s.label}` : selectedBooking.setting || '—'; })() },
+                { l:'Location',    v: selectedBooking.location },
                 { l:'Email',       v: selectedBooking.email },
                 { l:'Phone',       v: selectedBooking.phone },
                 { l:'Contact via', v: selectedBooking.preferredContact },

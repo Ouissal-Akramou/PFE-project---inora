@@ -205,7 +205,6 @@ export const getProfile = async (req, res) => {
         fullName: true,
         email: true,
         role: true,
-        phone: true,
         avatarUrl: true,
         createdAt: true,
         isDeleted: true,
@@ -249,10 +248,67 @@ export const forgotPassword = async (req, res) => {
     const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
     await transporter.sendMail({
-      from: `"Support" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: "Password Reset",
-      html: `<h2>Password Reset</h2><p>Click <a href="${resetLink}">here</a> to reset your password.</p>`
+      from:    `"Inora" <${process.env.EMAIL_USER}>`,
+      to:      user.email,
+      subject: '✦ Reset your Inora password',
+      html: `
+        <div style="font-family:'Georgia',serif;max-width:560px;margin:0 auto;background:#FBEAD6;padding:40px 32px;border-radius:16px;">
+
+          <!-- Header -->
+          <div style="text-align:center;margin-bottom:32px;">
+            <p style="font-size:11px;letter-spacing:0.4em;text-transform:uppercase;color:#C87D87;margin:0 0 6px;">Inora</p>
+            <h1 style="font-size:28px;font-style:italic;color:#3a3027;margin:0;">Password Reset</h1>
+            <div style="width:48px;height:1px;background:#C87D87;margin:12px auto 0;opacity:0.4;"></div>
+          </div>
+
+          <!-- Body -->
+          <p style="font-size:15px;color:#5a4a3a;line-height:1.7;margin-bottom:8px;">
+            Dear <strong>${user.fullName || 'there'}</strong>,
+          </p>
+          <p style="font-size:15px;color:#5a4a3a;line-height:1.7;margin-bottom:28px;">
+            We received a request to reset the password for your Inora account.
+            Click the button below to choose a new one — this link expires in
+            <strong>15 minutes</strong>.
+          </p>
+
+          <!-- CTA Button -->
+          <div style="text-align:center;margin-bottom:28px;">
+            <a href="${resetLink}"
+              style="display:inline-block;font-family:'Georgia',serif;font-style:italic;font-size:13px;
+                     letter-spacing:0.22em;text-transform:uppercase;color:#FBEAD6;
+                     background:linear-gradient(135deg,#C87D87 0%,#b36d77 50%,#C87D87 100%);
+                     padding:14px 36px;border-radius:12px;text-decoration:none;
+                     box-shadow:0 5px 20px rgba(200,125,135,0.30);">
+              ✦ Reset my password ✦
+            </a>
+          </div>
+
+          <!-- Security note -->
+          <div style="background:rgba(107,117,86,0.07);border:1px solid rgba(107,117,86,0.16);
+                      border-radius:10px;padding:12px 16px;margin-bottom:28px;">
+            <p style="font-size:12px;color:rgba(107,117,86,0.80);margin:0;line-height:1.6;">
+              🔒 If you didn't request this, you can safely ignore this email —
+              your password will not be changed.
+            </p>
+          </div>
+
+          <!-- Fallback link -->
+          <p style="font-size:12px;color:rgba(90,74,58,0.45);line-height:1.6;margin-bottom:28px;">
+            If the button doesn't work, copy and paste this link into your browser:<br/>
+            <a href="${resetLink}"
+              style="color:#C87D87;word-break:break-all;font-style:italic;">${resetLink}</a>
+          </p>
+
+          <!-- Footer -->
+          <div style="text-align:center;padding-top:24px;border-top:1px solid rgba(200,125,135,0.20);">
+            <p style="font-size:11px;letter-spacing:0.3em;text-transform:uppercase;
+                      color:rgba(90,74,58,0.35);margin:0;">
+              Inora · Your gathering, beautifully arranged.
+            </p>
+          </div>
+
+        </div>
+      `
     });
 
     return res.status(200).json({ message: "If the email exists, a reset link has been sent" });
