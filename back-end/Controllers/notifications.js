@@ -1,53 +1,54 @@
 import { prisma } from '../lib/prisma.js';
 
-// ── GET /api/notifications ───────────────────────────────────────
 export const getNotifications = async (req, res) => {
   try {
     const notifications = await prisma.notification.findMany({
-      where:   { userId: req.user.id },
+      where: { userId: req.user.id },
       orderBy: { createdAt: 'desc' },
-      take:    20,
     });
     res.json(notifications);
-  } catch (err) {
-    console.error('getNotifications error:', err.message);
-    res.status(500).json({ message: 'Failed to fetch notifications' });
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// ── PATCH /api/notifications/read-all ───────────────────────────
-export const markAllRead = async (req, res) => {
+export const markAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.notification.updateMany({
+      where: { id: parseInt(id), userId: req.user.id },
+      data: { read: true },
+    });
+    res.json({ message: 'Marked as read' });
+  } catch (error) {
+    console.error('Mark as read error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const markAllAsRead = async (req, res) => {
   try {
     await prisma.notification.updateMany({
       where: { userId: req.user.id, read: false },
-      data:  { read: true },
+      data: { read: true },
     });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('markAllRead error:', err.message);
-    res.status(500).json({ message: 'Failed to mark all as read' });
+    res.json({ message: 'All marked as read' });
+  } catch (error) {
+    console.error('Mark all as read error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// ── PATCH /api/notifications/:id/read ───────────────────────────
-export const markOneRead = async (req, res) => {
-  const notifId = req.params.id;
+export const deleteNotification = async (req, res) => {
   try {
-    const existing = await prisma.notification.findFirst({
-      where: { id: notifId, userId: req.user.id },
+    const { id } = req.params;
+    await prisma.notification.deleteMany({
+      where: { id: parseInt(id), userId: req.user.id },
     });
-
-    if (!existing)
-      return res.status(404).json({ message: 'Notification not found' });
-
-    const notif = await prisma.notification.update({
-      where: { id: notifId },
-      data:  { read: true },
-    });
-
-    res.json(notif);
-  } catch (err) {
-    console.error('markOneRead error:', err.message);
-    res.status(500).json({ message: 'Failed to update notification' });
+    res.json({ message: 'Notification deleted' });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
