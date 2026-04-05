@@ -6,9 +6,8 @@ export const protect = async (req, res, next) => {
     let token = null;
     
     console.log('🔐 [protect] Checking for token...');
-    console.log('🔐 [protect] Authorization header:', req.headers.authorization);
     
-    // ✅ READ TOKEN FROM AUTHORIZATION HEADER (from localStorage)
+    // Read token from Authorization header (from localStorage)
     if (req.headers.authorization) {
       const authHeader = req.headers.authorization;
       if (authHeader.startsWith('Bearer ')) {
@@ -47,7 +46,7 @@ export const protect = async (req, res, next) => {
     });
 
     if (!user || user.isDeleted) {
-      console.log('❌ [protect] User not found');
+      console.log('❌ [protect] User not found or deleted');
       return res.status(401).json({ message: 'Account not found.' });
     }
 
@@ -64,8 +63,20 @@ export const protect = async (req, res, next) => {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Token expired' });
     }
-    return res.status(401).json({ message: 'Invalid token' });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    return res.status(401).json({ message: 'Authentication failed' });
   }
 };
 
+// ✅ ADD THIS - isAdmin middleware
+export const isAdmin = async (req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied. Admin only.' });
+  }
+  next();
+};
+
+// Default export for compatibility
 export default protect;
