@@ -209,6 +209,17 @@ app.get('/api/debug/jwt', (req, res) => {
   });
 });
 
+// ── DEBUG: Check Stripe keys (Remove after fixing) ─────────────────
+app.get('/api/debug/stripe', (req, res) => {
+  res.json({
+    stripeSecretExists: !!process.env.STRIPE_SECRET_KEY,
+    stripeSecretLength: process.env.STRIPE_SECRET_KEY?.length || 0,
+    stripeSecretPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 7) || 'none',
+    stripeWebhookExists: !!process.env.STRIPE_WEBHOOK_SECRET,
+    nodeEnv: process.env.NODE_ENV,
+  });
+});
+
 // ── Routes ───────────────────────────────────────────────────────
 app.use('/api/auth',          auth);
 app.use('/api/reviews',       reviewRoutes);
