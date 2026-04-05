@@ -10,23 +10,33 @@ import {
   resetPassword,
   getAdminUsers,
   toggleSuspendUser,
-} from '../Controllers/auth.js'; 
+  updateAvatar,
+  upload,
+  updateName,
+  updateEmail,
+  updatePassword,
+  deleteAccount,
+} from '../Controllers/auth.js';
+
+import { validations, errorValidatorHandler } from '../Middlewares/Validations.js';
+import { protect, isAdmin } from '../Middlewares/auth.js'; // ✅ named imports
 
 const router = express.Router();
 
-// Public routes
-router.post('/register', register);
-router.post('/login', login);
-router.post('/logout', logout);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
+// ── Public ──
+router.post('/login',           validations.login,          errorValidatorHandler, login);
+router.post('/register',        validations.register,       errorValidatorHandler, register);
+router.post('/reset-password',  validations.resetPassword,  errorValidatorHandler, resetPassword);
+router.post('/forgot-password', validations.forgotPassword, errorValidatorHandler, forgotPassword);
+router.post('/logout',          logout);
+router.get( '/me',              protect, getMe); // ✅ protect — was unguarded
 
 // Protected routes
 router.get('/me', protect, getMe);
 router.get('/profile/me', protect, getProfile);
 
-// Admin routes
-router.get('/admin/users', protect, isAdmin, getAdminUsers);
-router.patch('/admin/users/:id/suspend', protect, isAdmin, toggleSuspendUser);
+// ── Admin ──
+router.get(  '/admin/users',             isAdmin, getAdminUsers);      // ✅ isAdmin not just protect
+router.patch('/admin/users/:id/suspend', isAdmin, toggleSuspendUser);  // ✅ isAdmin
 
 export default router;

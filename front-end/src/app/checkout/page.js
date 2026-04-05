@@ -24,7 +24,7 @@ const stripeElementStyle = {
   base: {
     fontFamily: "'Cormorant Garamond', serif",
     fontStyle:  'italic',
-    fontSize:   '15px',
+    fontSize:   '14px',
     color:      '#3a3027',
     letterSpacing: '0.03em',
     '::placeholder': { color: 'rgba(58,48,39,0.28)' },
@@ -64,7 +64,7 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
   const amountToPay  = payMode === 'full' ? totalAmount : ADVANCE_AMOUNT;
 
   const fieldWrap = (field) =>
-    `rounded-xl px-4 py-3 border transition-all duration-300 ${
+    `rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border transition-all duration-300 ${
       focused === field
         ? 'bg-white/95 border-[#C87D87]/50 shadow-[0_0_0_3px_rgba(200,125,135,0.07)]'
         : 'bg-white/65 border-[#3a3027]/12 hover:border-[#C87D87]/30'
@@ -140,67 +140,65 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
       `}</style>
 
       {/* ── Step heading ── */}
-      <div className="flex items-start justify-between mb-8 px-1 pay-enter">
+      <div className="flex items-start justify-between mb-6 sm:mb-8 px-1 pay-enter">
         <div>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.72rem] tracking-[0.38em] uppercase mb-2">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.68rem] sm:text-[0.72rem] tracking-[0.38em] uppercase mb-2">
             Step 2 of 3
           </p>
-          <h1 className="font-['Playfair_Display',serif] italic text-[2.4rem] text-[#3a3027] leading-none">
+          <h1 className="font-['Playfair_Display',serif] italic text-[1.6rem] sm:text-[1.9rem] md:text-[2.4rem] text-[#3a3027] leading-none">
             Payment<span className="text-[#C87D87]">.</span>
           </h1>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[1rem] mt-2.5">
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[0.9rem] sm:text-[1rem] mt-2">
             Choose how you'd like to pay for your experience.
           </p>
         </div>
-        <span className="font-['Playfair_Display',serif] italic text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1">02</span>
+        <span className="font-['Playfair_Display',serif] italic text-[3.5rem] sm:text-[4rem] md:text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1 hidden sm:block">02</span>
       </div>
 
       {/* ── Booking summary pill ── */}
       <div
-        className="inline-flex items-center gap-2.5 px-4 py-2 mb-6 rounded-xl pay-enter"
+        className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 sm:px-4 py-2 mb-5 sm:mb-6 rounded-xl pay-enter"
         style={{ background: 'rgba(107,117,86,0.09)', border: '1px solid rgba(107,117,86,0.18)' }}
       >
-        <span className="text-[#6B7556] text-base">◈</span>
-        <span className="font-['Cormorant_Garamond',serif] italic text-[#3a3027]/85 text-[1rem]">
+        <span className="text-[#6B7556] text-sm sm:text-base">◈</span>
+
+        <span className="font-['Cormorant_Garamond',serif] italic text-[#3a3027]/85 text-[0.9rem] sm:text-[1rem]">
           {booking?.activity || 'Your activity'}
         </span>
-        <span className="w-px h-4" style={{ background: 'rgba(58,48,39,0.12)' }} />
+
         {booking?.date && (
-          <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/55 text-[0.85rem]">
+          <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/55 text-[0.75rem] sm:text-[0.85rem] before:content-['·'] before:mr-1.5 before:opacity-40">
             {new Date(booking.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
           </span>
         )}
+
         {booking?.timeSlot && (
-          <>
-            <span className="w-px h-4" style={{ background: 'rgba(58,48,39,0.10)' }} />
-            <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/55 text-[0.85rem]">
-              {booking.timeSlot}
-            </span>
-          </>
+          <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/55 text-[0.75rem] sm:text-[0.85rem] before:content-['·'] before:mr-1.5 before:opacity-40">
+            {booking.timeSlot}
+          </span>
         )}
-        <span className="w-px h-4" style={{ background: 'rgba(58,48,39,0.10)' }} />
-        <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/55 text-[0.85rem]">
-          {participants} guests
+
+        <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/55 text-[0.75rem] sm:text-[0.85rem] before:content-['·'] before:mr-1.5 before:opacity-40">
+          {participants} {participants === 1 ? 'guest' : 'guests'}
         </span>
       </div>
 
       {/* ════════════════════════════════════
            PAYMENT MODE SELECTOR
           ════════════════════════════════════ */}
-      <div className="mb-6 pay-enter">
+      <div className="mb-5 sm:mb-6 pay-enter">
         <p
-          className="font-['Cormorant_Garamond',serif] text-[0.65rem] tracking-[0.22em] uppercase font-semibold mb-3"
+          className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] tracking-[0.22em] uppercase font-semibold mb-2 sm:mb-3"
           style={{ color: 'rgba(90,74,58,0.55)' }}
         >
           How would you like to pay?
         </p>
         <div className="grid grid-cols-2 gap-4">
-
           {/* Option A — Advance only */}
           <button
             type="button"
             onClick={() => setPayMode('advance')}
-            className="relative text-left rounded-2xl p-4 border-2 transition-all duration-300 focus:outline-none"
+            className="relative text-left rounded-2xl p-3 sm:p-4 border-2 transition-all duration-300 focus:outline-none w-full"
             style={{
               background:
                 payMode === 'advance'
@@ -232,16 +230,16 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
             </div>
 
             <p
-              className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase font-semibold mb-1"
+              className="font-['Cormorant_Garamond',serif] text-[0.55rem] sm:text-[0.58rem] tracking-[0.22em] uppercase font-semibold mb-1"
               style={{ color: payMode === 'advance' ? '#C87D87' : 'rgba(90,74,58,0.45)' }}
             >
               Advance only
             </p>
-            <p className="font-['Playfair_Display',serif] italic text-[1.5rem] leading-none text-[#3a3027] mb-1">
-              {ADVANCE_AMOUNT} <span className="text-[0.75rem] text-[#7a6a5a]/50">MAD</span>
+            <p className="font-['Playfair_Display',serif] italic text-[1.3rem] sm:text-[1.5rem] leading-none text-[#3a3027] mb-1">
+              {ADVANCE_AMOUNT} <span className="text-[0.65rem] sm:text-[0.75rem] text-[#7a6a5a]/50">MAD</span>
             </p>
             <p
-              className="font-['Cormorant_Garamond',serif] italic text-[0.72rem] leading-snug"
+              className="font-['Cormorant_Garamond',serif] italic text-[0.68rem] sm:text-[0.72rem] leading-snug"
               style={{ color: 'rgba(90,74,58,0.50)' }}
             >
               Pay now to confirm. <span style={{ color: '#C87D87' }}>{remaining} MAD</span> due on the day.
@@ -252,7 +250,7 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
           <button
             type="button"
             onClick={() => setPayMode('full')}
-            className="relative text-left rounded-2xl p-4 border-2 transition-all duration-300 focus:outline-none"
+            className="relative text-left rounded-2xl p-3 sm:p-4 border-2 transition-all duration-300 focus:outline-none w-full"
             style={{
               background:
                 payMode === 'full'
@@ -284,16 +282,16 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
             </div>
 
             <p
-              className="font-['Cormorant_Garamond',serif] text-[0.58rem] tracking-[0.22em] uppercase font-semibold mb-1"
+              className="font-['Cormorant_Garamond',serif] text-[0.55rem] sm:text-[0.58rem] tracking-[0.22em] uppercase font-semibold mb-1"
               style={{ color: payMode === 'full' ? '#6B7556' : 'rgba(90,74,58,0.45)' }}
             >
               Full payment
             </p>
-            <p className="font-['Playfair_Display',serif] italic text-[1.5rem] leading-none text-[#3a3027] mb-1">
-              {totalAmount} <span className="text-[0.75rem] text-[#7a6a5a]/50">MAD</span>
+            <p className="font-['Playfair_Display',serif] italic text-[1.3rem] sm:text-[1.5rem] leading-none text-[#3a3027] mb-1">
+              {totalAmount} <span className="text-[0.65rem] sm:text-[0.75rem] text-[#7a6a5a]/50">MAD</span>
             </p>
             <p
-              className="font-['Cormorant_Garamond',serif] italic text-[0.72rem] leading-snug"
+              className="font-['Cormorant_Garamond',serif] italic text-[0.68rem] sm:text-[0.72rem] leading-snug"
               style={{ color: 'rgba(90,74,58,0.50)' }}
             >
               Everything settled online.{' '}
@@ -305,7 +303,7 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
         {/* Dynamic summary line under selector */}
         <div
           key={payMode}
-          className="mode-enter mt-3 flex items-center gap-2 px-3.5 py-2.5 rounded-xl"
+          className="mode-enter mt-3 flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl"
           style={{
             background:
               payMode === 'full'
@@ -316,12 +314,12 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
         >
           <span style={{ color: payMode === 'full' ? '#6B7556' : '#C87D87', fontSize: '0.7rem' }}>✦</span>
           <p
-            className="font-['Cormorant_Garamond',serif] italic text-[0.78rem]"
+            className="font-['Cormorant_Garamond',serif] italic text-[0.72rem] sm:text-[0.78rem]"
             style={{ color: payMode === 'full' ? 'rgba(107,117,86,0.80)' : 'rgba(200,125,135,0.80)' }}
           >
             {payMode === 'full'
               ? `You'll be charged ${totalAmount} MAD now. Nothing owed on arrival.`
-              : `You'll be charged ${ADVANCE_AMOUNT} MAD now. ${remaining} MAD payable on the day of the activity.`}
+              : `You'll be charged ${ADVANCE_AMOUNT} MAD now. ${remaining} MAD payable on the day.`}
           </p>
         </div>
       </div>
@@ -331,11 +329,11 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
 
       {/* ── Decorative card mockup ── */}
       <div
-        className="mb-6 rounded-2xl overflow-hidden relative pay-enter"
+        className="mb-5 sm:mb-6 rounded-2xl overflow-hidden relative pay-enter"
         style={{
           background: 'linear-gradient(135deg,#3a3027 0%,#4a5240 55%,#3d3028 100%)',
           boxShadow: '0 8px 28px rgba(58,48,39,0.16)',
-          height: '108px',
+          height: '96px',
         }}
       >
         <div
@@ -343,20 +341,20 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
           style={{
             backgroundImage:
               'linear-gradient(rgba(251,234,214,1) 1px,transparent 1px),linear-gradient(90deg,rgba(251,234,214,1) 1px,transparent 1px)',
-            backgroundSize: '28px 28px',
+            backgroundSize: '24px 24px',
           }}
         />
         <div
-          className="absolute -top-3 -right-3 w-24 h-24 rounded-full"
+          className="absolute -top-3 -right-3 w-20 h-20 rounded-full"
           style={{
             background: 'radial-gradient(circle,rgba(200,125,135,0.22) 0%,transparent 70%)',
-            filter: 'blur(14px)',
+            filter: 'blur(12px)',
           }}
         />
-        <div className="relative h-full p-5 flex flex-col justify-between">
+        <div className="relative h-full p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div
-              className="w-7 h-5 rounded-md overflow-hidden"
+              className="w-6 h-4 rounded-md overflow-hidden"
               style={{
                 background: 'linear-gradient(135deg,rgba(251,234,214,0.28),rgba(200,125,135,0.18))',
               }}
@@ -368,20 +366,20 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
               </div>
             </div>
             <div className="flex items-center">
-              <div className="w-4 h-4 rounded-full bg-[#6B7556]/50" />
-              <div className="w-4 h-4 rounded-full bg-[#C87D87]/40 -ml-1.5" />
+              <div className="w-3 h-3 rounded-full bg-[#6B7556]/50" />
+              <div className="w-3 h-3 rounded-full bg-[#C87D87]/40 -ml-1" />
             </div>
           </div>
           <div className="flex justify-between items-end">
             <div>
-              <p className="text-[0.40rem] tracking-widest uppercase text-[#FBEAD6]/18 mb-0.5">
+              <p className="text-[0.35rem] tracking-widest uppercase text-[#FBEAD6]/18 mb-0.5">
                 Cardholder
               </p>
-              <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/55 text-[0.68rem] tracking-wider uppercase">
+              <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/55 text-[0.6rem] sm:text-[0.68rem] tracking-wider uppercase">
                 {name || 'YOUR NAME'}
               </p>
             </div>
-            <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/22 text-[0.56rem] tracking-widest">
+            <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/22 text-[0.5rem] sm:text-[0.56rem] tracking-widest">
               INORA PAY
             </p>
           </div>
@@ -389,9 +387,9 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
       </div>
 
       {/* ── Card fields ── */}
-      <div className="space-y-5 pay-enter">
+      <div className="space-y-4 sm:space-y-5 pay-enter">
         <div>
-          <p className="font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-2 select-none font-semibold">
+          <p className="font-['Cormorant_Garamond',serif] text-[0.68rem] sm:text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-1.5 sm:mb-2 select-none font-semibold">
             Card Number
           </p>
           <div className={fieldWrap('number')}>
@@ -403,9 +401,9 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5">
           <div>
-            <p className="font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-2 select-none font-semibold">
+            <p className="font-['Cormorant_Garamond',serif] text-[0.68rem] sm:text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-1.5 sm:mb-2 select-none font-semibold">
               Expiry
             </p>
             <div className={fieldWrap('expiry')}>
@@ -417,7 +415,7 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
             </div>
           </div>
           <div>
-            <p className="font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-2 select-none font-semibold">
+            <p className="font-['Cormorant_Garamond',serif] text-[0.68rem] sm:text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-1.5 sm:mb-2 select-none font-semibold">
               CVC
             </p>
             <div className={fieldWrap('cvc')}>
@@ -431,7 +429,7 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
         </div>
 
         <div>
-          <p className="font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-2 select-none font-semibold">
+          <p className="font-['Cormorant_Garamond',serif] text-[0.68rem] sm:text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-1.5 sm:mb-2 select-none font-semibold">
             Name on Card
           </p>
           <input
@@ -441,7 +439,7 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
             onFocus={() => setFocused('name')}
             onBlur={() => setFocused(null)}
             placeholder="First LAST"
-            className={`w-full font-['Cormorant_Garamond',serif] italic text-[#3a3027] text-[1rem] bg-white/65 border border-[#3a3027]/12 rounded-xl px-4 py-2.5 outline-none transition-all duration-200 ${
+            className={`w-full font-['Cormorant_Garamond',serif] italic text-[#3a3027] text-[0.9rem] sm:text-[1rem] bg-white/65 border border-[#3a3027]/12 rounded-xl px-3 sm:px-4 py-2.5 outline-none transition-all duration-200 ${
               focused === 'name'
                 ? 'bg-white/95 border-[#C87D87]/50 shadow-[0_0_0_3px_rgba(200,125,135,0.07)]'
                 : 'hover:border-[#C87D87]/30'
@@ -453,14 +451,14 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
       {/* ── Error ── */}
       {error && (
         <div
-          className="flex items-center gap-3 px-4 py-3 mt-5 rounded-xl"
+          className="flex items-center gap-3 px-3 sm:px-4 py-3 mt-4 sm:mt-5 rounded-xl"
           style={{
             background: 'rgba(200,125,135,0.07)',
             border: '1px solid rgba(200,125,135,0.22)',
           }}
         >
-          <span className="text-[#C87D87] flex-shrink-0 text-base">⚠</span>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-[0.95rem]">
+          <span className="text-[#C87D87] flex-shrink-0 text-sm sm:text-base">⚠</span>
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-[0.85rem] sm:text-[0.95rem]">
             {error}
           </p>
         </div>
@@ -470,12 +468,12 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
 
       {/* ── Security note ── */}
       <div
-        className="flex items-center gap-2.5 mb-5 px-4 py-3 rounded-xl"
+        className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5 mb-5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl"
         style={{ background: 'rgba(107,117,86,0.07)', border: '1px solid rgba(107,117,86,0.14)' }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="w-3.5 h-3.5 flex-shrink-0"
+          className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0"
           style={{ color: 'rgba(107,117,86,0.55)' }}
           fill="none"
           viewBox="0 0 24 24"
@@ -489,16 +487,16 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
           />
         </svg>
         <p
-          className="font-['Cormorant_Garamond',serif] text-[0.65rem] tracking-[0.1em] uppercase flex-1"
+          className="font-['Cormorant_Garamond',serif] text-[0.55rem] sm:text-[0.65rem] tracking-[0.1em] uppercase flex-1"
           style={{ color: 'rgba(107,117,86,0.65)' }}
         >
           SSL 256-bit · Powered by Stripe · No card data stored
         </p>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1 sm:gap-1.5">
           {['VISA', 'MC', 'CB'].map((b) => (
             <span
               key={b}
-              className="font-['Cormorant_Garamond',serif] text-[0.46rem] uppercase border rounded-md px-1.5 py-0.5"
+              className="font-['Cormorant_Garamond',serif] text-[0.42rem] sm:text-[0.46rem] uppercase border rounded-md px-1 sm:px-1.5 py-0.5"
               style={{ color: 'rgba(90,74,58,0.38)', borderColor: 'rgba(58,48,39,0.12)' }}
             >
               {b}
@@ -508,17 +506,17 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
       </div>
 
       {/* ── Pay button ── */}
-      <div className="flex gap-3 pt-5 border-t border-[#3a3027]/6">
+      <div className="flex flex-col sm:flex-row gap-3 pt-4 sm:pt-5 border-t border-[#3a3027]/6">
         <Link
           href="/account"
-          className="font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.16em] uppercase px-6 py-3 rounded-xl border border-[#3a3027]/10 text-[#7a6a5a]/65 hover:border-[#3a3027]/18 hover:text-[#7a6a5a]/90 hover:bg-white/40 transition-all duration-200 flex items-center"
+          className="font-['Cormorant_Garamond',serif] text-[0.8rem] sm:text-[0.82rem] tracking-[0.16em] uppercase px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl border border-[#3a3027]/10 text-[#7a6a5a]/65 hover:border-[#3a3027]/18 hover:text-[#7a6a5a]/90 hover:bg-white/40 transition-all duration-200 flex items-center justify-center order-2 sm:order-1"
         >
           ← Back
         </Link>
         <button
           type="submit"
           disabled={paying || !stripe}
-          className="flex-1 relative overflow-hidden group font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-35 disabled:cursor-not-allowed"
+          className="relative overflow-hidden group font-['Cormorant_Garamond',serif] text-[0.8rem] sm:text-[0.82rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-2.5 sm:py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-35 disabled:cursor-not-allowed order-1 sm:order-2"
           style={{
             background:
               payMode === 'full'
@@ -534,14 +532,14 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
           {paying ? (
             <>
-              <div className="w-4 h-4 rounded-full border-2 border-[#FBEAD6]/30 border-t-[#FBEAD6] animate-spin" />
+              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border-2 border-[#FBEAD6]/30 border-t-[#FBEAD6] animate-spin" />
               <span>Processing…</span>
             </>
           ) : (
             <>
-              <span className="opacity-40 text-[0.45rem]">◆</span>
+              <span className="opacity-40 text-[0.4rem] sm:text-[0.45rem]">◆</span>
               <span>Pay {amountToPay} MAD</span>
-              <span className="opacity-40 text-[0.45rem]">◆</span>
+              <span className="opacity-40 text-[0.4rem] sm:text-[0.45rem]">◆</span>
             </>
           )}
         </button>
@@ -601,12 +599,12 @@ function CheckoutContent() {
         @keyframes lacePulse   { 0%,100%{opacity:.45} 50%{opacity:1} }
         @keyframes floatOrb    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
       `}</style>
-      <div className="absolute top-10 left-10 w-64 h-64 rounded-full pointer-events-none"
+      <div className="absolute top-10 left-10 w-48 sm:w-64 h-48 sm:h-64 rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle,rgba(251,234,214,0.10) 0%,transparent 70%)', animation: 'floatOrb 10s ease-in-out infinite', filter: 'blur(18px)' }} />
-      <div className="absolute bottom-10 right-10 w-72 h-72 rounded-full pointer-events-none"
+      <div className="absolute bottom-10 right-10 w-56 sm:w-72 h-56 sm:h-72 rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle,rgba(200,125,135,0.12) 0%,transparent 70%)', animation: 'floatOrb 13s ease-in-out infinite 2s', filter: 'blur(22px)' }} />
-      <div className="relative z-10 flex flex-col items-center gap-5">
-        <div className="relative w-24 h-24 flex items-center justify-center">
+      <div className="relative z-10 flex flex-col items-center gap-4 sm:gap-5 px-4">
+        <div className="relative w-20 sm:w-24 h-20 sm:h-24 flex items-center justify-center">
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 96 96" style={{ animation: 'laceRotate 8s linear infinite' }}>
             <circle cx="48" cy="48" r="44" fill="none" stroke="#FBEAD6" strokeWidth="0.6" strokeOpacity="0.35" strokeDasharray="3 5" />
             {[0,30,60,90,120,150,180,210,240,270,300,330].map((a, i) => {
@@ -637,9 +635,9 @@ function CheckoutContent() {
             <circle cx="48" cy="48" r="2.5" fill="#FBEAD6" fillOpacity="0.52" />
           </svg>
         </div>
-        <div className="flex flex-col items-center gap-1.5">
-          <p className="font-['Playfair_Display',serif] italic text-[#FBEAD6]/75 text-xl">Inora</p>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/40 text-[0.7rem] tracking-[0.4em] uppercase">Preparing payment…</p>
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <p className="font-['Playfair_Display',serif] italic text-[#FBEAD6]/75 text-lg sm:text-xl">Inora</p>
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/40 text-[0.65rem] sm:text-[0.7rem] tracking-[0.4em] uppercase">Preparing payment…</p>
         </div>
       </div>
     </div>
@@ -655,19 +653,19 @@ function CheckoutContent() {
   if (error) return (
     <div className="min-h-screen relative overflow-x-hidden flex items-center justify-center px-4"
       style={{ backgroundColor: '#FBEAD6', backgroundImage: CROSSHATCH_SVG }}>
-      <div className="text-center max-w-sm w-full rounded-2xl overflow-hidden"
+      <div className="text-center max-w-sm w-full rounded-2xl overflow-hidden mx-4"
         style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(58,48,39,0.08)', boxShadow: '0 1px 8px rgba(58,48,39,0.04)' }}>
-        <div className="px-5 py-3" style={{ background: 'rgba(255,255,255,0.40)', borderBottom: '1px solid rgba(58,48,39,0.06)' }}>
-          <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] uppercase tracking-[0.22em] font-semibold" style={{ color: 'rgba(90,74,58,0.60)' }}>Error</p>
+        <div className="px-4 sm:px-5 py-2.5 sm:py-3" style={{ background: 'rgba(255,255,255,0.40)', borderBottom: '1px solid rgba(58,48,39,0.06)' }}>
+          <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.22em] font-semibold" style={{ color: 'rgba(90,74,58,0.60)' }}>Error</p>
         </div>
-        <div className="p-8">
+        <div className="p-6 sm:p-8">
           <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4"
             style={{ background: 'rgba(200,125,135,0.09)', border: '1px solid rgba(200,125,135,0.22)' }}>
-            <span className="text-[#C87D87]">✕</span>
+            <span className="text-[#C87D87] text-sm sm:text-base">✕</span>
           </div>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a] text-[0.95rem] mb-6">{error}</p>
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a] text-[0.85rem] sm:text-[0.95rem] mb-5 sm:mb-6 text-center">{error}</p>
           <Link href="/account"
-            className="font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.16em] uppercase px-6 py-2.5 rounded-xl border border-[#3a3027]/10 text-[#7a6a5a]/65 hover:border-[#3a3027]/18 hover:bg-white/40 transition-all duration-200 inline-block">
+            className="font-['Cormorant_Garamond',serif] text-[0.8rem] sm:text-[0.82rem] tracking-[0.16em] uppercase px-5 sm:px-6 py-2.5 rounded-xl border border-[#3a3027]/10 text-[#7a6a5a]/65 hover:border-[#3a3027]/18 hover:bg-white/40 transition-all duration-200 inline-block w-full sm:w-auto text-center">
             ← Back
           </Link>
         </div>
@@ -685,16 +683,16 @@ function CheckoutContent() {
         @keyframes fadeInUp  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
 
-      <div className="max-w-md w-full rounded-2xl overflow-hidden"
+      <div className="max-w-md w-full rounded-2xl overflow-hidden mx-4"
         style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(58,48,39,0.08)', boxShadow: '0 1px 8px rgba(58,48,39,0.04)' }}>
-        <div className="px-5 py-3"
+        <div className="px-4 sm:px-5 py-2.5 sm:py-3"
           style={{ background: 'rgba(255,255,255,0.40)', borderBottom: '1px solid rgba(58,48,39,0.06)' }}>
-          <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] uppercase tracking-[0.22em] font-semibold"
+          <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.22em] font-semibold"
             style={{ color: 'rgba(90,74,58,0.60)' }}>Payment Confirmed</p>
         </div>
 
-        <div className="px-8 py-8 text-center">
-          <div className="mx-auto mb-5 w-20 h-20" style={{ animation: 'ringPop .6s cubic-bezier(.34,1.56,.64,1) forwards' }}>
+        <div className="px-5 sm:px-8 py-6 sm:py-8 text-center">
+          <div className="mx-auto mb-4 sm:mb-5 w-16 sm:w-20 h-16 sm:h-20" style={{ animation: 'ringPop .6s cubic-bezier(.34,1.56,.64,1) forwards' }}>
             <svg viewBox="0 0 80 80" className="w-full h-full">
               <circle cx="40" cy="40" r="36" fill="rgba(107,117,86,0.07)" stroke="rgba(107,117,86,0.22)" strokeWidth="1.2" />
               <path d="M24 40 L35 51 L56 29" fill="none" stroke="#6B7556" strokeWidth="2.5"
@@ -702,13 +700,13 @@ function CheckoutContent() {
                 style={{ animation: 'checkDraw .5s ease .45s forwards' }} />
             </svg>
           </div>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.72rem] tracking-[0.38em] uppercase mb-1"
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.65rem] sm:text-[0.72rem] tracking-[0.38em] uppercase mb-1"
             style={{ animation: 'fadeInUp .4s ease .5s both' }}>Step 3 of 3</p>
-          <h2 className="font-['Playfair_Display',serif] italic text-[2.4rem] text-[#3a3027] leading-none mb-1"
+          <h2 className="font-['Playfair_Display',serif] italic text-[1.8rem] sm:text-[2rem] md:text-[2.4rem] text-[#3a3027] leading-none mb-1"
             style={{ animation: 'fadeInUp .4s ease .55s both' }}>
             You&apos;re confirmed<span className="text-[#C87D87]">.</span>
           </h2>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[1rem] mt-2.5 mb-6"
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[0.9rem] sm:text-[1rem] mt-2 mb-5 sm:mb-6"
             style={{ animation: 'fadeInUp .4s ease .58s both' }}>
             {paidMode === 'full'
               ? 'Fully paid. Nothing owed on arrival. See you soon!'
@@ -720,34 +718,34 @@ function CheckoutContent() {
           {(paidMode === 'full'
             ? [
                 { l: 'Activity',     v: booking?.activity || '—' },
-                { l: 'Participants', v: `${participants} people` },
+                { l: 'Participants', v: `${participants} ${participants === 1 ? 'person' : 'people'}` },
                 { l: 'Paid in full', v: `${paidAmount} MAD`, c: 'text-[#6B7556]', big: true },
                 { l: 'Due on arrival', v: '0 MAD', c: 'text-[#3a3027]' },
               ]
             : [
                 { l: 'Activity',      v: booking?.activity || '—' },
-                { l: 'Participants',  v: `${participants} people` },
+                { l: 'Participants',  v: `${participants} ${participants === 1 ? 'person' : 'people'}` },
                 { l: 'Total service', v: `${totalAmount} MAD`,      c: 'text-[#3a3027]' },
                 { l: 'Advance paid',  v: `− ${paidAmount} MAD`,     c: 'text-[#6B7556]' },
                 { l: 'Remaining',     v: `${remaining} MAD`,         c: 'text-[#C87D87]', big: true },
               ]
           ).map(({ l, v, c, big }, idx, arr) => (
-            <div key={l} className="flex justify-between items-baseline px-6 py-2.5"
+            <div key={l} className="flex justify-between items-baseline px-5 sm:px-6 py-2 sm:py-2.5 flex-wrap gap-2"
               style={{ borderBottom: idx < arr.length - 1 ? '1px solid rgba(58,48,39,0.05)' : 'none' }}>
-              <span className="font-['Cormorant_Garamond',serif] text-[0.63rem] uppercase tracking-[0.14em] flex-shrink-0 mr-3 font-semibold"
+              <span className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.63rem] uppercase tracking-[0.14em] flex-shrink-0 mr-2 font-semibold"
                 style={{ color: 'rgba(90,74,58,0.50)' }}>{l}</span>
-              <span className={`font-['Playfair_Display',serif] italic text-right ${big ? 'text-xl' : 'text-base'} ${c || 'text-[#3a3027]'}`}>{v}</span>
+              <span className={`font-['Playfair_Display',serif] italic text-right ${big ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'} ${c || 'text-[#3a3027]'}`}>{v}</span>
             </div>
           ))}
         </div>
 
-        <div className="px-6 py-6" style={{ animation: 'fadeInUp .4s ease .7s both' }}>
+        <div className="px-5 sm:px-6 py-5 sm:py-6" style={{ animation: 'fadeInUp .4s ease .7s both' }}>
           <Link href="/account#bookings"
-            className="relative overflow-hidden group font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
+            className="relative overflow-hidden group font-['Cormorant_Garamond',serif] text-[0.8rem] sm:text-[0.82rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-2.5 sm:py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 w-full"
             style={{ background: 'linear-gradient(135deg,#6B7556 0%,#4a5240 100%)', boxShadow: '0 5px 18px rgba(107,117,86,0.26)' }}>
-            <span className="opacity-40 text-[0.45rem]">◆</span>
+            <span className="opacity-40 text-[0.4rem] sm:text-[0.45rem]">◆</span>
             <span>View My Bookings</span>
-            <span className="opacity-40 text-[0.45rem]">◆</span>
+            <span className="opacity-40 text-[0.4rem] sm:text-[0.45rem]">◆</span>
           </Link>
         </div>
       </div>
@@ -766,42 +764,43 @@ function CheckoutContent() {
 
       <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/30 to-transparent z-50" />
 
-      <header className="sticky top-0 z-40 px-5 py-3 flex items-center justify-between"
+      <header className="sticky top-0 z-40 px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between"
         style={{ backgroundColor: '#6B7556', boxShadow: '0 2px 20px rgba(40,50,30,0.18)', borderBottom: '1px solid rgba(251,234,214,0.10)' }}>
         <Link href="/account"
-          className="group flex items-center gap-1.5 font-['Cormorant_Garamond',serif] italic text-[0.85rem] transition-colors duration-200"
+          className="group flex items-center gap-1 font-['Cormorant_Garamond',serif] italic text-[0.8rem] sm:text-[0.85rem] transition-colors duration-200"
           style={{ color: 'rgba(251,234,214,0.60)' }}>
-          <svg className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
-          Back
+          <span className="hidden sm:inline">Back</span>
         </Link>
         <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
-          <span className="font-['Playfair_Display',serif] italic text-[#FBEAD6] text-[1.1rem] leading-tight">Inora</span>
+          <span className="font-['Playfair_Display',serif] italic text-[#FBEAD6] text-[1rem] sm:text-[1.1rem] leading-tight">Inora</span>
         </div>
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-0.5 sm:gap-1">
           {['Booking', 'Payment', 'Done'].map((s, i) => (
-            <div key={s} className="flex items-center gap-1">
-              <div className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300"
+            <div key={s} className="flex items-center gap-0.5 sm:gap-1">
+              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all duration-300"
                 style={{
-                  fontSize: '0.42rem', fontWeight: 700,
+                  fontSize: '0.38rem',
+                  fontWeight: 700,
                   background: i < 1 ? 'rgba(251,234,214,0.20)' : i === 1 ? '#C87D87' : 'rgba(251,234,214,0.06)',
                   color: i <= 1 ? '#FBEAD6' : 'rgba(251,234,214,0.18)',
                   boxShadow: i === 1 ? '0 0 8px rgba(200,125,135,0.40)' : 'none',
                 }}>
                 {i < 1 ? '✓' : i + 1}
               </div>
-              <span className="font-['Cormorant_Garamond',serif] text-[0.54rem] tracking-[0.12em] uppercase hidden sm:block"
+              <span className="font-['Cormorant_Garamond',serif] text-[0.48rem] sm:text-[0.54rem] tracking-[0.12em] uppercase hidden sm:block"
                 style={{ color: i === 1 ? 'rgba(251,234,214,0.75)' : 'rgba(251,234,214,0.22)' }}>{s}</span>
-              {i < 2 && <div className="w-2.5 h-px mx-0.5" style={{ background: 'rgba(251,234,214,0.10)' }} />}
+              {i < 2 && <div className="w-1.5 sm:w-2.5 h-px mx-0.5" style={{ background: 'rgba(251,234,214,0.10)' }} />}
             </div>
           ))}
         </nav>
       </header>
 
-      <div className="h-5" style={{ background: 'linear-gradient(to bottom, rgba(107,117,86,0.10), transparent)' }} />
+      <div className="h-3 sm:h-5" style={{ background: 'linear-gradient(to bottom, rgba(107,117,86,0.10), transparent)' }} />
 
-      <main className="w-full px-4 sm:px-6 pb-16 relative z-10">
+      <main className="w-full max-w-lg mx-auto px-3 sm:px-6 pb-16 sm:pb-20 relative z-10">
         <Elements stripe={stripePromise}>
           <PaymentForm
             booking={booking}

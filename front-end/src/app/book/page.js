@@ -9,11 +9,10 @@ import Link from 'next/link';
 const API = process.env.NEXT_PUBLIC_API_URL;
 
 const ACTIVITIES = [
-  { id: 'crochet-circle',   title: 'Crochet Circle',   desc: 'A slow, meditative craft that brings warmth to any setting.',    img: 'https://images.unsplash.com/photo-1612278675615-7b093b07772d', icon: '◎' },
-  { id: 'painting-session', title: 'Painting Session', desc: 'Express freely on canvas surrounded by curated ambience.',        img: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b', icon: '◈' },
-  { id: 'pottery-workshop', title: 'Pottery Workshop', desc: 'Shape and sculpt in an intimate setting.',                        img: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261', icon: '◇' },
+  { id: 'crochet-circle',   title: 'Crochet Circle',   desc: 'A slow, meditative craft that brings warmth to any setting.',    img: '/crochet.jpeg', icon: '◎' },
+  { id: 'painting-session', title: 'Painting Session', desc: 'Express freely on canvas surrounded by curated ambience.',        img: '/peinture.jpeg', icon: '◈' },
+  { id: 'pottery-workshop', title: 'Pottery Workshop', desc: 'Shape and sculpt in an intimate setting.',                        img: '/potterie.jpeg', icon: '◇' },
 ];
-
 const TIME_SLOTS = [
   { id: 'morning',   label: 'Morning',   hours: '09:30 – 12:30', icon: '◎', sub: 'Soft light & fresh starts' },
   { id: 'afternoon', label: 'Afternoon', hours: '14:30 – 17:30', icon: '◈', sub: 'Golden hour creativity'    },
@@ -28,8 +27,12 @@ const SETTINGS = [
 
 const CONTACT_PREFS = ['telephone', 'email', 'whatsapp'];
 
+// Minimum and maximum participants for group gatherings
+const MIN_PARTICIPANTS = 2;
+const MAX_PARTICIPANTS = 12;
+
 const EMPTY_FORM = {
-  activity: '', participants: 1, date: '', timeSlot: '', setting: '',
+  activity: '', participants: MIN_PARTICIPANTS, date: '', timeSlot: '', setting: '',
   location: '', fullName: '', email: '', phone: '', allergies: '',
   specialRequests: '', additionalNotes: '', preferredContact: 'telephone', activityTheme: '',
 };
@@ -38,23 +41,31 @@ const STEPS = ['Activity', 'Details', 'Preferences', 'Review'];
 
 const CROSSHATCH_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cline x1='0' y1='1' x2='18' y2='1' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='1' y1='0' x2='1' y2='18' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3C/svg%3E")`;
 
+// ─── Pricing helper ────────────────────────────────────────────────
 function getPricing(participants) {
   if (participants <= 2) return { rate: 150, label: null };
   if (participants <= 6) return { rate: 120, label: 'small group rate' };
   return { rate: 100, label: 'large group rate' };
 }
 
-// ─── Draft hook (modified to use authFetch) ────────────────────────────────────────────────────
-function useDraft(authFetch) {
-  const [draftId, setDraftId] = useState(null);
-  const [saving, setSaving] = useState(false);
+// ─── Auth headers helper (for useDraft which is outside AuthContext) ───
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
+// ─── Draft hook ────────────────────────────────────────────────────
+function useDraft() {
+  const [draftId, setDraftId]     = useState(null);
+  const [saving, setSaving]       = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const timer = useRef(null);
 
   const loadDraft = useCallback(async () => {
     try {
-      const res = await authFetch(`${API}/api/drafts`, {
-        method: 'GET',
+      const res = await fetch(`${API}/api/drafts`, {
+        credentials: 'include',
+        headers: { ...getAuthHeaders() },
       });
       if (!res.ok) return null;
       const data = await res.json();
@@ -95,27 +106,25 @@ function useDraft(authFetch) {
 
   const deleteDraft = useCallback(async (id) => {
     if (!id) return;
-    try {
-      await authFetch(`${API}/api/drafts/${id}`, {
-        method: 'DELETE',
-      });
-    } catch (err) {
-      console.error('Delete draft error:', err);
-    }
-  }, [authFetch]);
+    await fetch(`${API}/api/drafts/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { ...getAuthHeaders() },
+    });
+  }, []);
 
   return { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft };
 }
 
 // ─── Shared styles ─────────────────────────────────────────────────
-const inputCls = `w-full font-['Cormorant_Garamond',serif] italic text-[#3a3027] text-[1rem]
+const inputCls = `w-full font-['Cormorant_Garamond',serif] italic text-[#3a3027] text-[0.95rem] sm:text-[1rem]
   bg-white/65 border border-[#3a3027]/12 rounded-xl px-4 py-2.5
   outline-none focus:border-[#C87D87]/45 focus:bg-white/90
   focus:shadow-[0_0_0_3px_rgba(200,125,135,0.06)] transition-all duration-200`;
 
 function Label({ children, className = '' }) {
   return (
-    <p className={`font-['Cormorant_Garamond',serif] text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-2 select-none font-semibold ${className}`}>
+    <p className={`font-['Cormorant_Garamond',serif] text-[0.65rem] sm:text-[0.72rem] uppercase tracking-[0.18em] text-[#4a3a2a]/65 mb-2 select-none font-semibold ${className}`}>
       {children}
     </p>
   );
@@ -123,19 +132,19 @@ function Label({ children, className = '' }) {
 
 function StepNav({ onBack, onNext, nextDisabled, nextLabel = 'Continue →' }) {
   return (
-    <div className="flex gap-2.5 mt-7 pt-5 border-t border-[#3a3027]/6">
+    <div className="flex flex-col sm:flex-row gap-2.5 mt-7 pt-5 border-t border-[#3a3027]/6">
       {onBack && (
         <button onClick={onBack}
-          className="font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.16em] uppercase px-5 py-3
+          className="order-2 sm:order-1 font-['Cormorant_Garamond',serif] text-[0.75rem] sm:text-[0.82rem] tracking-[0.16em] uppercase px-4 sm:px-5 py-3
             rounded-xl border border-[#3a3027]/10 text-[#7a6a5a]/65
             hover:border-[#3a3027]/18 hover:text-[#7a6a5a]/90 hover:bg-white/40 transition-all duration-200">
           ← Back
         </button>
       )}
       <button onClick={onNext} disabled={nextDisabled}
-        className="flex-1 font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.24em] uppercase
+        className={`flex-1 order-1 sm:order-2 font-['Cormorant_Garamond',serif] text-[0.75rem] sm:text-[0.82rem] tracking-[0.24em] uppercase
           text-[#FBEAD6] py-3 rounded-xl transition-all duration-300
-          disabled:opacity-25 disabled:cursor-not-allowed"
+          disabled:opacity-25 disabled:cursor-not-allowed`}
         style={{
           background: nextDisabled ? '#9aaa88' : 'linear-gradient(135deg,#6B7556 0%,#4a5240 100%)',
           boxShadow: nextDisabled ? 'none' : '0 5px 18px rgba(107,117,86,0.26)',
@@ -192,16 +201,17 @@ function BookContent() {
   const searchParams = useSearchParams();
 
   const { user, loading, authFetch } = useAuth();
+  const { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft } = useDraft(authFetch);
 
   const preselectedActivity = searchParams.get('activity') || '';
 
-  const [form, setForm] = useState({ ...EMPTY_FORM, activity: preselectedActivity });
-  const [step, setStep] = useState(preselectedActivity ? 1 : 0);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [form,        setForm]        = useState({ ...EMPTY_FORM, activity: preselectedActivity });
+  const [step,        setStep]        = useState(preselectedActivity ? 1 : 0);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [error,       setError]       = useState(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
-  const { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft } = useDraft(authFetch);
+  const { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft } = useDraft();
 
   useEffect(() => { 
     if (!loading && !user) router.push('/sign-up'); 
@@ -222,6 +232,7 @@ function BookContent() {
           ...EMPTY_FORM,
           ...userDefaults,
           ...saved,
+          participants: saved.participants || MIN_PARTICIPANTS,
           fullName: saved.fullName || userDefaults.fullName,
           email: saved.email || userDefaults.email,
           phone: saved.phone || userDefaults.phone,
@@ -229,7 +240,7 @@ function BookContent() {
         });
         if (!preselectedActivity && saved.activity) setStep(1);
       } else {
-        setForm({ ...EMPTY_FORM, ...userDefaults, activity: preselectedActivity });
+        setForm({ ...EMPTY_FORM, ...userDefaults, activity: preselectedActivity, participants: MIN_PARTICIPANTS });
       }
       setDraftLoaded(true);
     });
@@ -242,6 +253,11 @@ function BookContent() {
   };
 
   const handleSubmit = async () => {
+    if (form.participants < MIN_PARTICIPANTS) {
+      setError(`At least ${MIN_PARTICIPANTS} participants are required for a gathering.`);
+      return;
+    }
+    
     setError(null);
     setSubmitting(true);
     try {
@@ -280,6 +296,7 @@ function BookContent() {
 
       <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/30 to-transparent z-50"/>
 
+      {/* ── Header ── */}
       <header className="sticky top-0 z-40 px-5 py-3 flex items-center justify-between"
         style={{
           backgroundColor: '#6B7556',
@@ -288,34 +305,34 @@ function BookContent() {
         }}>
 
         <Link href="/"
-          className="group flex items-center gap-1.5 font-['Cormorant_Garamond',serif] italic text-[0.85rem] text-[rgba(251,234,214,0.60)] hover:text-[#FBEAD6] transition-colors duration-200">
-          <svg className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          className="group flex items-center gap-1.5 font-['Cormorant_Garamond',serif] italic text-[0.75rem] sm:text-[0.85rem] text-[rgba(251,234,214,0.60)] hover:text-[#FBEAD6] transition-colors duration-200">
+          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
           </svg>
           Back
         </Link>
 
         <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
-          <span className="font-['Playfair_Display',serif] italic text-[#FBEAD6] text-[1.1rem] leading-tight">Inora</span>
+          <span className="font-['Playfair_Display',serif] italic text-[#FBEAD6] text-[1rem] sm:text-[1.1rem] leading-tight">Inora</span>
         </div>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-0.5 sm:gap-1">
           {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center gap-1">
-              <div className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300"
+            <div key={s} className="flex items-center gap-0.5 sm:gap-1">
+              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all duration-300"
                 style={{
-                  fontSize: '0.42rem', fontWeight: 700,
+                  fontSize: '0.38rem', fontWeight: 700,
                   background: i < step ? 'rgba(251,234,214,0.20)' : i === step ? '#C87D87' : 'rgba(251,234,214,0.06)',
                   color: i <= step ? '#FBEAD6' : 'rgba(251,234,214,0.18)',
                   boxShadow: i === step ? '0 0 8px rgba(200,125,135,0.40)' : 'none',
                 }}>
                 {i < step ? '✓' : i + 1}
               </div>
-              <span className="font-['Cormorant_Garamond',serif] text-[0.54rem] tracking-[0.12em] uppercase hidden sm:block"
+              <span className="font-['Cormorant_Garamond',serif] text-[0.45rem] sm:text-[0.54rem] tracking-[0.12em] uppercase hidden xs:inline-block"
                 style={{ color: i === step ? 'rgba(251,234,214,0.75)' : 'rgba(251,234,214,0.22)' }}>
                 {s}
               </span>
-              {i < STEPS.length - 1 && <div className="w-2.5 h-px mx-0.5" style={{ background: 'rgba(251,234,214,0.10)' }}/>}
+              {i < STEPS.length - 1 && <div className="w-1.5 sm:w-2.5 h-px mx-0.5" style={{ background: 'rgba(251,234,214,0.10)' }}/>}
             </div>
           ))}
         </nav>
@@ -323,29 +340,30 @@ function BookContent() {
 
       <div className="h-5" style={{ background: 'linear-gradient(to bottom, rgba(107,117,86,0.10), transparent)' }}/>
 
+      {/* ── Main ── */}
       <main className="w-full px-4 sm:px-8 pb-16 relative z-10">
 
         {/* STEP 0 — Activity */}
         {step === 0 && (
           <div className="step-enter">
-            <div className="flex items-start justify-between mb-8 px-1">
-              <div>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.72rem] tracking-[0.38em] uppercase mb-2">Step 1 of 4</p>
-                <h1 className="font-['Playfair_Display',serif] italic text-[2.4rem] text-[#3a3027] leading-none">
+            <div className="flex items-start justify-between mb-6 sm:mb-8 px-1">
+              <div className="flex-1">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.65rem] sm:text-[0.72rem] tracking-[0.38em] uppercase mb-2">Step 1 of 4</p>
+                <h1 className="font-['Playfair_Display',serif] italic text-[1.8rem] sm:text-[2.4rem] text-[#3a3027] leading-none">
                   Choose your Activity<span className="text-[#C87D87]">.</span>
                 </h1>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[1rem] mt-2.5">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[0.85rem] sm:text-[1rem] mt-2">
                   Select the craft that will anchor your gathering.
                 </p>
               </div>
-              <span className="font-['Playfair_Display',serif] italic text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1">01</span>
+              <span className="font-['Playfair_Display',serif] italic text-[3rem] sm:text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1 hidden sm:block">01</span>
             </div>
 
             <div className="flex flex-col gap-3">
               {ACTIVITIES.map(a => (
                 <button key={a.id}
                   onClick={() => { handleChange('activity', a.title); setStep(1); }}
-                  className="group relative w-full flex items-center gap-5 px-5 py-4 rounded-2xl text-left transition-all duration-300"
+                  className="group relative w-full flex items-center gap-3 sm:gap-5 px-3 sm:px-5 py-3 sm:py-4 rounded-2xl text-left transition-all duration-300"
                   style={{
                     background: form.activity === a.title ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.55)',
                     border: form.activity === a.title ? '1px solid rgba(200,125,135,0.35)' : '1px solid rgba(58,48,39,0.08)',
@@ -355,16 +373,16 @@ function BookContent() {
                     <div className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r-full"
                       style={{ background: 'linear-gradient(to bottom, rgba(200,125,135,0.60), #C87D87)' }}/>
                   )}
-                  <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                  <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
                     <img src={a.img} alt={a.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-['Playfair_Display',serif] italic text-[#3a3027] text-[1.15rem] leading-snug">{a.title}</p>
-                    <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/60 text-[0.92rem] mt-0.5">{a.desc}</p>
+                    <p className="font-['Playfair_Display',serif] italic text-[#3a3027] text-[0.95rem] sm:text-[1.15rem] leading-snug">{a.title}</p>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/60 text-[0.75rem] sm:text-[0.92rem] mt-0.5 hidden xs:block">{a.desc}</p>
                   </div>
-                  <span className="font-['Cormorant_Garamond',serif] italic text-[0.75rem] tracking-widest uppercase flex-shrink-0 transition-colors"
+                  <span className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-[0.75rem] tracking-widest uppercase flex-shrink-0 transition-colors"
                     style={{ color: form.activity === a.title ? '#C87D87' : 'rgba(90,74,58,0.28)' }}>
-                    {form.activity === a.title ? 'Selected ✓' : 'Select →'}
+                    {form.activity === a.title ? '✓' : '→'}
                   </span>
                 </button>
               ))}
@@ -375,31 +393,33 @@ function BookContent() {
         {/* STEP 1 — Details */}
         {step === 1 && (
           <div className="step-enter">
-            <div className="flex items-start justify-between mb-8 px-1">
-              <div>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.72rem] tracking-[0.38em] uppercase mb-2">Step 2 of 4</p>
-                <h1 className="font-['Playfair_Display',serif] italic text-[2.4rem] text-[#3a3027] leading-none">
+            <div className="flex items-start justify-between mb-6 sm:mb-8 px-1">
+              <div className="flex-1">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.65rem] sm:text-[0.72rem] tracking-[0.38em] uppercase mb-2">Step 2 of 4</p>
+                <h1 className="font-['Playfair_Display',serif] italic text-[1.8rem] sm:text-[2.4rem] text-[#3a3027] leading-none">
                   Booking Details<span className="text-[#C87D87]">.</span>
                 </h1>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[1rem] mt-2.5">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[0.85rem] sm:text-[1rem] mt-2">
                   When, how many, and where.
                 </p>
               </div>
-              <span className="font-['Playfair_Display',serif] italic text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1">02</span>
+              <span className="font-['Playfair_Display',serif] italic text-[3rem] sm:text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1 hidden sm:block">02</span>
             </div>
 
+            {/* Activity pill */}
             <div className="inline-flex items-center gap-2.5 px-4 py-2 mb-6 rounded-xl"
               style={{ background: 'rgba(107,117,86,0.09)', border: '1px solid rgba(107,117,86,0.18)' }}>
-              <span className="text-[#6B7556] text-base">{ACTIVITIES.find(a => a.title === form.activity)?.icon || '◈'}</span>
-              <span className="font-['Cormorant_Garamond',serif] italic text-[#3a3027]/85 text-[1rem]">{form.activity}</span>
+              <span className="text-[#6B7556] text-sm sm:text-base">{ACTIVITIES.find(a => a.title === form.activity)?.icon || '◈'}</span>
+              <span className="font-['Cormorant_Garamond',serif] italic text-[#3a3027]/85 text-[0.85rem] sm:text-[1rem]">{form.activity}</span>
               <span className="w-px h-4" style={{ background: 'rgba(58,48,39,0.12)' }}/>
               <button onClick={() => setStep(0)}
-                className="font-['Cormorant_Garamond',serif] text-[0.65rem] tracking-[0.2em] uppercase text-[#6B7556]/60 hover:text-[#6B7556] transition-colors">
+                className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] tracking-[0.2em] uppercase text-[#6B7556]/60 hover:text-[#6B7556] transition-colors">
                 change
               </button>
             </div>
 
             <div className="space-y-6">
+              {/* Guests + Date */}
               <div className="grid grid-cols-[auto_1fr] gap-8 items-start">
                 <div>
                   <Label>Guests</Label>
@@ -414,35 +434,41 @@ function BookContent() {
                     <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/40 text-sm">max 12</span>
                   </div>
                 </div>
-                <div>
-                  <Label>Preferred Date</Label>
-                  <input type="date" value={form.date}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={e => handleChange('date', e.target.value)}
-                    className={inputCls}/>
-                </div>
+                {form.participants < MIN_PARTICIPANTS && (
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.7rem] sm:text-[0.72rem] text-red-400 mt-2 flex items-center gap-1.5">
+                    <span>⚠</span> At least {MIN_PARTICIPANTS} participants required for a gathering
+                  </p>
+                )}
               </div>
 
+              {/* Date */}
+              <div>
+                <Label>Preferred Date</Label>
+                <input type="date" value={form.date}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => handleChange('date', e.target.value)}
+                  className={inputCls}/>
+              </div>
+
+              {/* Time slots */}
               <div>
                 <Label>Preferred Time</Label>
-                <div className="flex gap-2.5 mt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 mt-1">
                   {TIME_SLOTS.map(t => (
                     <button key={t.id} type="button"
                       onClick={() => handleChange('timeSlot', t.hours)}
-                      className="flex-1 flex flex-col gap-1 px-3.5 py-3.5 rounded-xl text-left transition-all duration-200"
+                      className="flex flex-col gap-1 px-3 sm:px-3.5 py-2.5 sm:py-3.5 rounded-xl text-left transition-all duration-200"
                       style={{
                         background: form.timeSlot === t.hours ? 'rgba(200,125,135,0.09)' : 'rgba(255,255,255,0.55)',
                         border: form.timeSlot === t.hours ? '1px solid rgba(200,125,135,0.40)' : '1px solid rgba(58,48,39,0.08)',
                       }}>
                       <div className="flex items-center justify-between">
-                        <span className="font-['Playfair_Display',serif] italic text-[1rem]"
+                        <span className="font-['Playfair_Display',serif] italic text-[0.9rem] sm:text-[1rem]"
                           style={{ color: form.timeSlot === t.hours ? '#C87D87' : '#3a3027' }}>{t.label}</span>
-                        <span className="text-sm" style={{ color: form.timeSlot === t.hours ? 'rgba(200,125,135,0.70)' : 'rgba(122,106,90,0.38)' }}>{t.icon}</span>
+                        <span className="text-xs sm:text-sm" style={{ color: form.timeSlot === t.hours ? 'rgba(200,125,135,0.70)' : 'rgba(122,106,90,0.38)' }}>{t.icon}</span>
                       </div>
-                      <span className="font-['Cormorant_Garamond',serif] italic text-[0.72rem]"
+                      <span className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-[0.72rem]"
                         style={{ color: form.timeSlot === t.hours ? 'rgba(200,125,135,0.70)' : 'rgba(122,106,90,0.55)' }}>{t.hours}</span>
-                      <span className="font-['Cormorant_Garamond',serif] italic text-[0.68rem] hidden sm:block"
-                        style={{ color: form.timeSlot === t.hours ? 'rgba(200,125,135,0.55)' : 'rgba(122,106,90,0.40)' }}>{t.sub}</span>
                     </button>
                   ))}
                 </div>
@@ -454,6 +480,7 @@ function BookContent() {
                 <div className="flex-1 h-px bg-[#3a3027]/6"/>
               </div>
 
+              {/* Decoration + Location */}
               <div className="grid grid-cols-[1fr_1.3fr] gap-6 items-start">
                 <div>
                   <Label>Decoration Style</Label>
@@ -461,21 +488,21 @@ function BookContent() {
                     {SETTINGS.map(d => (
                       <button key={d.key} type="button"
                         onClick={() => handleChange('setting', d.key)}
-                        className="flex items-start gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200"
+                        className="flex items-start gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-left transition-all duration-200"
                         style={{
                           background: form.setting === d.key ? 'rgba(200,125,135,0.09)' : 'rgba(255,255,255,0.55)',
                           border: form.setting === d.key ? '1px solid rgba(200,125,135,0.38)' : '1px solid rgba(58,48,39,0.08)',
                         }}>
-                        <span className="text-lg leading-none mt-0.5 flex-shrink-0"
+                        <span className="text-base sm:text-lg leading-none mt-0.5 flex-shrink-0"
                           style={{ color: form.setting === d.key ? '#C87D87' : 'rgba(122,106,90,0.60)' }}>{d.icon}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-['Playfair_Display',serif] italic text-[0.95rem] leading-snug"
+                          <p className="font-['Playfair_Display',serif] italic text-[0.85rem] sm:text-[0.95rem] leading-snug"
                             style={{ color: form.setting === d.key ? '#C87D87' : '#3a3027' }}>{d.label}</p>
-                          <p className="font-['Cormorant_Garamond',serif] italic text-[0.72rem] mt-0.5"
+                          <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-[0.72rem] mt-0.5 hidden xs:block"
                             style={{ color: form.setting === d.key ? 'rgba(200,125,135,0.65)' : 'rgba(122,106,90,0.50)' }}>{d.desc}</p>
                         </div>
                         {form.setting === d.key && (
-                          <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: '#C87D87' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 mt-0.5" style={{ color: '#C87D87' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
                           </svg>
                         )}
@@ -484,46 +511,50 @@ function BookContent() {
                   </div>
                 </div>
 
-                <div>
+                <div className="flex-1">
                   <Label>Gathering Location</Label>
                   <div className="relative mt-1">
                     <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3.5 top-3.5 w-4 h-4 pointer-events-none" style={{ color: 'rgba(200,125,135,0.45)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
                     </svg>
-                    <textarea rows={7} value={form.location}
+                    <textarea rows={5} value={form.location}
                       placeholder={"Address, venue name,\nor description of the space…"}
                       onChange={e => handleChange('location', e.target.value)}
                       className={inputCls + ' pl-9 resize-none'}/>
                   </div>
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.72rem] text-[#7a6a5a]/45 mt-1.5">
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-[0.72rem] text-[#7a6a5a]/45 mt-1.5">
                     Your home, a rented space, café…
                   </p>
                 </div>
               </div>
             </div>
 
-            <StepNav onBack={() => setStep(0)} onNext={() => setStep(2)} nextDisabled={!form.date || !form.timeSlot || !form.setting}/>
+            <StepNav 
+              onBack={() => setStep(0)} 
+              onNext={() => setStep(2)} 
+              nextDisabled={!form.date || !form.timeSlot || !form.setting || form.participants < MIN_PARTICIPANTS}
+            />
           </div>
         )}
 
         {/* STEP 2 — Personal Info */}
         {step === 2 && (
           <div className="step-enter">
-            <div className="flex items-start justify-between mb-8 px-1">
-              <div>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.72rem] tracking-[0.38em] uppercase mb-2">Step 3 of 4</p>
-                <h1 className="font-['Playfair_Display',serif] italic text-[2.4rem] text-[#3a3027] leading-none">
+            <div className="flex items-start justify-between mb-6 sm:mb-8 px-1">
+              <div className="flex-1">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.65rem] sm:text-[0.72rem] tracking-[0.38em] uppercase mb-2">Step 3 of 4</p>
+                <h1 className="font-['Playfair_Display',serif] italic text-[1.8rem] sm:text-[2.4rem] text-[#3a3027] leading-none">
                   Your Details<span className="text-[#C87D87]">.</span>
                 </h1>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[1rem] mt-2.5">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[0.85rem] sm:text-[1rem] mt-2">
                   So we can prepare everything perfectly.
                 </p>
               </div>
-              <span className="font-['Playfair_Display',serif] italic text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1">03</span>
+              <span className="font-['Playfair_Display',serif] italic text-[3rem] sm:text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1 hidden sm:block">03</span>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5">
               <div>
                 <Label>Full Name</Label>
                 <div className="relative">
@@ -531,30 +562,30 @@ function BookContent() {
                     onChange={e => handleChange('fullName', e.target.value)} className={inputCls}/>
                   {user?.name && form.fullName === (user.name || user.fullName) && (
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2
-                      font-['Cormorant_Garamond',serif] italic text-[0.62rem] tracking-wide
-                      text-[#6B7556]/45 pointer-events-none select-none">
+                      font-['Cormorant_Garamond',serif] italic text-[0.55rem] sm:text-[0.62rem] tracking-wide
+                      text-[#6B7556]/45 pointer-events-none select-none hidden sm:block">
                       from account
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-[1.1fr_0.9fr] gap-4">
-                <div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
                   <Label>Email Address</Label>
                   <div className="relative">
                     <input type="email" value={form.email} placeholder="you@example.com"
                       onChange={e => handleChange('email', e.target.value)} className={inputCls}/>
                     {user?.email && form.email === user.email && (
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2
-                        font-['Cormorant_Garamond',serif] italic text-[0.62rem] tracking-wide
-                        text-[#6B7556]/45 pointer-events-none select-none">
+                        font-['Cormorant_Garamond',serif] italic text-[0.55rem] sm:text-[0.62rem] tracking-wide
+                        text-[#6B7556]/45 pointer-events-none select-none hidden sm:block">
                         from account
                       </span>
                     )}
                   </div>
                 </div>
-                <div>
+                <div className="flex-1">
                   <Label>Phone</Label>
                   <input type="tel" value={form.phone} placeholder="+212 6XX XXX XXX"
                     onChange={e => handleChange('phone', e.target.value)} className={inputCls}/>
@@ -567,33 +598,33 @@ function BookContent() {
                 <div className="flex-1 h-px bg-[#3a3027]/6"/>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
                   <Label>Allergies / Dietary</Label>
                   <input type="text" value={form.allergies} placeholder="None, gluten-free…"
                     onChange={e => handleChange('allergies', e.target.value)} className={inputCls}/>
                 </div>
-                <div>
+                <div className="flex-1">
                   <Label>Theme (optional)</Label>
                   <input type="text" value={form.activityTheme} placeholder="Birthday, Bachelorette…"
                     onChange={e => handleChange('activityTheme', e.target.value)} className={inputCls}/>
                 </div>
               </div>
 
-              <div className="grid grid-cols-[1.4fr_0.6fr] gap-4 items-start">
-                <div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-[1.4]">
                   <Label>Special Requests</Label>
-                  <textarea value={form.specialRequests} placeholder="Anything you'd like us to know…" rows={4}
+                  <textarea value={form.specialRequests} placeholder="Anything you'd like us to know…" rows={3}
                     onChange={e => handleChange('specialRequests', e.target.value)}
                     className={inputCls + ' resize-none'}/>
                 </div>
-                <div>
+                <div className="flex-1">
                   <Label>Preferred Contact</Label>
-                  <div className="flex flex-col gap-2 mt-0.5">
+                  <div className="flex flex-row sm:flex-col gap-2 mt-0.5">
                     {CONTACT_PREFS.map(c => (
                       <button key={c} type="button"
                         onClick={() => handleChange('preferredContact', c)}
-                        className="font-['Cormorant_Garamond',serif] italic text-[0.92rem] px-4 py-2.5 rounded-xl capitalize text-left transition-all"
+                        className="flex-1 sm:flex-none font-['Cormorant_Garamond',serif] italic text-[0.85rem] sm:text-[0.92rem] px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl capitalize text-left transition-all"
                         style={{
                           background: form.preferredContact === c ? '#6B7556' : 'rgba(255,255,255,0.60)',
                           border: form.preferredContact === c ? '1px solid #6B7556' : '1px solid rgba(58,48,39,0.09)',
@@ -613,43 +644,45 @@ function BookContent() {
         {/* STEP 3 — Review */}
         {step === 3 && (
           <div className="step-enter">
-            <div className="flex items-start justify-between mb-8 px-1">
-              <div>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.72rem] tracking-[0.38em] uppercase mb-2">Step 4 of 4</p>
-                <h1 className="font-['Playfair_Display',serif] italic text-[2.4rem] text-[#3a3027] leading-none">
+            <div className="flex items-start justify-between mb-6 sm:mb-8 px-1">
+              <div className="flex-1">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87]/60 text-[0.65rem] sm:text-[0.72rem] tracking-[0.38em] uppercase mb-2">Step 4 of 4</p>
+                <h1 className="font-['Playfair_Display',serif] italic text-[1.8rem] sm:text-[2.4rem] text-[#3a3027] leading-none">
                   Review & Confirm<span className="text-[#C87D87]">.</span>
                 </h1>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[1rem] mt-2.5">
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/65 text-[0.85rem] sm:text-[1rem] mt-2">
                   Everything look right? Let's make it official.
                 </p>
               </div>
-              <span className="font-['Playfair_Display',serif] italic text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1">04</span>
+              <span className="font-['Playfair_Display',serif] italic text-[3rem] sm:text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1 hidden sm:block">04</span>
             </div>
 
             <div className="grid grid-cols-[1.1fr_0.9fr] gap-4 mb-5">
+              {/* Booking info */}
               <div className="rounded-2xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(58,48,39,0.08)', boxShadow: '0 1px 8px rgba(58,48,39,0.04)' }}>
-                <div className="px-5 py-3" style={{ background: 'rgba(255,255,255,0.40)', borderBottom: '1px solid rgba(58,48,39,0.06)' }}>
-                  <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] uppercase tracking-[0.22em] font-semibold" style={{ color: 'rgba(90,74,58,0.60)' }}>Booking</p>
+                <div className="px-4 sm:px-5 py-3" style={{ background: 'rgba(255,255,255,0.40)', borderBottom: '1px solid rgba(58,48,39,0.06)' }}>
+                  <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.22em] font-semibold" style={{ color: 'rgba(90,74,58,0.60)' }}>Booking</p>
                 </div>
                 <div>
                   {[
-                    { l: 'Activity', v: form.activity },
-                    { l: 'Date', v: form.date ? new Date(form.date + 'T00:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—' },
-                    { l: 'Time', v: (() => { const t = TIME_SLOTS.find(t => t.hours === form.timeSlot); return t ? `${t.icon} ${t.label} · ${t.hours}` : '—'; })() },
-                    { l: 'Guests', v: `${form.participants} ${form.participants === 1 ? 'person' : 'people'}` },
+                    { l: 'Activity',   v: form.activity },
+                    { l: 'Date',       v: form.date ? new Date(form.date + 'T00:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—' },
+                    { l: 'Time',       v: (() => { const t = TIME_SLOTS.find(t => t.hours === form.timeSlot); return t ? `${t.icon} ${t.label} · ${t.hours}` : '—'; })() },
+                    { l: 'Guests',     v: `${form.participants} ${form.participants === 1 ? 'person' : 'people'}` },
                     { l: 'Decoration', v: (() => { const d = SETTINGS.find(d => d.key === form.setting); return d ? `${d.icon} ${d.label}` : '—'; })() },
-                    { l: 'Location', v: form.location || '—' },
+                    { l: 'Location',   v: form.location || '—' },
                   ].map(({ l, v }, idx, arr) => (
-                    <div key={l} className="flex justify-between items-baseline px-5 py-2.5"
+                    <div key={l} className="flex justify-between items-baseline px-4 sm:px-5 py-2 sm:py-2.5"
                       style={{ borderBottom: idx < arr.length - 1 ? '1px solid rgba(58,48,39,0.05)' : 'none' }}>
-                      <span className="font-['Cormorant_Garamond',serif] text-[0.63rem] uppercase tracking-[0.14em] flex-shrink-0 mr-3 font-semibold" style={{ color: 'rgba(90,74,58,0.50)' }}>{l}</span>
-                      <span className="font-['Cormorant_Garamond',serif] italic text-[0.95rem] text-right" style={{ color: 'rgba(58,48,39,0.85)' }}>{v}</span>
+                      <span className="font-['Cormorant_Garamond',serif] text-[0.55rem] sm:text-[0.63rem] uppercase tracking-[0.14em] flex-shrink-0 mr-2 font-semibold" style={{ color: 'rgba(90,74,58,0.50)' }}>{l}</span>
+                      <span className="font-['Cormorant_Garamond',serif] italic text-[0.85rem] sm:text-[0.95rem] text-right" style={{ color: 'rgba(58,48,39,0.85)' }}>{v}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
+              {/* Contact + Notes */}
               <div className="flex flex-col gap-3">
                 {[
                   { title: 'Contact', rows: [
@@ -660,20 +693,20 @@ function BookContent() {
                   ]},
                   { title: 'Notes', rows: [
                     { l: 'Allergies', v: form.allergies || '—' },
-                    { l: 'Requests', v: form.specialRequests || '—' },
-                    { l: 'Theme', v: form.activityTheme || '—' },
+                    { l: 'Requests',  v: form.specialRequests || '—' },
+                    { l: 'Theme',     v: form.activityTheme || '—' },
                   ]},
                 ].map(({ title, rows }) => (
                   <div key={title} className="rounded-2xl overflow-hidden"
                     style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(58,48,39,0.08)', boxShadow: '0 1px 8px rgba(58,48,39,0.04)' }}>
-                    <div className="px-5 py-3" style={{ background: 'rgba(255,255,255,0.40)', borderBottom: '1px solid rgba(58,48,39,0.06)' }}>
-                      <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] uppercase tracking-[0.22em] font-semibold" style={{ color: 'rgba(90,74,58,0.60)' }}>{title}</p>
+                    <div className="px-4 sm:px-5 py-3" style={{ background: 'rgba(255,255,255,0.40)', borderBottom: '1px solid rgba(58,48,39,0.06)' }}>
+                      <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.22em] font-semibold" style={{ color: 'rgba(90,74,58,0.60)' }}>{title}</p>
                     </div>
                     {rows.map(({ l, v }, idx) => (
-                      <div key={l} className="flex justify-between items-baseline px-5 py-2.5"
+                      <div key={l} className="flex justify-between items-baseline px-4 sm:px-5 py-2 sm:py-2.5"
                         style={{ borderBottom: idx < rows.length - 1 ? '1px solid rgba(58,48,39,0.05)' : 'none' }}>
-                        <span className="font-['Cormorant_Garamond',serif] text-[0.62rem] uppercase tracking-[0.14em] flex-shrink-0 mr-2 font-semibold" style={{ color: 'rgba(90,74,58,0.48)' }}>{l}</span>
-                        <span className="font-['Cormorant_Garamond',serif] italic text-[0.92rem] text-right truncate max-w-[70%]" style={{ color: 'rgba(58,48,39,0.82)' }}>{v}</span>
+                        <span className="font-['Cormorant_Garamond',serif] text-[0.55rem] sm:text-[0.62rem] uppercase tracking-[0.14em] flex-shrink-0 mr-2 font-semibold" style={{ color: 'rgba(90,74,58,0.48)' }}>{l}</span>
+                        <span className="font-['Cormorant_Garamond',serif] italic text-[0.85rem] sm:text-[0.92rem] text-right truncate max-w-[65%]" style={{ color: 'rgba(58,48,39,0.82)' }}>{v}</span>
                       </div>
                     ))}
                   </div>
@@ -681,20 +714,21 @@ function BookContent() {
               </div>
             </div>
 
+            {/* ── Price (tiered group discount) ── */}
             {(() => {
               const { rate, label } = getPricing(form.participants);
-              const total = form.participants * rate;
-              const saved = form.participants > 2 ? form.participants * (150 - rate) : 0;
+              const total  = form.participants * rate;
+              const saved  = form.participants > 2 ? form.participants * (150 - rate) : 0;
               return (
-                <div className="flex items-center justify-between px-6 py-4 mb-5 rounded-xl"
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 mb-5 rounded-xl gap-3"
                   style={{ background: 'linear-gradient(135deg,rgba(107,117,86,0.09),rgba(107,117,86,0.05))', border: '1px solid rgba(107,117,86,0.14)' }}>
                   <div>
-                    <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] tracking-[0.22em] uppercase font-semibold" style={{ color: 'rgba(90,74,58,0.55)' }}>Estimated Total</p>
-                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.9rem] mt-0.5" style={{ color: 'rgba(90,74,58,0.55)' }}>
+                    <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] tracking-[0.22em] uppercase font-semibold" style={{ color: 'rgba(90,74,58,0.55)' }}>Estimated Total</p>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.85rem] sm:text-[0.9rem] mt-0.5" style={{ color: 'rgba(90,74,58,0.55)' }}>
                       {form.participants} × {rate} MAD per person
                     </p>
                     {label && (
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.75rem] mt-1 flex items-center gap-1.5" style={{ color: '#6B7556' }}>
+                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.7rem] sm:text-[0.75rem] mt-1 flex items-center gap-1.5 flex-wrap" style={{ color: '#6B7556' }}>
                         <span>✦</span>
                         <span>{label} applied · you save {saved} MAD</span>
                       </p>
@@ -702,43 +736,43 @@ function BookContent() {
                   </div>
                   <div className="text-right">
                     {form.participants > 2 && (
-                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.8rem] line-through" style={{ color: 'rgba(90,74,58,0.30)' }}>
+                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.75rem] sm:text-[0.8rem] line-through" style={{ color: 'rgba(90,74,58,0.30)' }}>
                         {form.participants * 150}
                       </p>
                     )}
-                    <p className="font-['Playfair_Display',serif] italic text-[2rem] leading-none" style={{ color: '#6B7556' }}>{total}</p>
-                    <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] tracking-[0.15em] uppercase mt-0.5" style={{ color: 'rgba(107,117,86,0.65)' }}>MAD</p>
+                    <p className="font-['Playfair_Display',serif] italic text-[1.8rem] sm:text-[2rem] leading-none" style={{ color: '#6B7556' }}>{total}</p>
+                    <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] tracking-[0.15em] uppercase mt-0.5" style={{ color: 'rgba(107,117,86,0.65)' }}>MAD</p>
                   </div>
                 </div>
               );
             })()}
 
             {error && (
-              <div className="flex items-center gap-3 px-4 py-3 mb-4 rounded-xl"
+              <div className="flex items-center gap-3 px-3 sm:px-4 py-3 mb-4 rounded-xl"
                 style={{ background: 'rgba(200,125,135,0.07)', border: '1px solid rgba(200,125,135,0.22)' }}>
-                <span className="text-[#C87D87] flex-shrink-0 text-base">⚠</span>
-                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-[0.95rem]">{error}</p>
+                <span className="text-[#C87D87] flex-shrink-0 text-sm sm:text-base">⚠</span>
+                <p className="font-['Cormorant_Garamond',serif] italic text-[#C87D87] text-[0.85rem] sm:text-[0.95rem]">{error}</p>
               </div>
             )}
 
             <div className="flex gap-3 pt-5 border-t border-[#3a3027]/6">
               <button onClick={() => setStep(2)}
-                className="font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.16em] uppercase px-6 py-3
+                className="font-['Cormorant_Garamond',serif] text-[0.7rem] sm:text-[0.82rem] tracking-[0.16em] uppercase px-4 sm:px-6 py-3
                   rounded-xl border border-[#3a3027]/10 text-[#7a6a5a]/65
                   hover:border-[#3a3027]/18 hover:text-[#7a6a5a]/90 hover:bg-white/40 transition-all duration-200">
                 ← Edit
               </button>
-              <button onClick={handleSubmit} disabled={submitting}
-                className="flex-1 relative overflow-hidden group font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-35"
+              <button onClick={handleSubmit} disabled={submitting || form.participants < MIN_PARTICIPANTS}
+                className="flex-1 relative overflow-hidden group font-['Cormorant_Garamond',serif] text-[0.7rem] sm:text-[0.82rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-35"
                 style={{
                   background: 'linear-gradient(135deg,#C87D87 0%,#b36d77 50%,#C87D87 100%)',
                   boxShadow: submitting ? 'none' : '0 5px 20px rgba(200,125,135,0.28)',
                 }}>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none"/>
                 {submitting ? (
-                  <><div className="w-4 h-4 rounded-full border-2 border-[#FBEAD6]/30 border-t-[#FBEAD6] animate-spin"/><span>Processing…</span></>
+                  <><div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-[#FBEAD6]/30 border-t-[#FBEAD6] animate-spin"/><span className="text-[0.7rem] sm:text-[0.82rem]">Processing…</span></>
                 ) : (
-                  <><span className="opacity-40 text-[0.45rem]">◆</span><span>Confirm Booking</span><span className="opacity-40 text-[0.45rem]">◆</span></>
+                  <><span className="opacity-40 text-[0.4rem] sm:text-[0.45rem]">◆</span><span className="text-[0.7rem] sm:text-[0.82rem]">Confirm Booking</span><span className="opacity-40 text-[0.4rem] sm:text-[0.45rem]">◆</span></>
                 )}
               </button>
             </div>
@@ -747,16 +781,17 @@ function BookContent() {
 
       </main>
 
+      {/* ── Draft indicator ── */}
       <div className="fixed bottom-5 right-5 z-50 flex items-center gap-1.5
         bg-[#FBEAD6]/92 border border-[#3a3027]/8 rounded-xl px-4 py-2.5
         shadow-[0_2px_12px_rgba(58,48,39,0.07)] backdrop-blur-sm
-        font-['Cormorant_Garamond',serif] italic text-[0.78rem] text-[#7a6a5a]/60">
+        font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-[0.78rem] text-[#7a6a5a]/60">
         {saving ? (
-          <><div className="w-3 h-3 rounded-full border border-[#C87D87]/30 border-t-[#C87D87] animate-spin"/>Saving…</>
+          <><div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full border border-[#C87D87]/30 border-t-[#C87D87] animate-spin"/><span className="text-[0.6rem] sm:text-[0.78rem]">Saving…</span></>
         ) : lastSaved ? (
-          <><span className="text-[#6B7556]">✓</span>Saved · {lastSaved.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}</>
+          <><span className="text-[#6B7556] text-xs sm:text-sm">✓</span><span className="text-[0.6rem] sm:text-[0.78rem]">Saved · {lastSaved.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' })}</span></>
         ) : (
-          <><svg width="7" height="7" viewBox="0 0 8 8"><rect x="1" y="1" width="6" height="6" transform="rotate(45 4 4)" fill="none" stroke="#C87D87" strokeWidth="0.8" strokeOpacity="0.45"/></svg>Auto-saving draft</>
+          <><svg width="5" height="5" sm="7" height="7" viewBox="0 0 8 8"><rect x="1" y="1" width="6" height="6" transform="rotate(45 4 4)" fill="none" stroke="#C87D87" strokeWidth="0.8" strokeOpacity="0.45"/></svg><span className="text-[0.6rem] sm:text-[0.78rem]">Auto-saving draft</span></>
         )}
       </div>
 

@@ -5,50 +5,60 @@ import { useRouter } from 'next/navigation';
 const API = process.env.NEXT_PUBLIC_API_URL;
 const AuthContext = createContext(null);
 
+// Helper function to get cookie value
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
 const getToken = () => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('token');
+  return getCookie('token') || localStorage.getItem('token') || null;
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const authFetch = useCallback(async (url, options = {}) => {
-    const token = getToken();
+  // MODIFIED: authFetch with Authorization header fallback
+  const authFetch = async (url, options = {}) => {
+    // Try to get token from cookie first, then localStorage
+    let token = getCookie('token');
+    if (!token) {
+      token = localStorage.getItem('token');
+    }
+    
+    // ⚠️ ZID HAD CONSOLE.LOG
+    console.log('🔑 [authFetch] URL:', url);
+    console.log('🔑 [authFetch] Token exists:', token ? 'YES' : 'NO');
+    if (token) {
+      console.log('🔑 [authFetch] Token (first 20 chars):', token.substring(0, 20) + '...');
+    }
+    
     const headers = {
-      'Content-Type': 'application/json',
+      // Don't set Content-Type for FormData — browser sets it with boundary
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      // Let caller override headers, but auth always wins
       ...options.headers,
     };
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+      console.log('✅ [authFetch] Authorization header added');
+    } else {
+      console.log('❌ [authFetch] No token found!');
     }
-
-    const response = await fetch(url, {
+    
+    return fetch(url, {
       ...options,
       credentials: 'include',
       headers,
     });
+  };
 
-    if (response.status === 401) {
-      localStorage.removeItem('token');
-      setUser(null);
-      router.push('/login?expired=true');
-      throw new Error('Session expirée');
-    }
-
-    return response;
-  }, [router]);
-
-  const fetchMe = useCallback(async () => {
-    const token = getToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
+  const fetchMe = async () => {
     try {
       const res = await authFetch(`${API}/api/profile/me`);
       if (res.status === 403) {
@@ -58,50 +68,78 @@ export function AuthProvider({ children }) {
       if (!res.ok) throw new Error('Not logged in');
       const data = await res.json();
       setUser(data.user ?? data);
-    } catch (err) {
+    } catch (error) {
       setUser(null);
-    } finally {
-      setLoading(false);
     }
-  }, [authFetch, router]);
+  };
 
-  useEffect(() => { fetchMe(); }, [fetchMe]);
+  useEffect(() => {
+    fetchMe()
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
 
-  // ✅ REGISTER FUNCTION
-  const register = async (fullName, email, password, adminCode) => {
-    const res = await fetch(`${API}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ fullName, email, password, adminCode }),
-    });
+  const refreshUser = () => fetchMe().catch(() => {});
+
+  // MODIFIED: Login with localStorage fallback
+  const login = async (email, password, selectedRole, adminCode) => {
+    console.log('🔐 [login] Starting login...');
     
+    const res = await fetch(`${API}/api/auth/login`, {
+      method:      'POST',
+      headers:     { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password, role: selectedRole, adminCode: adminCode || undefined }),
+    });
+
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.message || 'Registration failed');
     }
-    
     const data = await res.json();
     
+    console.log('📦 [login] Response data:', data);
+    console.log('🔑 [login] Token in response:', data.token ? 'YES' : 'NO');
+    
+    // Store token in localStorage as fallback for cross-domain
     if (data.token) {
       localStorage.setItem('token', data.token);
-      setUser(data.user ?? data);
+      console.log('✅ [login] Token stored in localStorage');
+      console.log('🔑 [login] Stored token (first 20 chars):', data.token.substring(0, 20) + '...');
+    } else {
+      // Try to get token from cookie
+      const tokenFromCookie = getCookie('token');
+      console.log('🍪 [login] Token from cookie:', tokenFromCookie ? 'YES' : 'NO');
+      if (tokenFromCookie) {
+        localStorage.setItem('token', tokenFromCookie);
+        console.log('✅ [login] Token from cookie stored in localStorage');
+      } else {
+        console.log('❌ [login] No token found anywhere!');
+      }
     }
     
+    // Verify token was stored
+    const storedToken = localStorage.getItem('token');
+    console.log('🔍 [login] Verify localStorage token:', storedToken ? 'YES' : 'NO');
+    
+    setUser(data.user ?? data);
     return data;
   };
 
-  const login = async (email, password, selectedRole, adminCode) => {
-    const res = await fetch(`${API}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+  // MODIFIED: Register with localStorage fallback
+  const register = async (fullName, email, password, adminCode) => {
+    const res = await fetch(`${API}/api/auth/register`, {
+      method:      'POST',
+      headers:     { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email, password, role: selectedRole, adminCode }),
+      body: JSON.stringify({ fullName, email, password, adminCode: adminCode || undefined }),
     });
+    
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.message);
     }
+
     const data = await res.json();
     if (data.token) localStorage.setItem('token', data.token);
     setUser(data.user ?? data);
@@ -109,22 +147,21 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await authFetch(`${API}/api/auth/logout`, { method: 'POST' }).catch(() => {});
+    await fetch(`${API}/api/auth/logout`, { method: 'POST', credentials: 'include' });
     localStorage.removeItem('token');
     setUser(null);
     router.push('/');
   };
 
+  // Block rendering until auth state is resolved — prevents the race condition
+  if (!authReady) {
+    return null; // or your <LoadingScreen /> if you want a global spinner
+  }
+
   return (
     <AuthContext.Provider value={{ 
-      user,
-      setUser,     // ✅ AJOUTÉ - hadi li kanet na9sa
-      login, 
-      register,
-      logout, 
-      loading, 
-      authFetch, 
-      refreshUser: fetchMe 
+      user, setUser, login, register, logout, loading, refreshUser, 
+      authFetch
     }}>
       {children}
     </AuthContext.Provider>
