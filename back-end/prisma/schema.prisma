@@ -27,7 +27,8 @@ model User {
   fullName      String
   email         String         @unique
   password      String
-  role          String         @default("member")
+  role          String
+  phone     String?         @default("member")
   suspended     Boolean        @default(false)
   avatarUrl     String?
   createdAt     DateTime       @default(now())
