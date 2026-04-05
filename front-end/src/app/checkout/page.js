@@ -721,13 +721,13 @@ export default function CheckoutPage() {
           {(paidMode === 'full'
             ? [
                 { l: 'Activity',     v: booking?.activity || '—' },
-                { l: 'Participants', v: `${participants} persons` },
+                { l: 'Participants', v: `${participants} people` },
                 { l: 'Paid in full', v: `${paidAmount} MAD`, c: 'text-[#6B7556]', big: true },
                 { l: 'Due on arrival', v: '0 MAD', c: 'text-[#3a3027]' },
               ]
             : [
                 { l: 'Activity',      v: booking?.activity || '—' },
-                { l: 'Participants',  v: `${participants} persons` },
+                { l: 'Participants',  v: `${participants} people` },
                 { l: 'Total service', v: `${totalAmount} MAD`,      c: 'text-[#3a3027]' },
                 { l: 'Advance paid',  v: `− ${paidAmount} MAD`,     c: 'text-[#6B7556]' },
                 { l: 'Remaining',     v: `${remaining} MAD`,         c: 'text-[#C87D87]', big: true },
@@ -743,7 +743,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="px-6 py-6" style={{ animation: 'fadeInUp .4s ease .7s both' }}>
-          <Link href="/account"
+          <Link href="/account#bookings"
             className="relative overflow-hidden group font-['Cormorant_Garamond',serif] text-[0.82rem] tracking-[0.24em] uppercase text-[#FBEAD6] py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2"
             style={{ background: 'linear-gradient(135deg,#6B7556 0%,#4a5240 100%)', boxShadow: '0 5px 18px rgba(107,117,86,0.26)' }}>
             <span className="opacity-40 text-[0.45rem]">◆</span>
