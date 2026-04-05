@@ -1,58 +1,49 @@
 'use client';
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 const AuthContext = createContext(null);
 
-// Helper function to get cookie value
 const getCookie = (name) => {
+  if (typeof document === 'undefined') return null;
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop().split(';').shift();
   return null;
 };
 
+const getToken = () => {
+  return getCookie('token') || localStorage.getItem('token') || null;
+};
+
 export function AuthProvider({ children }) {
-  const [user,    setUser]    = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,      setUser]      = useState(null);
+  const [loading,   setLoading]   = useState(true);  // true until auth is resolved
+  const [authReady, setAuthReady] = useState(false);  // true after first fetchMe
   const router = useRouter();
 
-  // MODIFIED: authFetch with Authorization header fallback
-  const authFetch = async (url, options = {}) => {
-    // Try to get token from cookie first, then localStorage
-    let token = getCookie('token');
-    if (!token) {
-      token = localStorage.getItem('token');
-    }
+  const authFetch = useCallback(async (url, options = {}) => {
+    const token = getToken();
     
-    // ⚠️ ZID HAD CONSOLE.LOG
-    console.log('🔑 [authFetch] URL:', url);
-    console.log('🔑 [authFetch] Token exists:', token ? 'YES' : 'NO');
-    if (token) {
-      console.log('🔑 [authFetch] Token (first 20 chars):', token.substring(0, 20) + '...');
-    }
-    
+    const isFormData = options.body instanceof FormData;
+
     const headers = {
-      'Content-Type': 'application/json',
+      // Don't set Content-Type for FormData — browser sets it with boundary
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      // Let caller override headers, but auth always wins
       ...options.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-      console.log('✅ [authFetch] Authorization header added');
-    } else {
-      console.log('❌ [authFetch] No token found!');
-    }
-    
+
     return fetch(url, {
       ...options,
       credentials: 'include',
       headers,
     });
-  };
+  }, []);
 
-  const fetchMe = async () => {
+  const fetchMe = useCallback(async () => {
     try {
       const res = await authFetch(`${API}/api/auth/me`);
       if (res.status === 403) {
@@ -63,101 +54,96 @@ export function AuthProvider({ children }) {
       if (!res.ok) throw new Error('Not logged in');
       const data = await res.json();
       setUser(data.user ?? data);
-    } catch (error) {
+    } catch {
       setUser(null);
+    } finally {
+      setLoading(false);
+      setAuthReady(true);
     }
-  };
+  }, [authFetch, router]);
 
   useEffect(() => {
-    fetchMe()
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
+    fetchMe();
+  }, [fetchMe]);
 
-  const refreshUser = () => fetchMe().catch(() => {});
+  const refreshUser = useCallback(() => fetchMe(), [fetchMe]);
 
-  // MODIFIED: Login with localStorage fallback
   const login = async (email, password, selectedRole, adminCode) => {
-    console.log('🔐 [login] Starting login...');
-    
     const res = await fetch(`${API}/api/auth/login`, {
       method:      'POST',
       headers:     { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email, password, role: selectedRole, adminCode: adminCode || undefined }),
+      body: JSON.stringify({
+        email,
+        password,
+        role: selectedRole,
+        adminCode: adminCode || undefined,
+      }),
     });
-    
+
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.message || 'Login failed');
     }
+
     const data = await res.json();
-    
-    console.log('📦 [login] Response data:', data);
-    console.log('🔑 [login] Token in response:', data.token ? 'YES' : 'NO');
-    
-    // Store token in localStorage as fallback for cross-domain
+
     if (data.token) {
       localStorage.setItem('token', data.token);
-      console.log('✅ [login] Token stored in localStorage');
-      console.log('🔑 [login] Stored token (first 20 chars):', data.token.substring(0, 20) + '...');
     } else {
-      // Try to get token from cookie
-      const tokenFromCookie = getCookie('token');
-      console.log('🍪 [login] Token from cookie:', tokenFromCookie ? 'YES' : 'NO');
-      if (tokenFromCookie) {
-        localStorage.setItem('token', tokenFromCookie);
-        console.log('✅ [login] Token from cookie stored in localStorage');
-      } else {
-        console.log('❌ [login] No token found anywhere!');
-      }
+      const cookieToken = getCookie('token');
+      if (cookieToken) localStorage.setItem('token', cookieToken);
     }
-    
-    // Verify token was stored
-    const storedToken = localStorage.getItem('token');
-    console.log('🔍 [login] Verify localStorage token:', storedToken ? 'YES' : 'NO');
-    
+
     setUser(data.user ?? data);
     return data;
   };
 
-  // MODIFIED: Register with localStorage fallback
   const register = async (fullName, email, password, adminCode) => {
     const res = await fetch(`${API}/api/auth/register`, {
       method:      'POST',
       headers:     { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ fullName, email, password, adminCode: adminCode || undefined }),
+      body: JSON.stringify({
+        fullName,
+        email,
+        password,
+        adminCode: adminCode || undefined,
+      }),
     });
-    
+
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.message || 'Registration failed');
     }
+
     const data = await res.json();
-    
-    // Store token if returned
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-    }
-    
+    if (data.token) localStorage.setItem('token', data.token);
     setUser(data.user ?? data);
     return data;
   };
 
-  // MODIFIED: Logout with localStorage cleanup
   const logout = async () => {
-    await fetch(`${API}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+    try {
+      await authFetch(`${API}/api/auth/logout`, { method: 'POST' });
+    } catch {}
     localStorage.removeItem('token');
     setUser(null);
     router.push('/');
     router.refresh();
   };
 
+  // Block rendering until auth state is resolved — prevents the race condition
+  if (!authReady) {
+    return null; // or your <LoadingScreen /> if you want a global spinner
+  }
+
   return (
-    <AuthContext.Provider value={{ 
-      user, setUser, login, register, logout, loading, refreshUser, 
-      authFetch
+    <AuthContext.Provider value={{
+      user, setUser,
+      login, register, logout,
+      loading, authReady,
+      refreshUser, authFetch,
     }}>
       {children}
     </AuthContext.Provider>
@@ -165,7 +151,7 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used inside AuthProvider');
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  return ctx;
 }
