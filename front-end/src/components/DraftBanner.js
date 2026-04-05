@@ -1,56 +1,72 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function DraftBanner() {
-  const [draft, setDraft] = useState(null);
-  const { authFetch } = useAuth();  // ✅ HAD CHI MZYAN
+  const router = useRouter();
+  const [draft,   setDraft]   = useState(null);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const loadDraft = async () => {
-      try {
-        const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts`);  // ✅ MZYAN
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.id) setDraft(data);
-        }
-      } catch (err) {
-        console.error('Failed to load draft:', err);
-      }
-    };
-    loadDraft();
-  }, [authFetch]);
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)       // ← guard non-200 responses
+      .then(d => {
+        if (d?.id) { setDraft(d); setVisible(true); }
+      })
+      .catch(() => {});
+  }, []);
 
-  const deleteDraft = async () => {
-    if (!draft?.id) return;
-    try {
-      await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts/${draft.id}`, {  // ✅ MZYAN
-        method: 'DELETE',
-      });
-      setDraft(null);
-    } catch (err) {
-      console.error('Failed to delete draft:', err);
-    }
+  const discard = async () => {
+    if (!draft?.id) return;                    // ← guard null draft
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts/${draft.id}`,
+      { method: 'DELETE', credentials: 'include' });
+    setDraft(null);                            // ← clear draft state too
+    setVisible(false);
   };
 
-  if (!draft) return null;
+  const resume = () => router.push('/book');
+
+  if (!visible || !draft) return null;         // ← this already guards render
+
+  const fd = draft.formData || {};
 
   return (
-    <div className="fixed bottom-5 left-5 z-50 bg-[#6B7556] text-[#FBEAD6] px-4 py-2 rounded-xl shadow-lg border border-[#FBEAD6]/20">
-      <div className="flex items-center gap-3">
-        <span className="text-sm">✧</span>
-        <p className="font-['Cormorant_Garamond',serif] italic text-sm">
-          You have an unfinished booking.
-        </p>
-        <Link href={`/book?draftId=${draft.id}`}
-          className="font-['Cormorant_Garamond',serif] text-xs uppercase tracking-wider bg-[#FBEAD6]/20 px-3 py-1 rounded-lg hover:bg-[#FBEAD6]/30 transition-colors">
-          Resume
-        </Link>
-        <button onClick={deleteDraft}
-          className="font-['Cormorant_Garamond',serif] text-xs uppercase tracking-wider text-[#FBEAD6]/60 hover:text-[#FBEAD6] transition-colors">
-          ✕
-        </button>
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
+      style={{ animation: 'fadeInUp .4s ease both' }}>
+      <div className="bg-[#FBEAD6] border border-[#C87D87]/25 rounded-2xl px-5 py-4
+        shadow-[0_12px_40px_rgba(58,48,39,0.14)] flex items-center gap-4">
+
+        <div className="w-9 h-9 rounded-xl bg-[#C87D87]/10 border border-[#C87D87]/20
+          flex items-center justify-center flex-shrink-0">
+          <span className="text-[#C87D87] text-sm">◈</span>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="font-['Playfair_Display',serif] italic text-[#3a3027] text-sm leading-tight">
+            You have an unfinished booking
+          </p>
+          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/60 text-xs mt-0.5 truncate">
+            {fd.activity || 'Activity not yet selected'}
+            {fd.date
+              ? ` · ${new Date(fd.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+              : ''}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button onClick={resume}
+            className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase
+              px-3 py-1.5 bg-[#C87D87] text-[#FBEAD6] rounded-lg hover:bg-[#b36d77] transition-all">
+            Continue
+          </button>
+          <button onClick={discard}
+            className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase
+              px-3 py-1.5 border border-[#3a3027]/12 text-[#7a6a5a]/60 rounded-lg
+              hover:bg-[#3a3027]/5 transition-all">
+            Discard
+          </button>
+        </div>
+
       </div>
     </div>
   );
