@@ -1,91 +1,105 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext'; // Ajoute had l'import
 
-export default function DraftBanner() {
+const API = process.env.NEXT_PUBLIC_API_URL;
+const AuthContext = createContext(null);
+
+const getToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+};
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { user, authFetch, loading } = useAuth(); // Jib authFetch mn context
-  const [draft, setDraft] = useState(null);
-  const [visible, setVisible] = useState(false);
 
-  useEffect(() => {
-    // Tstanna 7ta ykoun loading finished o user connecté
-    if (loading) return;
+  const authFetch = useCallback(async (url, options = {}) => {
+    const token = getToken();
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
     
-    // Ma tb3atch request ila makaynch user (mader login)
-    if (!user) return;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
-    // Khdem b authFetch (kayzid token otomatiquement)
-    authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts`)
-      .then(async (r) => {
-        if (r.ok) {
-          const d = await r.json();
-          if (d?.id) {
-            setDraft(d);
-            setVisible(true);
-          }
-        }
-        return null;
-      })
-      .catch(() => {});
-  }, [user, loading, authFetch]); // Tcharge fach user tbeddel
-
-  const discard = async () => {
-    if (!draft?.id) return;
-    
-    // Khdem b authFetch l DELETE
-    await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts/${draft.id}`, {
-      method: 'DELETE'
+    const response = await fetch(url, {
+      ...options,
+      credentials: 'include',
+      headers,
     });
-    setDraft(null);
-    setVisible(false);
+
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      setUser(null);
+      router.push('/login?expired=true');
+      throw new Error('Session expirée');
+    }
+
+    return response;
+  }, [router]);
+
+  const fetchMe = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await authFetch(`${API}/api/profile/me`);
+      if (res.status === 403) {
+        router.push('/login?suspended=true');
+        return;
+      }
+      if (!res.ok) throw new Error('Not logged in');
+      const data = await res.json();
+      setUser(data.user ?? data);
+    } catch (err) {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [authFetch, router]);
+
+  useEffect(() => { fetchMe(); }, [fetchMe]);
+
+  const login = async (email, password, selectedRole, adminCode) => {
+    const res = await fetch(`${API}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password, role: selectedRole, adminCode }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message);
+    }
+    const data = await res.json();
+    if (data.token) localStorage.setItem('token', data.token);
+    setUser(data.user ?? data);
+    return data;
   };
 
-  const resume = () => router.push('/book');
-
-  if (!visible || !draft) return null;
-
-  const fd = draft.formData || {};
+  const logout = async () => {
+    await authFetch(`${API}/api/auth/logout`, { method: 'POST' }).catch(() => {});
+    localStorage.removeItem('token');
+    setUser(null);
+    router.push('/');
+  };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
-      style={{ animation: 'fadeInUp .4s ease both' }}>
-      <div className="bg-[#FBEAD6] border border-[#C87D87]/25 rounded-2xl px-5 py-4
-        shadow-[0_12px_40px_rgba(58,48,39,0.14)] flex items-center gap-4">
-
-        <div className="w-9 h-9 rounded-xl bg-[#C87D87]/10 border border-[#C87D87]/20
-          flex items-center justify-center flex-shrink-0">
-          <span className="text-[#C87D87] text-sm">◈</span>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="font-['Playfair_Display',serif] italic text-[#3a3027] text-sm leading-tight">
-            You have an unfinished booking
-          </p>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/60 text-xs mt-0.5 truncate">
-            {fd.activity || 'Activity not yet selected'}
-            {fd.date
-              ? ` · ${new Date(fd.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
-              : ''}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button onClick={resume}
-            className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase
-              px-3 py-1.5 bg-[#C87D87] text-[#FBEAD6] rounded-lg hover:bg-[#b36d77] transition-all">
-            Continue
-          </button>
-          <button onClick={discard}
-            className="font-['Cormorant_Garamond',serif] text-[0.6rem] tracking-widest uppercase
-              px-3 py-1.5 border border-[#3a3027]/12 text-[#7a6a5a]/60 rounded-lg
-              hover:bg-[#3a3027]/5 transition-all">
-            Discard
-          </button>
-        </div>
-
-      </div>
-    </div>
+    <AuthContext.Provider value={{ user, login, logout, loading, authFetch, refreshUser: fetchMe }}>
+      {children}
+    </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  return ctx;
 }
