@@ -130,7 +130,7 @@ function LoadingScreen() {
 }
 
 export default function AccountPage() {
-  const { user, setUser } = useAuth()
+  const { user, setUser, authFetch } = useAuth()
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('personal')
   const [collapsed, setCollapsed] = useState(false)
@@ -160,7 +160,7 @@ export default function AccountPage() {
   const [cancellingId, setCancellingId] = useState(null)
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me`, { credentials: 'include' })
+    authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me`)
       .then(res => { if (!res.ok) throw new Error('Failed to load profile'); return res.json() })
       .then(data => {
         setProfile(data)
@@ -169,18 +169,18 @@ export default function AccountPage() {
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [authFetch])
 
   useEffect(() => {
     if (activeSection !== 'bookings') return
     setBookingsLoading(true)
     setBookingsError(null)
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bookings/my`, { credentials: 'include' })
+    authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bookings/my`)
       .then(res => { if (!res.ok) throw new Error('Failed to load bookings'); return res.json() })
       .then(data => setBookings(Array.isArray(data) ? data : []))
       .catch(err => setBookingsError(err.message))
       .finally(() => setBookingsLoading(false))
-  }, [activeSection])
+  }, [activeSection, authFetch])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -196,7 +196,7 @@ export default function AccountPage() {
     const formData = new FormData()
     formData.append('avatar', file)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/avatar`, { method: 'PATCH', credentials: 'include', body: formData })
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/avatar`, { method: 'PATCH', body: formData })
       const data = await res.json()
       if (!res.ok) { setAvatarMsg({ type: 'error', text: data.message }); return }
       setProfile(prev => ({ ...prev, avatarUrl: data.avatarUrl }))
@@ -209,7 +209,7 @@ export default function AccountPage() {
   const handleName = async (e) => {
     e.preventDefault(); setNameLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/name`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(nameForm) })
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/name`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nameForm) })
       const data = await res.json()
       if (!res.ok) { setNameMsg({ type: 'error', text: data.message }); return }
       setProfile(prev => ({ ...prev, fullName: data.fullName }))
@@ -222,7 +222,7 @@ export default function AccountPage() {
   const handleEmail = async (e) => {
     e.preventDefault(); setEmailLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/email`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(emailForm) })
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/email`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(emailForm) })
       const data = await res.json()
       if (!res.ok) { setEmailMsg({ type: 'error', text: data.message }); return }
       setProfile(prev => ({ ...prev, email: data.email }))
@@ -238,7 +238,7 @@ export default function AccountPage() {
     if (passForm.newPassword !== passForm.confirmPassword) { setPassMsg({ type: 'error', text: 'Passwords do not match' }); return }
     setPassLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/password`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(passForm) })
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/password`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(passForm) })
       const data = await res.json()
       if (!res.ok) { setPassMsg({ type: 'error', text: data.message }); return }
       setPassMsg({ type: 'success', text: 'Password updated successfully' })
@@ -250,7 +250,7 @@ export default function AccountPage() {
   const handleDelete = async (e) => {
     e.preventDefault(); setDeleteLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/verify-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ password: deleteForm.password }) })
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/verify-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: deleteForm.password }) })
       const data = await res.json()
       if (!res.ok) { setDeleteMsg({ type: 'error', text: data.message }); return }
       setShowDeleteModal(true)
@@ -260,7 +260,7 @@ export default function AccountPage() {
   const confirmDelete = async () => {
     setShowDeleteModal(false); setDeleteLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ password: deleteForm.password }) })
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: deleteForm.password }) })
       const data = await res.json()
       if (!res.ok) { setDeleteMsg({ type: 'error', text: data.message }); return }
       setUser(null); router.push('/')
@@ -268,7 +268,7 @@ export default function AccountPage() {
   }
 
   const handleLogout = async () => {
-    try { await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' }) } catch {}
+    try { await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, { method: 'POST' }) } catch {}
     setUser(null); router.push('/')
   }
 
@@ -276,7 +276,7 @@ export default function AccountPage() {
     if (!cancelTarget) return
     setCancellingId(cancelTarget.id); setCancelTarget(null)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/bookings/${cancelTarget.id}/cancel`, { method: 'PATCH', credentials: 'include' })
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/bookings/${cancelTarget.id}/cancel`, { method: 'PATCH' })
       const data = await res.json()
       if (!res.ok) { alert(data.message); return }
       setBookings(prev => prev.map(b => b.id === cancelTarget.id ? { ...b, status: 'cancelled' } : b))
