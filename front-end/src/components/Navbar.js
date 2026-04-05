@@ -161,25 +161,34 @@ export default function Navbar() {
 
   if (loading) return null;
 
-  const Avatar = ({ size = 8, textSize = 'text-sm' }) =>
-    avatarUrl ? (
+const Avatar = ({ size = 8, textSize = 'text-sm' }) => {
+  const [imgError, setImgError] = useState(false);
+  
+  if (avatarUrl && !imgError) {
+    return (
       <img
         src={avatarUrl.startsWith('http')
           ? avatarUrl
           : `${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`
         }
         alt="avatar"
+        onError={() => setImgError(true)}  // ✅ ILA JAT 400, ykhwi l'image
         className={`w-${size} h-${size} rounded-full object-cover flex-shrink-0 shadow-sm transition-all duration-300 ${
           dropdownOpen ? 'ring-2 ring-[#C87D87]' : 'ring-2 ring-[#C87D87]/30 group-hover:ring-[#C87D87]'
         }`}
       />
-    ) : (
-      <div className={`w-${size} h-${size} rounded-full bg-gradient-to-br from-[#C87D87] to-[#FBEAD6] flex items-center justify-center text-[#6B7556] font-['Playfair_Display',serif] font-bold ${textSize} flex-shrink-0 shadow-sm transition-all duration-300 ${
-        dropdownOpen ? 'ring-2 ring-[#C87D87]' : 'ring-2 ring-[#C87D87]/30 group-hover:ring-[#C87D87]'
-      }`}>
-        {displayName.charAt(0).toUpperCase()}
-      </div>
     );
+  }
+  
+  // Fallback l texte
+  return (
+    <div className={`w-${size} h-${size} rounded-full bg-gradient-to-br from-[#C87D87] to-[#FBEAD6] flex items-center justify-center text-[#6B7556] font-['Playfair_Display',serif] font-bold ${textSize} flex-shrink-0 shadow-sm transition-all duration-300 ${
+      dropdownOpen ? 'ring-2 ring-[#C87D87]' : 'ring-2 ring-[#C87D87]/30 group-hover:ring-[#C87D87]'
+    }`}>
+      {displayName.charAt(0).toUpperCase()}
+    </div>
+  );
+};
 
   return (
     <>
