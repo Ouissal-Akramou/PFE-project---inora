@@ -8,8 +8,27 @@ export default function DraftBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)       // ← guard non-200 responses
+    // Tchuf ila kayn token f localStorage wla cookie
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('No token found, skipping draft fetch');
+      return; // Ma tb3atch request ila ma3ndekch token
+    }
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts`, { 
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${token}` // Zid token f headers
+      }
+    })
+      .then(r => {
+        if (r.status === 401) {
+          // Token expired wla invalid
+          localStorage.removeItem('token');
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      })
       .then(d => {
         if (d?.id) { setDraft(d); setVisible(true); }
       })
@@ -17,16 +36,24 @@ export default function DraftBanner() {
   }, []);
 
   const discard = async () => {
-    if (!draft?.id) return;                    // ← guard null draft
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts/${draft.id}`,
-      { method: 'DELETE', credentials: 'include' });
-    setDraft(null);                            // ← clear draft state too
+    if (!draft?.id) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/drafts/${draft.id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    setDraft(null);
     setVisible(false);
   };
 
   const resume = () => router.push('/book');
 
-  if (!visible || !draft) return null;         // ← this already guards render
+  if (!visible || !draft) return null;
 
   const fd = draft.formData || {};
 
