@@ -1,18 +1,15 @@
-import express from 'express';
-import { protect } from '../Middlewares/auth.js';
+import express      from 'express';
+import { protect }  from '../Middlewares/auth.js';
 import {
   getNotifications,
-  markAsRead,
-  markAllAsRead,
-  deleteNotification,
+  markAllRead,
+  markOneRead,
 } from '../Controllers/notifications.js';
 
 const router = express.Router();
 
-// ✅ ALL routes need authentication
-router.get('/', protect, getNotifications);
-router.patch('/:id/read', protect, markAsRead);
-router.patch('/read-all', protect, markAllAsRead);
-router.delete('/:id', protect, deleteNotification);
+router.get(   '/',            protect, getNotifications);
+router.patch( '/read-all',    protect, markAllRead);      // ✅ static before /:id
+router.patch( '/:id/read',    protect, markOneRead);
 
 export default router;
