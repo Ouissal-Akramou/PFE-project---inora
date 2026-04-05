@@ -1,5 +1,80 @@
 import { prisma } from '../lib/prisma.js';
-import jwt from 'jsonwebtoken';
+import jwt        from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
+
+// ── Mailer ────────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const sendBookingConfirmedEmail = async (booking) => {
+  const checkoutUrl = `${process.env.FRONTEND_URL}/checkout?bookingId=${booking.id}`;
+  const paymentLink = `${process.env.FRONTEND_URL}/checkout?bookingId=${booking.id}`;
+
+  await transporter.sendMail({
+    from:    `"Inora" <${process.env.SMTP_USER}>`,
+    to:      booking.email,
+    subject: `✦ Your booking is confirmed — proceed to payment`,
+    html: `
+      <div style="font-family:'Georgia',serif;max-width:560px;margin:0 auto;background:#FBEAD6;padding:40px 32px;border-radius:16px;">
+        <div style="text-align:center;margin-bottom:32px;">
+          <p style="font-size:11px;letter-spacing:0.4em;text-transform:uppercase;color:#C87D87;margin:0 0 6px;">Inora</p>
+          <h1 style="font-size:28px;font-style:italic;color:#3a3027;margin:0;">Booking Confirmed</h1>
+          <div style="width:48px;height:1px;background:#C87D87;margin:12px auto 0;opacity:0.4;"></div>
+        </div>
+        <p style="font-size:15px;color:#5a4a3a;line-height:1.7;margin-bottom:8px;">
+          Dear <strong>${booking.fullName}</strong>,
+        </p>
+        <p style="font-size:15px;color:#5a4a3a;line-height:1.7;margin-bottom:28px;">
+          Great news — your booking request has been reviewed and
+          <strong style="color:#6B7556;">confirmed</strong> by our team.
+          Your spot is reserved. Proceed to payment below to secure your experience.
+        </p>
+        <div style="background:rgba(255,255,255,0.70);border:1px solid rgba(58,48,39,0.08);border-radius:12px;overflow:hidden;margin-bottom:28px;">
+          <div style="padding:12px 20px;background:rgba(255,255,255,0.50);border-bottom:1px solid rgba(58,48,39,0.06);">
+            <p style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(90,74,58,0.70);margin:0;font-weight:600;">Your Booking</p>
+          </div>
+          ${[
+            ['Reference', `#${String(booking.id).padStart(5, '0')}`],
+            ['Activity',  booking.activity  || '—'],
+            ['Date',      booking.date ? new Date(booking.date).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) : '—'],
+            ['Time',      booking.timeSlot  || '—'],
+            ['Guests',    `${booking.participants ?? 1} ${(booking.participants ?? 1) === 1 ? 'person' : 'people'}`],
+            ['Location',  booking.location  || '—'],
+          ].map(([label, value]) => `
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 20px;border-bottom:1px solid rgba(58,48,39,0.05);">
+              <span style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(90,74,58,0.55);font-weight:600;flex-shrink:0;margin-right:12px;">${label}</span>
+              <span style="font-size:14px;font-style:italic;color:rgba(58,48,39,0.90);text-align:right;">${value}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div style="text-align:center;margin-bottom:28px;">
+          <a href="${paymentLink}"
+            style="display:inline-block;font-family:'Georgia',serif;font-style:italic;font-size:13px;
+                   letter-spacing:0.22em;text-transform:uppercase;color:#FBEAD6;
+                   background:linear-gradient(135deg,#6B7556 0%,#4a5240 50%,#6B7556 100%);
+                   padding:14px 36px;border-radius:12px;text-decoration:none;
+                   box-shadow:0 5px 20px rgba(107,117,86,0.30);">
+            ✦ Proceed to Payment ✦
+          </a>
+        </div>
+        <p style="font-size:12px;color:rgba(90,74,58,0.45);line-height:1.6;margin-bottom:28px;text-align:center;">
+          If the button doesn't work, copy this link into your browser:<br/>
+          <a href="${paymentLink}" style="color:#C87D87;word-break:break-all;font-style:italic;">${checkoutUrl}</a>
+        </p>
+        <div style="text-align:center;padding-top:24px;border-top:1px solid rgba(200,125,135,0.20);">
+          <p style="font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(90,74,58,0.35);margin:0;">
+            Inora · Your gathering, beautifully arranged.
+          </p>
+        </div>
+      </div>
+    `,
+  });
+};
 
 // ── Helpers ──────────────────────────────────────────
 // MODIFIÉ : supporte cookie ET header Authorization
@@ -150,6 +225,7 @@ export const createBooking = async (req, res) => {
         date:             bookingData.date ? new Date(bookingData.date) : null,
         timeSlot:         bookingData.timeSlot         || null,
         setting:          bookingData.setting          || null,
+        location:         bookingData.location         || null,
         allergies:        bookingData.allergies        || null,
         specialRequests:  bookingData.specialRequests  || null,
         additionalNotes:  bookingData.additionalNotes  || null,
@@ -217,7 +293,7 @@ export const updateBookingStatus = async (req, res) => {
   if (isNaN(bookingId)) return res.status(400).json({ message: 'Invalid booking ID' });
 
   const { status } = req.body;
-  const io = req.app.get('io'); // ← grab io instance
+  const io = req.app.get('io');
 
   try {
     // Vérifier que l'utilisateur est admin
@@ -243,7 +319,7 @@ export const updateBookingStatus = async (req, res) => {
       return null;
     };
 
-    // ── confirmed → payment notification ──
+    // ── confirmed → notification + email ──
     if (status === 'confirmed') {
       const targetUserId = await resolveUserId();
       if (targetUserId) {
@@ -263,7 +339,6 @@ export const updateBookingStatus = async (req, res) => {
           },
         });
 
-        // ← THIS WAS MISSING
         io?.to(`user_${targetUserId}`).emit('notification', {
           id:        notif.id,
           type:      notif.type,
@@ -278,6 +353,11 @@ export const updateBookingStatus = async (req, res) => {
       } else {
         console.warn(`⚠️ No user found for booking ${bookingId} — no notification sent`);
       }
+
+      // ── send confirmation email ──
+      sendBookingConfirmedEmail(booking).catch(err =>
+        console.error('Booking confirmed email error:', err.message)
+      );
     }
 
     // ── completed → review request notification ──
@@ -296,7 +376,6 @@ export const updateBookingStatus = async (req, res) => {
           },
         });
 
-        // ← THIS WAS MISSING TOO
         io?.to(`user_${targetUserId}`).emit('notification', {
           id:        notif.id,
           type:      notif.type,

@@ -82,7 +82,7 @@ model Booking {
   additionalNotes  String?
   preferredContact String        @default("telephone")
   activityTheme    String?
-
+  location   String?  
   // ── Draft fields ─────────────────────────────────────────────
   isDraft          Boolean       @default(true)   // ← NEW: true until submitted
   draftId          String?       // ← NEW: links to originating Draft (nullable after submit)

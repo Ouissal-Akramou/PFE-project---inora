@@ -17,7 +17,7 @@ import {
 } from '../Controllers/auth.js';
 
 import { validations, errorValidatorHandler } from '../Middlewares/Validations.js';
-import { protect, isAdmin } from '../Middlewares/auth.js'; // ✅ named imports
+import { protect, isAdmin } from '../Middlewares/auth.js'; // ← Named import for isAdmin
 
 const router = express.Router();
 
@@ -27,7 +27,7 @@ router.post('/register',        validations.register,       errorValidatorHandle
 router.post('/reset-password',  validations.resetPassword,  errorValidatorHandler, resetPassword);
 router.post('/forgot-password', validations.forgotPassword, errorValidatorHandler, forgotPassword);
 router.post('/logout',          logout);
-router.get( '/me',              protect, getMe); // ✅ protect — was unguarded
+router.get( '/me',              protect, getMe);
 
 // ── Profile (authenticated) ──
 router.post(  '/avatar',          protect, upload.single('avatar'), updateAvatar);
@@ -37,7 +37,7 @@ router.patch( '/update-password', protect, updatePassword);
 router.delete('/delete-account',  protect, deleteAccount);
 
 // ── Admin ──
-router.get(  '/admin/users',             isAdmin, getAdminUsers);      // ✅ isAdmin not just protect
-router.patch('/admin/users/:id/suspend', isAdmin, toggleSuspendUser);  // ✅ isAdmin
+router.get(  '/admin/users',             isAdmin, getAdminUsers);      // ✅ Now works
+router.patch('/admin/users/:id/suspend', isAdmin, toggleSuspendUser);  // ✅ Now works
 
 export default router;

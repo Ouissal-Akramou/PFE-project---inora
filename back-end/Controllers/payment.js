@@ -1,44 +1,9 @@
-import Stripe from 'stripe';
-import { prisma } from '../lib/prisma.js';
-import jwt from 'jsonwebtoken';  // ← ZID HADI
+import Stripe        from 'stripe';
+import { prisma }    from '../lib/prisma.js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const ADVANCE_AMOUNT = 250;
-const PRICE_PER_PERSON = 150;
-
-// Middleware to get user
-const authenticateUser = async (req, res, next) => {
-  try {
-    let token = req.cookies?.token;
-    
-    if (!token && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        token = authHeader.split(' ')[1];
-      }
-    }
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: { id: true, role: true, email: true }
-    });
-    
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-    
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error('Auth error:', error.message);
-    res.status(401).json({ error: 'Invalid token' });
-  }
-};
+const stripe          = new Stripe(process.env.STRIPE_SECRET_KEY);
+const ADVANCE_AMOUNT  = 250;
+const PRICE_PER_PERSON = 150; // must match your frontend constant
 
 // ── POST /api/payments/create-intent ────────────────────────────
 export const createPaymentIntent = async (req, res) => {
@@ -66,24 +31,17 @@ export const createPaymentIntent = async (req, res) => {
     if (booking.paymentStatus === 'PAID')
       return res.status(400).json({ error: 'Already paid' });
 
-    const participants = parseInt(booking.participants) || 1;
-    const totalAmount = participants * PRICE_PER_PERSON;
-    const amountToPay = payMode === 'full' ? totalAmount : ADVANCE_AMOUNT;
-
-    console.log('💰 Creating payment intent:', {
-      bookingId,
-      amount: amountToPay,
-      payMode,
-      userId: req.user.id
-    });
+    const participants  = parseInt(booking.participants) || 1;
+    const totalAmount   = participants * PRICE_PER_PERSON;
+    const amountToPay   = payMode === 'full' ? totalAmount : ADVANCE_AMOUNT;
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountToPay * 100,
+      amount:   amountToPay * 100, // ← charge the right amount
       currency: 'usd',
       metadata: {
         bookingId: String(bookingId),
-        userId: String(req.user.id),
-        payMode: payMode ?? 'advance',
+        userId:    String(req.user.id),
+        payMode:   payMode ?? 'advance', // ← store it in metadata too
       },
       description: `Réservation Inora — ${booking.activity} (${payMode === 'full' ? 'full' : 'advance'})`,
     });
@@ -96,7 +54,7 @@ export const createPaymentIntent = async (req, res) => {
   }
 };
 
-// ── POST /api/payments/confirm ───────────────────────────────────
+// ── POST /api/payments/confirm ────────────────────────────────────
 export const confirmPayment = async (req, res) => {
   const { paymentIntentId, bookingId, payMode } = req.body;
 
@@ -125,17 +83,22 @@ export const confirmPayment = async (req, res) => {
     }
 
     const participants = parseInt(booking?.participants) || 1;
-    const totalAmount = participants * PRICE_PER_PERSON;
+    const totalAmount  = participants * PRICE_PER_PERSON; // ← now defined
 
     const updated = await prisma.booking.update({
       where: { id: parseInt(bookingId) },
       data: {
         paymentStatus: 'PAID',
-        paymentMode: payMode ?? 'advance',
-        advancePaid: payMode === 'full' ? totalAmount : ADVANCE_AMOUNT,
-        paidAt: new Date(),
+        paymentMode:   payMode ?? 'advance', // ← now defined
+        advancePaid:   payMode === 'full' ? totalAmount : ADVANCE_AMOUNT,
+        paidAt:        new Date(),
       },
     });
+
+    // ── Send confirmation email (fire-and-forget) ──
+    sendPaymentConfirmationEmail(updated, payMode, amountPaid).catch(err =>
+      console.error('Payment email error:', err.message)
+    );
 
     res.json({ success: true, booking: updated });
 

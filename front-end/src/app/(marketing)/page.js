@@ -9,10 +9,11 @@ import DraftBanner from '@/components/DraftBanner';
 import { DEFAULT_REVIEWS } from '@/lib/defaultReviews';
 
 // ─── Data ─────────────────────────────────────────────────────────
+// ─── Data ─────────────────────────────────────────────────────────
 const activities = [
-  { img: 'https://images.unsplash.com/photo-1612278675615-7b093b07772d', tag: '01', title: 'Crochet Circle',   desc: 'A slow, meditative craft that brings warmth to any setting.' },
-  { img: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b', tag: '02', title: 'Painting Session', desc: 'Express freely on canvas — no experience needed, only the desire to create.' },
-  { img: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261', tag: '03', title: 'Pottery Workshop', desc: 'Shape and sculpt in an intimate setting. Grounding and deeply satisfying.' },
+  { img: '/crochet.jpeg', tag: '01', title: 'Crochet Circle',   desc: 'A slow, meditative craft that brings warmth to any setting.' },
+  { img: '/peinture.jpeg', tag: '02', title: 'Painting Session', desc: 'Express freely on canvas — no experience needed, only the desire to create.' },
+  { img: '/potterie.jpeg', tag: '03', title: 'Pottery Workshop', desc: 'Shape and sculpt in an intimate setting. Grounding and deeply satisfying.' },
 ];
 
 const steps = [
@@ -42,7 +43,7 @@ const SAGE_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
 // ─── Global Styles ─────────────────────────────────────────────────
 const globalStyles = `
   *, *::before, *::after { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; }
   html { scroll-behavior: smooth; }
 
   @keyframes fadeUp      { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
@@ -111,6 +112,10 @@ const globalStyles = `
   ::-webkit-scrollbar { width: 3px; }
   ::-webkit-scrollbar-track { background: #FBEAD6; }
   ::-webkit-scrollbar-thumb { background: rgba(200,125,135,0.40); border-radius: 8px; }
+
+  @media (max-width: 768px) {
+    .inora-panel::before { height: 1.5px; }
+  }
 `;
 
 // ─── Hook ─────────────────────────────────────────────────────────
@@ -156,55 +161,55 @@ function NavCorner({ flip = false, bottom = false, light = false }) {
 function HeroActivityPanel({ imgIndex, imgFading, setImgIndex }) {
   const a = activities[imgIndex];
   return (
-    <div className="sage-panel" style={{ borderRadius:'20px', overflow:'hidden', height:'100%', minHeight:'480px',
+    <div className="sage-panel" style={{ borderRadius:'20px', overflow:'hidden', height:'100%', minHeight:'380px',
         boxShadow:'0 12px 48px rgba(58,48,39,0.18)', border:'1px solid rgba(200,125,135,0.20)' }}>
       <div style={{ position:'relative', zIndex:3, display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'0.9rem 1.25rem', borderBottom:'1px solid rgba(251,234,214,0.10)',
+          padding:'0.7rem 1rem', borderBottom:'1px solid rgba(251,234,214,0.10)',
           background:'rgba(107,117,86,0.6)', backdropFilter:'blur(8px)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'0.6rem' }}>
-          <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#C87D87' }}/>
-          <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.72rem',
+        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+          <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#C87D87' }}/>
+          <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.65rem',
               letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(251,234,214,0.85)' }}>Available Activities</span>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'0.35rem' }}>
           {activities.map((_,i) => (
             <button key={i} onClick={() => setImgIndex(i)}
-              style={{ width: i===imgIndex ? '1.5rem' : '0.4rem', height:'0.4rem', borderRadius:'4px',
+              style={{ width: i===imgIndex ? '1.2rem' : '0.35rem', height:'0.35rem', borderRadius:'4px',
                   background: i===imgIndex ? '#C87D87' : 'rgba(251,234,214,0.25)', border:'none',
                   cursor:'pointer', transition:'all .3s ease', padding:0 }}/>
           ))}
         </div>
       </div>
 
-      <div style={{ position:'relative', height:'260px', overflow:'hidden' }}>
+      <div style={{ position:'relative', height:'200px', overflow:'hidden' }}>
         <img key={imgIndex} src={a.img} alt={a.title}
           style={{ width:'100%', height:'100%', objectFit:'cover', opacity: imgFading ? 0 : 1, transition:'opacity .6s ease' }}/>
         <div style={{ position:'absolute', inset:0,
             background:'linear-gradient(to top, #6B7556 0%, rgba(107,117,86,0.3) 50%, transparent 100%)' }}/>
-        <div style={{ position:'absolute', top:'1rem', left:'1rem', zIndex:2,
+        <div style={{ position:'absolute', top:'0.75rem', left:'0.75rem', zIndex:2,
             background:'rgba(107,117,86,0.88)', backdropFilter:'blur(6px)',
             border:'1px solid rgba(200,125,135,0.30)', borderRadius:'8px',
-            padding:'0.3rem 0.7rem', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-          <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:'#C87D87' }}/>
+            padding:'0.2rem 0.6rem', display:'flex', alignItems:'center', gap:'0.35rem' }}>
+          <div style={{ width:'4px', height:'4px', borderRadius:'50%', background:'#C87D87' }}/>
           <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:700,
-              fontSize:'0.72rem', letterSpacing:'0.12em', color:'#C87D87' }}>{a.tag}</span>
+              fontSize:'0.65rem', letterSpacing:'0.12em', color:'#C87D87' }}>{a.tag}</span>
         </div>
       </div>
 
-      <div style={{ padding:'1.25rem 1.5rem 1.5rem', position:'relative', zIndex:2 }}>
+      <div style={{ padding:'1rem 1.25rem 1.25rem', position:'relative', zIndex:2 }}>
         <NavCorner light/>
         <NavCorner flip light/>
-        <h3 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic', fontSize:'1.45rem',
-            color:'#FBEAD6', margin:'0 0 0.5rem 0', lineHeight:1.2 }}>{a.title}</h3>
-        <div style={{ width:'2rem', height:'2px', background:'#C87D87', borderRadius:'2px', marginBottom:'0.65rem' }}/>
-        <p style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.92rem',
-            color:'rgba(251,234,214,0.75)', lineHeight:1.7, margin:'0 0 1.1rem 0' }}>{a.desc}</p>
-        <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+        <h3 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic', fontSize:'1.25rem',
+            color:'#FBEAD6', margin:'0 0 0.4rem 0', lineHeight:1.2 }}>{a.title}</h3>
+        <div style={{ width:'1.75rem', height:'2px', background:'#C87D87', borderRadius:'2px', marginBottom:'0.5rem' }}/>
+        <p style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.85rem',
+            color:'rgba(251,234,214,0.75)', lineHeight:1.65, margin:'0 0 0.9rem 0' }}>{a.desc}</p>
+        <div style={{ display:'flex', gap:'0.4rem', flexWrap:'wrap' }}>
           {['Garden', 'Indoor', 'Terrace'].map(v => (
-            <span key={v} style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.7rem',
+            <span key={v} style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.6rem',
                 letterSpacing:'0.1em', textTransform:'uppercase',
                 color:'rgba(251,234,214,0.75)', background:'rgba(251,234,214,0.07)',
-                border:'1px solid rgba(251,234,214,0.18)', borderRadius:'6px', padding:'0.25rem 0.6rem' }}>
+                border:'1px solid rgba(251,234,214,0.18)', borderRadius:'6px', padding:'0.2rem 0.5rem' }}>
               {v}
             </span>
           ))}
@@ -250,7 +255,7 @@ export default function Home() {
 
   return (
     <main className="dash-bg" style={{ margin:0, padding:0, color:'#3a3027', overflowX:'hidden',
-        fontFamily:"'Cormorant Garamond', serif", minHeight:'100vh' }}>
+        fontFamily:"'Cormorant Garamond', serif", minHeight:'100vh', width:'100%' }}>
       <style>{globalStyles}</style>
       <Navbar/>
       <DraftBanner/>
@@ -259,75 +264,76 @@ export default function Home() {
           HERO
       ══════════════════════════════════════════ */}
       <section id="hero" ref={heroRef} style={{ minHeight:'100vh', paddingTop:'68px', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', top:'20%', left:'8%', width:'420px', height:'420px',
+        <div style={{ position:'absolute', top:'20%', left:'8%', width:'280px', height:'280px',
             borderRadius:'50%', background:'radial-gradient(ellipse, rgba(200,125,135,0.10) 0%, transparent 70%)',
             animation:'auraPulse 7s ease-in-out infinite', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', bottom:'15%', right:'35%', width:'280px', height:'280px',
+        <div style={{ position:'absolute', bottom:'15%', right:'35%', width:'200px', height:'200px',
             borderRadius:'50%', background:'radial-gradient(ellipse, rgba(107,117,86,0.08) 0%, transparent 70%)',
             animation:'auraPulse 9s ease-in-out infinite 2s', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', top:'50%', left:'30%', width:'500px', height:'500px',
+        <div style={{ position:'absolute', top:'50%', left:'30%', width:'400px', height:'400px',
             borderRadius:'50%', border:'1px solid rgba(200,125,135,0.06)',
             transform:'translate(-50%,-50%)', animation:'rotateSlow 50s linear infinite', pointerEvents:'none' }}/>
 
-        <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'3rem 4rem 3rem 4.5rem',
-            minHeight:'calc(100vh - 68px)', display:'grid',
-            gridTemplateColumns:'1.1fr 0.9fr', gap:'2.5rem', alignItems:'center' }}>
-
-          <div style={{ display:'flex', flexDirection:'column' }}>
+        <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'2rem 1.25rem 3rem',
+            minHeight:'calc(100vh - 68px)', display:'flex', flexDirection:'column',
+            gap:'2rem' }}>
+          
+          {/* Hero Content - Order changes on mobile */}
+          <div style={{ display:'flex', flexDirection:'column', order: 2 }}>
             <div className={`reveal d1 ${heroIn?'in-view':''}`}
-              style={{ display:'inline-flex', alignItems:'center', gap:'0.6rem', marginBottom:'2rem',
+              style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', marginBottom:'1.5rem',
                   alignSelf:'flex-start', background:'rgba(200,125,135,0.10)',
                   border:'1px solid rgba(200,125,135,0.22)', borderRadius:'999px',
-                  padding:'0.35rem 1rem 0.35rem 0.7rem' }}>
-              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#C87D87' }}/>
+                  padding:'0.3rem 0.8rem 0.3rem 0.6rem' }}>
+              <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:'#C87D87' }}/>
               <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic',
-                  fontSize:'0.72rem', letterSpacing:'0.28em', textTransform:'uppercase', color:'#C87D87' }}>
+                  fontSize:'0.65rem', letterSpacing:'0.28em', textTransform:'uppercase', color:'#C87D87' }}>
                 Private Gatherings · Est. 2026
               </span>
             </div>
 
             <h1 className={`reveal d2 ${heroIn?'in-view':''}`}
-              style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(2.8rem,4.5vw,5rem)',
-                  fontWeight:700, fontStyle:'italic', lineHeight:1.05, color:'#3a3027', margin:'0 0 0.25rem' }}>
+              style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(2.2rem,8vw,3.8rem)',
+                  fontWeight:700, fontStyle:'italic', lineHeight:1.1, color:'#3a3027', margin:'0 0 0.2rem' }}>
               Where Small
             </h1>
             <h1 className={`reveal d3 ${heroIn?'in-view':''}`}
-              style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(2.8rem,4.5vw,5rem)',
-                  fontWeight:700, fontStyle:'italic', lineHeight:1.05, margin:'0 0 0.25rem',
+              style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(2.2rem,8vw,3.8rem)',
+                  fontWeight:700, fontStyle:'italic', lineHeight:1.1, margin:'0 0 0.2rem',
                   background:'linear-gradient(135deg,#C87D87,#a85e6a,#C87D87)', backgroundSize:'200%',
                   WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
                   animation: heroIn ? 'shimmer 6s linear 1s infinite' : 'none' }}>
               Circles Create
             </h1>
             <h1 className={`reveal d4 ${heroIn?'in-view':''}`}
-              style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(2.8rem,4.5vw,5rem)',
-                  fontWeight:700, fontStyle:'italic', lineHeight:1.05, color:'#3a3027', margin:'0 0 1.75rem' }}>
+              style={{ fontFamily:"'Playfair Display', serif", fontSize:'clamp(2.2rem,8vw,3.8rem)',
+                  fontWeight:700, fontStyle:'italic', lineHeight:1.1, color:'#3a3027', margin:'0 0 1.25rem' }}>
               Big Memories.
             </h1>
 
             <p className={`reveal d4 ${heroIn?'in-view':''}`}
-              style={{ fontSize:'1.1rem', lineHeight:1.9, color:'#5a4a3a', maxWidth:'380px', margin:'0 0 2rem' }}>
+              style={{ fontSize:'0.95rem', lineHeight:1.8, color:'#5a4a3a', maxWidth:'380px', margin:'0 0 1.5rem' }}>
               Inora designs intimate gatherings for up to{' '}
               <strong style={{ color:'#C87D87', fontWeight:600 }}>12 friends</strong> —
               choose your setting, pick your craft, and let us handle everything else.
             </p>
 
             <div className={`reveal d5 ${heroIn?'in-view':''}`}
-              style={{ display:'flex', alignItems:'center', gap:'1.25rem', marginBottom:'2.5rem' }}>
+              style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:'1rem', marginBottom:'2rem' }}>
               <Link href="/book"
-                style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.75rem', letterSpacing:'0.22em',
-                    textTransform:'uppercase', color:'#FBEAD6', padding:'0.9rem 2.25rem',
+                style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.7rem', letterSpacing:'0.22em',
+                    textTransform:'uppercase', color:'#FBEAD6', padding:'0.8rem 1.8rem',
                     background:'linear-gradient(160deg,#C87D87,#b56b76)', borderRadius:'10px',
                     textDecoration:'none', boxShadow:'0 6px 20px rgba(200,125,135,0.35)',
-                    transition:'all .3s ease', display:'inline-block' }}
+                    transition:'all .3s ease', display:'inline-block', textAlign:'center', width:'auto' }}
                 onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 12px 30px rgba(200,125,135,0.45)'}}
                 onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 6px 20px rgba(200,125,135,0.35)'}}>
                 Plan a Gathering
               </Link>
               <Link href="#activities"
-                style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.75rem', letterSpacing:'0.2em',
+                style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.7rem', letterSpacing:'0.2em',
                     textTransform:'uppercase', color:'#6B7556', textDecoration:'none',
-                    display:'flex', alignItems:'center', gap:'0.5rem',
+                    display:'inline-flex', alignItems:'center', gap:'0.5rem',
                     borderBottom:'1px solid rgba(107,117,86,0.5)', paddingBottom:'2px', transition:'all .3s ease' }}
                 onMouseEnter={e=>e.currentTarget.style.gap='0.8rem'}
                 onMouseLeave={e=>e.currentTarget.style.gap='0.5rem'}>
@@ -339,20 +345,21 @@ export default function Home() {
               style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.75rem' }}>
               {stats.map((s, i) => (
                 <div key={i} className="inora-panel"
-                  style={{ padding:'1rem 1.1rem', cursor:'default',
+                  style={{ padding:'0.75rem 0.8rem', cursor:'default',
                       animation: heroIn ? `countUp .5s cubic-bezier(.4,0,.2,1) ${.6+i*.12}s both` : 'none' }}>
                   <NavCorner/>
-                  <div style={{ fontFamily:"'Playfair Display', serif", fontSize:'1.8rem', fontStyle:'italic',
+                  <div style={{ fontFamily:"'Playfair Display', serif", fontSize:'1.4rem', fontStyle:'italic',
                       fontWeight:700, color:'#C87D87', lineHeight:1 }}>{s.num}</div>
-                  <div style={{ fontSize:'0.68rem', letterSpacing:'0.14em', textTransform:'uppercase',
-                      color:'rgba(122,106,90,0.75)', marginTop:'0.35rem' }}>{s.label}</div>
+                  <div style={{ fontSize:'0.55rem', letterSpacing:'0.14em', textTransform:'uppercase',
+                      color:'rgba(122,106,90,0.75)', marginTop:'0.25rem' }}>{s.label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className={`reveal d3 ${heroIn?'in-view':''}`} style={{ position:'relative' }}>
-            <div style={{ position:'absolute', top:'-40px', right:'-30px', width:'180px', height:'180px',
+          {/* Hero Activity Panel - appears first on mobile */}
+          <div className={`reveal d3 ${heroIn?'in-view':''}`} style={{ position:'relative', order: 1 }}>
+            <div style={{ position:'absolute', top:'-30px', right:'-20px', width:'120px', height:'120px',
                 borderRadius:'50%', background:'radial-gradient(ellipse, rgba(200,125,135,0.12) 0%, transparent 70%)',
                 animation:'floatY 6s ease-in-out infinite', pointerEvents:'none', zIndex:0 }}/>
             <div style={{ position:'relative', zIndex:1 }}>
@@ -361,12 +368,12 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={{ position:'absolute', bottom:'2rem', left:'50%', transform:'translateX(-50%)',
-            display:'flex', flexDirection:'column', alignItems:'center', gap:'0.4rem',
+        <div style={{ position:'absolute', bottom:'1.5rem', left:'50%', transform:'translateX(-50%)',
+            display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem',
             animation:'fadeIn 1s ease 2.5s both', opacity:0, zIndex:5 }}>
-          <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.62rem',
+          <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.55rem',
               letterSpacing:'0.25em', textTransform:'uppercase', color:'rgba(58,48,39,0.50)' }}>Scroll</span>
-          <div style={{ width:'1px', height:'2.5rem',
+          <div style={{ width:'1px', height:'2rem',
               background:'linear-gradient(to bottom, rgba(200,125,135,0.5), transparent)',
               animation:'floatY 2s ease-in-out infinite' }}/>
         </div>
@@ -376,56 +383,56 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           ACTIVITIES
       ══════════════════════════════════════════ */}
-      <section id="activities" ref={activitiesRef} style={{ padding:'5rem 5rem 6rem' }}>
-        <div className="pink-gradient" style={{ borderRadius:'16px', padding:'2.5rem 3rem', marginBottom:'3rem',
-            display:'flex', alignItems:'flex-end', justifyContent:'space-between',
+      <section id="activities" ref={activitiesRef} style={{ padding:'3rem 1.25rem 4rem' }}>
+        <div className="pink-gradient" style={{ borderRadius:'16px', padding:'1.5rem 1.5rem', marginBottom:'2rem',
+            display:'flex', flexDirection:'column', gap:'1rem',
             boxShadow:'0 4px 24px rgba(200,125,135,0.30)', position:'relative', overflow:'hidden' }}>
           <NavCorner light/> <NavCorner flip light/>
           <div style={{ position:'absolute', top:0, left:0, right:0, height:'1px', background:'rgba(255,255,255,0.15)' }}/>
           <div className={`reveal-left ${activitiesIn?'in-view':''}`}>
-            <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.72rem',
+            <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.65rem',
                 letterSpacing:'0.32em', textTransform:'uppercase', color:'rgba(251,234,214,0.85)',
-                display:'block', marginBottom:'0.5rem' }}>Craft Your Experience</span>
+                display:'block', marginBottom:'0.4rem' }}>Craft Your Experience</span>
             <h2 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic',
-                fontSize:'clamp(1.8rem,3vw,2.8rem)', color:'#FBEAD6', margin:0, lineHeight:1.15 }}>
+                fontSize:'clamp(1.4rem,5vw,2rem)', color:'#FBEAD6', margin:0, lineHeight:1.15 }}>
               Choose Your Activity
             </h2>
           </div>
           <p className={`reveal-right d2 ${activitiesIn?'in-view':''}`}
-            style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'1rem',
-                color:'rgba(251,234,214,0.80)', maxWidth:'280px', textAlign:'right', lineHeight:1.8, margin:0 }}>
+            style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.9rem',
+                color:'rgba(251,234,214,0.80)', lineHeight:1.7, margin:0 }}>
             Every gathering is anchored by a shared creative activity that sparks real connection.
           </p>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.25rem' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'1.25rem' }}>
           {activities.map((a, i) => (
             <div key={i} onClick={() => handleActivityClick(a)}
               className={`inora-panel reveal d${i+1} ${activitiesIn?'in-view':''}`}
               style={{ cursor:'pointer', ...(activitiesIn ? { animation:`cardGlow .9s ease ${0.1+i*.15}s` } : {}) }}>
-              <div style={{ height:'230px', overflow:'hidden', position:'relative' }}>
+              <div style={{ height:'200px', overflow:'hidden', position:'relative' }}>
                 <img src={a.img} alt={a.title}
                   style={{ width:'100%', height:'100%', objectFit:'cover', transition:'transform .6s ease' }}
                   onMouseEnter={e=>e.target.style.transform='scale(1.05)'}
                   onMouseLeave={e=>e.target.style.transform='scale(1)'}/>
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, rgba(58,48,39,0.5) 0%, transparent 55%)' }}/>
-                <div style={{ position:'absolute', top:'1rem', left:'1rem', background:'rgba(254,246,236,0.92)',
+                <div style={{ position:'absolute', top:'0.75rem', left:'0.75rem', background:'rgba(254,246,236,0.92)',
                     border:'1px solid rgba(200,125,135,0.25)', borderRadius:'8px',
-                    padding:'0.25rem 0.65rem', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                  <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:'#C87D87' }}/>
+                    padding:'0.2rem 0.6rem', display:'flex', alignItems:'center', gap:'0.35rem' }}>
+                  <div style={{ width:'4px', height:'4px', borderRadius:'50%', background:'#C87D87' }}/>
                   <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:700,
-                      fontSize:'0.72rem', letterSpacing:'0.12em', color:'#C87D87' }}>{a.tag}</span>
+                      fontSize:'0.65rem', letterSpacing:'0.12em', color:'#C87D87' }}>{a.tag}</span>
                 </div>
               </div>
-              <div style={{ padding:'1.5rem 1.75rem 1.75rem' }}>
-                <h3 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic', fontSize:'1.3rem',
-                    color:'#3a3027', margin:'0 0 0.6rem', lineHeight:1.2 }}>{a.title}</h3>
-                <div style={{ width:'1.75rem', height:'2px', background:'#C87D87', borderRadius:'2px', marginBottom:'0.65rem' }}/>
-                <p style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.95rem',
-                    color:'rgba(90,74,58,0.80)', lineHeight:1.85, margin:'0 0 1.25rem' }}>{a.desc}</p>
-                <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', fontFamily:"'Cormorant Garamond', serif",
-                    fontStyle:'italic', fontSize:'0.8rem', letterSpacing:'0.12em', textTransform:'uppercase',
-                    color:'#C87D87', borderTop:'1px solid rgba(200,125,135,0.12)', paddingTop:'1rem' }}>
+              <div style={{ padding:'1.25rem 1.25rem 1.5rem' }}>
+                <h3 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic', fontSize:'1.2rem',
+                    color:'#3a3027', margin:'0 0 0.5rem', lineHeight:1.2 }}>{a.title}</h3>
+                <div style={{ width:'1.5rem', height:'2px', background:'#C87D87', borderRadius:'2px', marginBottom:'0.5rem' }}/>
+                <p style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.88rem',
+                    color:'rgba(90,74,58,0.80)', lineHeight:1.75, margin:'0 0 1rem' }}>{a.desc}</p>
+                <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontFamily:"'Cormorant Garamond', serif",
+                    fontStyle:'italic', fontSize:'0.72rem', letterSpacing:'0.12em', textTransform:'uppercase',
+                    color:'#C87D87', borderTop:'1px solid rgba(200,125,135,0.12)', paddingTop:'0.9rem' }}>
                   <span>Book this activity</span><span>→</span>
                 </div>
               </div>
@@ -439,41 +446,41 @@ export default function Home() {
           HOW IT WORKS
       ══════════════════════════════════════════ */}
       <section id="process" ref={processRef} className="sage-panel"
-        style={{ padding:'3.5rem 5rem 3.5rem', position:'relative', overflow:'hidden' }}>
+        style={{ padding:'2.5rem 1.25rem 3rem', position:'relative', overflow:'hidden' }}>
 
-        <div style={{ position:'absolute', top:'-80px', left:'-60px', width:'380px', height:'380px',
+        <div style={{ position:'absolute', top:'-60px', left:'-40px', width:'280px', height:'280px',
             borderRadius:'50%', background:'radial-gradient(ellipse, rgba(200,125,135,0.08) 0%, transparent 70%)',
             animation:'auraPulse 8s ease-in-out infinite', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', bottom:'-60px', right:'-40px', width:'300px', height:'300px',
+        <div style={{ position:'absolute', bottom:'-40px', right:'-30px', width:'240px', height:'240px',
             borderRadius:'50%', background:'radial-gradient(ellipse, rgba(251,234,214,0.05) 0%, transparent 70%)',
             animation:'auraPulse 11s ease-in-out infinite 3s', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', top:'50%', left:'50%', width:'600px', height:'600px',
+        <div style={{ position:'absolute', top:'50%', left:'50%', width:'500px', height:'500px',
             borderRadius:'50%', border:'1px solid rgba(251,234,214,0.04)',
             transform:'translate(-50%,-50%)', animation:'rotateSlow 60s linear infinite', pointerEvents:'none' }}/>
 
-        <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between',
-            marginBottom:'2.5rem', position:'relative', zIndex:2 }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:'1rem',
+            marginBottom:'2rem', position:'relative', zIndex:2 }}>
           <div className={`reveal-left ${processIn?'in-view':''}`}>
-            <div style={{ display:'inline-flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.6rem',
+            <div style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.5rem',
                 background:'rgba(251,234,214,0.07)', border:'1px solid rgba(251,234,214,0.15)',
-                borderRadius:'999px', padding:'0.3rem 0.9rem 0.3rem 0.6rem' }}>
-              <div style={{ width:'5px', height:'5px', borderRadius:'50%', background:'#C87D87' }}/>
-              <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.70rem',
+                borderRadius:'999px', padding:'0.25rem 0.8rem 0.25rem 0.5rem' }}>
+              <div style={{ width:'4px', height:'4px', borderRadius:'50%', background:'#C87D87' }}/>
+              <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.65rem',
                   letterSpacing:'0.28em', textTransform:'uppercase', color:'rgba(200,125,135,0.90)' }}>
                 Simple by Design
               </span>
             </div>
             <h2 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic',
-                fontSize:'clamp(1.8rem,3vw,2.8rem)', color:'#FBEAD6', margin:0, lineHeight:1.15 }}>
+                fontSize:'clamp(1.4rem,5vw,2rem)', color:'#FBEAD6', margin:0, lineHeight:1.15 }}>
               How Inora Works
             </h2>
           </div>
           <Link href="/book"
             className={`reveal-right d2 ${processIn?'in-view':''}`}
-            style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.72rem', letterSpacing:'0.2em',
-                textTransform:'uppercase', color:'#6B7556', padding:'0.75rem 1.75rem',
+            style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.68rem', letterSpacing:'0.2em',
+                textTransform:'uppercase', color:'#6B7556', padding:'0.7rem 1.5rem',
                 background:'#FBEAD6', borderRadius:'10px', textDecoration:'none',
-                transition:'all .3s ease', display:'inline-block', flexShrink:0,
+                transition:'all .3s ease', display:'inline-block', alignSelf:'flex-start',
                 boxShadow:'0 4px 16px rgba(58,48,39,0.20)' }}
             onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(58,48,39,0.30)'}}
             onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 4px 16px rgba(58,48,39,0.20)'}}>
@@ -481,10 +488,8 @@ export default function Home() {
           </Link>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.25rem',
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'1.25rem',
             position:'relative', zIndex:2 }}>
-          <div style={{ position:'absolute', top:'3rem', left:'calc(33.33% - 0px)', right:'calc(33.33% - 0px)',
-              height:'1px', borderTop:'1px dashed rgba(200,125,135,0.25)', zIndex:0, pointerEvents:'none' }}/>
 
           {steps.map((step, i) => {
             const icons = ['◈', '✦', '◉'];
@@ -497,7 +502,7 @@ export default function Home() {
                 <div style={{
                   background: isMiddle ? 'rgba(200,125,135,0.12)' : 'rgba(251,234,214,0.05)',
                   border:`1px solid ${isMiddle ? 'rgba(200,125,135,0.35)' : 'rgba(251,234,214,0.10)'}`,
-                  borderRadius:'20px', padding:'1.5rem 1.75rem 1.75rem', height:'100%',
+                  borderRadius:'18px', padding:'1.25rem 1.25rem 1.5rem', height:'100%',
                   position:'relative', overflow:'hidden',
                   transition:'transform .3s ease, box-shadow .3s ease', cursor:'default',
                 }}
@@ -506,37 +511,33 @@ export default function Home() {
                   <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px',
                       background: isMiddle ? 'linear-gradient(90deg,transparent,#C87D87,transparent)'
                         : 'linear-gradient(90deg,transparent,rgba(251,234,214,0.20),transparent)' }}/>
-                  <div style={{ position:'absolute', bottom:'-0.75rem', right:'0.75rem',
+                  <div style={{ position:'absolute', bottom:'-0.5rem', right:'0.5rem',
                       fontFamily:"'Playfair Display', serif", fontStyle:'italic', fontWeight:700,
-                      fontSize:'6rem', lineHeight:1, userSelect:'none', pointerEvents:'none',
+                      fontSize:'4rem', lineHeight:1, userSelect:'none', pointerEvents:'none',
                       color: isMiddle ? 'rgba(200,125,135,0.10)' : 'rgba(251,234,214,0.06)' }}>{step.num}</div>
-                  <div style={{ width:'38px', height:'38px', borderRadius:'50%',
+                  <div style={{ width:'32px', height:'32px', borderRadius:'50%',
                       display:'flex', alignItems:'center', justifyContent:'center',
                       background: isMiddle ? 'rgba(200,125,135,0.20)' : 'rgba(251,234,214,0.08)',
                       border:`1px solid ${isMiddle ? 'rgba(200,125,135,0.40)' : 'rgba(251,234,214,0.14)'}`,
-                      marginBottom:'1.1rem', fontSize:'0.9rem',
+                      marginBottom:'0.8rem', fontSize:'0.8rem',
                       color: isMiddle ? '#C87D87' : 'rgba(251,234,214,0.65)' }}>{icons[i]}</div>
-                  <div style={{ display:'inline-flex', alignItems:'center', gap:'0.4rem', marginBottom:'0.7rem',
+                  <div style={{ display:'inline-flex', alignItems:'center', gap:'0.35rem', marginBottom:'0.6rem',
                       background: isMiddle ? 'rgba(200,125,135,0.15)' : 'rgba(251,234,214,0.06)',
                       border:`1px solid ${isMiddle ? 'rgba(200,125,135,0.30)' : 'rgba(251,234,214,0.10)'}`,
-                      borderRadius:'6px', padding:'0.18rem 0.55rem' }}>
+                      borderRadius:'6px', padding:'0.15rem 0.5rem' }}>
                     <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic',
-                        fontSize:'0.68rem', letterSpacing:'0.20em', textTransform:'uppercase',
+                        fontSize:'0.6rem', letterSpacing:'0.20em', textTransform:'uppercase',
                         color: isMiddle ? '#C87D87' : 'rgba(251,234,214,0.65)' }}>Step {step.num}</span>
                   </div>
                   <h3 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic',
-                      fontSize:'1.2rem', color:'#FBEAD6', margin:'0 0 0.5rem', lineHeight:1.25, position:'relative', zIndex:1 }}>
+                      fontSize:'1.1rem', color:'#FBEAD6', margin:'0 0 0.4rem', lineHeight:1.25, position:'relative', zIndex:1 }}>
                     {step.title}
                   </h3>
-                  <div style={{ width:'1.75rem', height:'2px', borderRadius:'2px', marginBottom:'0.7rem',
+                  <div style={{ width:'1.5rem', height:'2px', borderRadius:'2px', marginBottom:'0.6rem',
                       background: isMiddle ? '#C87D87' : 'rgba(251,234,214,0.30)' }}/>
                   <p style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic',
-                      fontSize:'0.92rem', color:'rgba(251,234,214,0.72)', lineHeight:1.8,
+                      fontSize:'0.85rem', color:'rgba(251,234,214,0.72)', lineHeight:1.7,
                       margin:0, position:'relative', zIndex:1 }}>{step.desc}</p>
-                  {i < 2 && (
-                    <div style={{ position:'absolute', top:'2.8rem', right:'-1.6rem',
-                        zIndex:10, color:'rgba(200,125,135,0.40)', fontSize:'0.55rem' }}>──→</div>
-                  )}
                 </div>
               </div>
             );
@@ -544,15 +545,15 @@ export default function Home() {
         </div>
 
         <div className={`reveal d4 ${processIn?'in-view':''}`}
-          style={{ marginTop:'2rem', textAlign:'center', position:'relative', zIndex:2 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'1rem' }}>
-            <div style={{ width:'3rem', height:'1px', background:'rgba(200,125,135,0.30)' }}/>
+          style={{ marginTop:'1.5rem', textAlign:'center', position:'relative', zIndex:2 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'0.8rem', flexWrap:'wrap' }}>
+            <div style={{ width:'2rem', height:'1px', background:'rgba(200,125,135,0.30)' }}/>
             <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic',
-                fontSize:'0.85rem', letterSpacing:'0.18em', textTransform:'uppercase',
-                color:'rgba(251,234,214,0.45)' }}>
+                fontSize:'0.7rem', letterSpacing:'0.18em', textTransform:'uppercase',
+                color:'rgba(251,234,214,0.45)', textAlign:'center' }}>
               Everything taken care of — just arrive and create
             </span>
-            <div style={{ width:'3rem', height:'1px', background:'rgba(200,125,135,0.30)' }}/>
+            <div style={{ width:'2rem', height:'1px', background:'rgba(200,125,135,0.30)' }}/>
           </div>
         </div>
       </section>
@@ -561,22 +562,22 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           REVIEWS
       ══════════════════════════════════════════ */}
-      <section id="reviews" ref={reviewsRef} style={{ padding:'2rem 5rem 6rem' }}>
-        <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:'2.5rem' }}>
+      <section id="reviews" ref={reviewsRef} style={{ padding:'2rem 1.25rem 4rem' }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:'1rem', marginBottom:'2rem' }}>
           <div className={`reveal-left ${reviewsIn?'in-view':''}`}>
-            <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.72rem',
-                letterSpacing:'0.32em', textTransform:'uppercase', color:'#C87D87', display:'block', marginBottom:'0.6rem' }}>
+            <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.65rem',
+                letterSpacing:'0.32em', textTransform:'uppercase', color:'#C87D87', display:'block', marginBottom:'0.5rem' }}>
               Voices from Our Circles
             </span>
             <h2 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic',
-                fontSize:'clamp(1.8rem,3vw,2.8rem)', color:'#3a3027', margin:0, lineHeight:1.15 }}>
+                fontSize:'clamp(1.4rem,5vw,2rem)', color:'#3a3027', margin:0, lineHeight:1.15 }}>
               What Our <span style={{ color:'#C87D87' }}>Guests Say</span>
             </h2>
           </div>
           <p className={`reveal-right d2 ${reviewsIn?'in-view':''}`}
-            style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'1rem',
-                color:'rgba(90,74,58,0.70)', maxWidth:'240px', textAlign:'right', lineHeight:1.8, margin:0 }}>
-            Every gathering tells a story.<br/>Here are a few of theirs.
+            style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'0.9rem',
+                color:'rgba(90,74,58,0.70)', lineHeight:1.7, margin:0 }}>
+            Every gathering tells a story. Here are a few of theirs.
           </p>
         </div>
         <div className={`reveal d2 ${reviewsIn?'in-view':''}`}>
@@ -589,25 +590,25 @@ export default function Home() {
           CTA BAND
       ══════════════════════════════════════════ */}
       <section className="pink-gradient"
-        style={{ margin:'0 5rem 5rem', borderRadius:'16px', padding:'3.5rem 4rem',
-            display:'flex', alignItems:'center', justifyContent:'space-between', gap:'2rem',
+        style={{ margin:'0 1.25rem 3rem', borderRadius:'16px', padding:'2rem 1.5rem',
+            display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', gap:'1.5rem',
             boxShadow:'0 8px 32px rgba(200,125,135,0.35)', position:'relative', overflow:'hidden' }}>
         <NavCorner light/> <NavCorner flip light/>
         <div style={{ position:'absolute', top:0, left:0, right:0, height:'1px', background:'rgba(255,255,255,0.18)' }}/>
         <div>
           <h2 style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic',
-              fontSize:'clamp(1.6rem,2.8vw,2.5rem)', color:'#FBEAD6', margin:'0 0 0.6rem', lineHeight:1.2 }}>
+              fontSize:'clamp(1.4rem,5vw,2rem)', color:'#FBEAD6', margin:'0 0 0.5rem', lineHeight:1.2 }}>
             Ready to Gather?
           </h2>
-          <p style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'1.05rem',
-              color:'rgba(251,234,214,0.85)', margin:0, lineHeight:1.8, maxWidth:'400px' }}>
+          <p style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.9rem',
+              color:'rgba(251,234,214,0.85)', margin:0, lineHeight:1.7 }}>
             Plan your next intimate creative experience — everything is taken care of, from setting to craft.
           </p>
         </div>
         <Link href="/book"
-          style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.75rem', letterSpacing:'0.22em',
-              textTransform:'uppercase', color:'#C87D87', padding:'1rem 2.5rem', background:'#fef6ec',
-              borderRadius:'10px', textDecoration:'none', whiteSpace:'nowrap', flexShrink:0,
+          style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.7rem', letterSpacing:'0.22em',
+              textTransform:'uppercase', color:'#C87D87', padding:'0.8rem 2rem', background:'#fef6ec',
+              borderRadius:'10px', textDecoration:'none', whiteSpace:'nowrap', display:'inline-block',
               boxShadow:'0 4px 16px rgba(58,48,39,0.15)', transition:'all .3s ease',
               border:'1px solid rgba(200,125,135,0.2)' }}
           onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 10px 28px rgba(58,48,39,0.22)'}}
@@ -621,85 +622,82 @@ export default function Home() {
           FOOTER
       ══════════════════════════════════════════ */}
       <footer ref={footerRef} className="sage-panel"
-        style={{ padding:'2rem 5rem', position:'relative' }}>
+        style={{ padding:'2rem 1.25rem', position:'relative' }}>
 
         <NavCorner light/> <NavCorner flip light/>
 
         <div style={{ position:'relative', zIndex:2, display:'flex', flexDirection:'column', gap:'1.5rem' }}>
 
           {/* ── Main row ── */}
-          <div style={{ display:'grid', gridTemplateColumns:'1.5fr 1fr 1fr', gap:'4rem', alignItems:'start' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:'2rem' }}>
 
             {/* Col 1 — Brand + tagline */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'0.65rem' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem', textAlign:'center' }}>
               <span style={{ fontFamily:"'Playfair Display', serif", fontStyle:'italic',
-                  fontSize:'1.8rem', color:'#FBEAD6', fontWeight:400, letterSpacing:'0.04em' }}>
+                  fontSize:'1.6rem', color:'#FBEAD6', fontWeight:400, letterSpacing:'0.04em' }}>
                 Inora
               </span>
-              <div style={{ width:'2.5rem', height:'1.5px',
+              <div style={{ width:'2rem', height:'1.5px', margin:'0 auto',
                   background:'linear-gradient(to right, #C87D87, transparent)', borderRadius:'2px' }}/>
               <p style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic',
-                  fontSize:'0.92rem', color:'rgba(251,234,214,0.60)', lineHeight:1.8,
-                  margin:0, maxWidth:'220px' }}>
+                  fontSize:'0.85rem', color:'rgba(251,234,214,0.60)', lineHeight:1.7,
+                  margin:0 }}>
                 Intimate gatherings for up to 12 friends — curated settings, shared crafts, lasting memories.
               </p>
             </div>
 
             {/* Col 2 — Navigation */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'0.55rem' }}>
-              <span style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.65rem',
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.5rem' }}>
+              <span style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.6rem',
                   letterSpacing:'0.30em', textTransform:'uppercase',
-                  color:'rgba(200,125,135,0.80)', marginBottom:'0.4rem' }}>
+                  color:'rgba(200,125,135,0.80)', marginBottom:'0.3rem' }}>
                 Navigation
               </span>
-              {footerLinks.map((link, i) => (
-                <Link key={i} href={link.href}
-                  style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.92rem',
-                      color:'rgba(251,234,214,0.65)', textDecoration:'none',
-                      transition:'color .2s ease', display:'flex', alignItems:'center', gap:'0.5rem' }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = '#C87D87';
-                    e.currentTarget.querySelector('span').style.opacity = '1';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = 'rgba(251,234,214,0.65)';
-                    e.currentTarget.querySelector('span').style.opacity = '0';
-                  }}>
-                  <span style={{ fontSize:'0.4rem', color:'#C87D87', opacity:0, transition:'opacity .2s ease' }}>✦</span>
-                  {link.label}
-                </Link>
-              ))}
+              <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'center', gap:'1rem' }}>
+                {footerLinks.map((link, i) => (
+                  <Link key={i} href={link.href}
+                    style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.88rem',
+                        color:'rgba(251,234,214,0.65)', textDecoration:'none',
+                        transition:'color .2s ease', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#C87D87'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(251,234,214,0.65)'}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             </div>
 
             {/* Col 3 — Contact */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'0.55rem' }}>
-              <span style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.65rem',
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.5rem' }}>
+              <span style={{ fontFamily:"'Cormorant Garamond', serif", fontSize:'0.6rem',
                   letterSpacing:'0.30em', textTransform:'uppercase',
-                  color:'rgba(200,125,135,0.80)', marginBottom:'0.4rem' }}>
+                  color:'rgba(200,125,135,0.80)', marginBottom:'0.3rem' }}>
                 Contact Us
               </span>
-              <a href="mailto:hello@inora.co"
-                style={{ display:'flex', alignItems:'center', gap:'0.5rem', textDecoration:'none',
-                    fontFamily:"'Cormorant Garamond', serif", fontSize:'0.92rem',
-                    color:'rgba(251,234,214,0.65)', transition:'color .2s ease' }}
-                onMouseEnter={e => e.currentTarget.style.color = '#C87D87'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(251,234,214,0.65)'}>
-                <span style={{ fontSize:'0.7rem', color:'rgba(200,125,135,0.65)' }}>✉</span>
-                hello@inora.co
-              </a>
-              <a href="tel:+12345678900"
-                style={{ display:'flex', alignItems:'center', gap:'0.5rem', textDecoration:'none',
-                    fontFamily:"'Cormorant Garamond', serif", fontSize:'0.92rem',
-                    color:'rgba(251,234,214,0.65)', transition:'color .2s ease' }}
-                onMouseEnter={e => e.currentTarget.style.color = '#C87D87'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(251,234,214,0.65)'}>
-                <span style={{ fontSize:'0.7rem', color:'rgba(200,125,135,0.65)' }}>✆</span>
-                +1 234 567 890
-              </a>
-              <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic',
-                  fontSize:'0.80rem', color:'rgba(251,234,214,0.38)', marginTop:'0.15rem' }}>
-                Available by appointment
-              </span>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.4rem' }}>
+                <a href="mailto:hello@inora.co"
+                  style={{ display:'flex', alignItems:'center', gap:'0.4rem', textDecoration:'none',
+                      fontFamily:"'Cormorant Garamond', serif", fontSize:'0.88rem',
+                      color:'rgba(251,234,214,0.65)', transition:'color .2s ease' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#C87D87'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(251,234,214,0.65)'}>
+                  <span style={{ fontSize:'0.65rem', color:'rgba(200,125,135,0.65)' }}>✉</span>
+                  hello@inora.co
+                </a>
+                <a href="tel:+12345678900"
+                  style={{ display:'flex', alignItems:'center', gap:'0.4rem', textDecoration:'none',
+                      fontFamily:"'Cormorant Garamond', serif", fontSize:'0.88rem',
+                      color:'rgba(251,234,214,0.65)', transition:'color .2s ease' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#C87D87'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(251,234,214,0.65)'}>
+                  <span style={{ fontSize:'0.65rem', color:'rgba(200,125,135,0.65)' }}>✆</span>
+                  +1 234 567 890
+                </a>
+                <span style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic',
+                    fontSize:'0.7rem', color:'rgba(251,234,214,0.38)', marginTop:'0.1rem' }}>
+                  Available by appointment
+                </span>
+              </div>
             </div>
 
           </div>
@@ -709,13 +707,13 @@ export default function Home() {
               background:'linear-gradient(to right, transparent, rgba(251,234,214,0.12), transparent)' }}/>
 
           {/* ── Copyright ── */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'1.5rem' }}>
-            <div style={{ width:'2.5rem', height:'1px', background:'rgba(200,125,135,0.22)' }}/>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'0.8rem', flexWrap:'wrap' }}>
+            <div style={{ width:'1.5rem', height:'1px', background:'rgba(200,125,135,0.22)' }}/>
             <p style={{ fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic',
-                fontSize:'0.82rem', color:'rgba(251,234,214,0.35)', margin:0, textAlign:'center' }}>
+                fontSize:'0.7rem', color:'rgba(251,234,214,0.35)', margin:0, textAlign:'center' }}>
               © {new Date().getFullYear()} Inora · All rights reserved · Crafted with intention.
             </p>
-            <div style={{ width:'2.5rem', height:'1px', background:'rgba(200,125,135,0.22)' }}/>
+            <div style={{ width:'1.5rem', height:'1px', background:'rgba(200,125,135,0.22)' }}/>
           </div>
 
         </div>
