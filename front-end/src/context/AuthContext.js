@@ -67,7 +67,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { fetchMe(); }, [fetchMe]);
 
-  // ✅ REGISTER FUNCTION - AJOUTÉE
+  // ✅ REGISTER FUNCTION
   const register = async (fullName, email, password, adminCode) => {
     const res = await fetch(`${API}/api/auth/register`, {
       method: 'POST',
@@ -83,7 +83,6 @@ export function AuthProvider({ children }) {
     
     const data = await res.json();
     
-    // Stocker le token après inscription
     if (data.token) {
       localStorage.setItem('token', data.token);
       setUser(data.user ?? data);
@@ -118,9 +117,10 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ 
-      user, 
+      user,
+      setUser,     // ✅ AJOUTÉ - hadi li kanet na9sa
       login, 
-      register,  // ✅ EXPOSER register
+      register,
       logout, 
       loading, 
       authFetch, 
