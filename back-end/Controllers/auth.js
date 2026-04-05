@@ -21,10 +21,12 @@ const storage = multer.diskStorage({
     cb(null, `avatar-${req.user.id}-${Date.now()}${ext}`);
   },
 });
+
 const fileFilter = (req, file, cb) => {
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
   allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error('Only images allowed'));
 };
+
 export const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // Cookie options
@@ -76,7 +78,7 @@ export const register = async (req, res) => {
 };
 
 // ══════════════════════════════════════════
-//  LOGIN (WITH DEBUG)
+//  LOGIN
 // ══════════════════════════════════════════
 export const login = async (req, res) => {
   try {
@@ -121,7 +123,6 @@ export const login = async (req, res) => {
     const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     
     console.log('🔐 [login] Generated token (first 20 chars):', accessToken.substring(0, 20) + '...');
-    console.log('🔐 [login] JWT_SECRET exists:', process.env.JWT_SECRET ? 'YES' : 'NO');
 
     // Set cookie
     res.cookie("token", accessToken, getCookieOptions());
@@ -160,68 +161,124 @@ export const logout = async (req, res) => {
 };
 
 // ══════════════════════════════════════════
-//  GET ME (WITH DEBUG)
+//  GET ME (from cookie/header)
 // ══════════════════════════════════════════
 export const getMe = async (req, res) => {
   try {
     let token = req.cookies?.token;
     
-    console.log('🔍 [getMe] Cookie token exists:', !!token);
-    
     if (!token && req.headers.authorization) {
       const authHeader = req.headers.authorization;
-      console.log('🔍 [getMe] Authorization header exists:', !!authHeader);
       if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.split(' ')[1];
-        console.log('🔍 [getMe] Token from header (first 20 chars):', token.substring(0, 20) + '...');
       }
     }
     
     if (!token) {
-      console.log('❌ [getMe] No token found');
-      return res.status(401).json({ message: 'No token' });
+      return res.status(401).json({ message: 'No token provided' });
     }
 
-    console.log('🔍 [getMe] Verifying token with JWT_SECRET...');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('✅ [getMe] Token verified, user id:', decoded.id);
-      
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          role: true,
-          avatarUrl: true,
-          createdAt: true,
-          isDeleted: true,
-          suspended: true,
-        }
-      });
-
-      if (!user || user.isDeleted) {
-        console.log('❌ [getMe] User not found');
-        return res.status(401).json({ message: 'Account not found.' });
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        createdAt: true,
+        isDeleted: true,
+        suspended: true,
       }
+    });
 
-      if (user.suspended) {
-        console.log('❌ [getMe] User suspended');
-        return res.status(403).json({ message: 'Account suspended.' });
-      }
-
-      console.log('✅ [getMe] User found:', user.email);
-      res.json({ user });
-    } catch (jwtError) {
-      console.error('❌ [getMe] JWT Error:', jwtError.message);
-      console.error('❌ [getMe] Token used:', token.substring(0, 30) + '...');
-      console.error('❌ [getMe] JWT_SECRET length:', process.env.JWT_SECRET?.length);
-      res.status(401).json({ message: 'Invalid token' });
+    if (!user || user.isDeleted) {
+      return res.status(401).json({ message: 'Account not found.' });
     }
+
+    if (user.suspended) {
+      return res.status(403).json({ message: 'Account suspended.' });
+    }
+
+    res.json({ user });
+    
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
     console.error('❌ [getMe] Error:', error);
+    res.status(401).json({ message: 'Invalid token' });
+  }
+};
+
+// ══════════════════════════════════════════
+//  ✅ NEW: GET PROFILE (alias for getMe - for /api/profile/me)
+// ══════════════════════════════════════════
+export const getProfile = async (req, res) => {
+  try {
+    let token = req.cookies?.token;
+    
+    console.log('🔍 [getProfile] Checking for token...');
+    
+    // Check Authorization header first (for mobile/localStorage apps)
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+        console.log('✅ [getProfile] Token found in Authorization header');
+      }
+    }
+    
+    // Then check cookie
+    if (!token && req.cookies?.token) {
+      token = req.cookies.token;
+      console.log('✅ [getProfile] Token found in cookie');
+    }
+    
+    if (!token) {
+      console.log('❌ [getProfile] No token found');
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    console.log('🔍 [getProfile] Verifying token...');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('✅ [getProfile] Token verified for user:', decoded.id);
+    
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        createdAt: true,
+        isDeleted: true,
+        suspended: true,
+      }
+    });
+
+    if (!user || user.isDeleted) {
+      console.log('❌ [getProfile] User not found or deleted');
+      return res.status(401).json({ message: 'Account not found.' });
+    }
+
+    if (user.suspended) {
+      console.log('❌ [getProfile] User suspended');
+      return res.status(403).json({ message: 'Account suspended.' });
+    }
+
+    console.log('✅ [getProfile] Profile retrieved for:', user.email);
+    res.json({ user });
+    
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      console.log('❌ [getProfile] Token expired');
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    console.error('❌ [getProfile] Error:', error.message);
     res.status(401).json({ message: 'Invalid token' });
   }
 };
@@ -244,7 +301,7 @@ export const forgotPassword = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
     await transporter.sendMail({
       from:    `"Support" <${process.env.EMAIL_USER}>`,
