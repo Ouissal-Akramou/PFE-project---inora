@@ -252,12 +252,56 @@ export default function Navbar() {
                   </button>
 
                   {/* NOTIFICATION DROPDOWN - keep as is */}
-                  {notifOpen && (
-                    <div className="dropdown-anim absolute right-0 mt-2.5 w-[22rem] z-[100] rounded-2xl overflow-hidden border border-[#C87D87]/20 shadow-[0_16px_48px_rgba(58,48,39,0.18)]"
-                      style={{ background:'#FBEAD6' }}>
-                      {/* ... rest of notification dropdown content ... */}
-                    </div>
-                  )}
+                {notifOpen && (
+  <div className="dropdown-anim absolute right-0 mt-2.5 w-[22rem] z-[100] rounded-2xl overflow-hidden border border-[#C87D87]/20 shadow-[0_16px_48px_rgba(58,48,39,0.18)]"
+    style={{ background:'#FBEAD6' }}>
+    
+    <div className="flex justify-between items-center px-4 py-3 border-b border-[#C87D87]/10">
+      <h3 className="font-['Playfair_Display',serif] italic text-[#3a3027] text-sm">Notifications</h3>
+      {notifications.length > 0 && (
+        <button onClick={markAllAsRead}
+          className="font-['Cormorant_Garamond',serif] text-[0.55rem] tracking-[0.12em] uppercase text-[#C87D87] hover:text-[#b36d77] transition-colors">
+          Mark all as read
+        </button>
+      )}
+    </div>
+
+    <div className="max-h-96 overflow-y-auto">
+      {notifications.length === 0 ? (
+        <div className="py-12 text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 mx-auto text-[#C87D87]/30 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+          </svg>
+          <p className="font-['Cormorant_Garamond',serif] italic text-[0.7rem] text-[#7a6a5a]/50">No notifications yet</p>
+        </div>
+      ) : (
+        notifications.map((notif) => (
+          <div key={notif.id} 
+            className={`px-4 py-3 border-b border-[#C87D87]/5 transition-all hover:bg-[#C87D87]/5 cursor-pointer ${!notif.read ? 'bg-[#C87D87]/5' : ''}`}
+            onClick={() => {
+              if (notif.type === 'payment_reminder' || notif.type === 'payment_confirmation') {
+                handleCheckout(notif);
+              } else if (notif.type === 'review_request') {
+                handleReview(notif);
+              } else {
+                markAsRead(notif.id);
+              }
+            }}>
+            <div className="flex items-start gap-3">
+              <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!notif.read ? 'bg-[#C87D87]' : 'bg-[#C87D87]/30'}`}/>
+              <div className="flex-1 min-w-0">
+                <p className="font-['Cormorant_Garamond',serif] text-[0.75rem] text-[#3a3027]">{notif.message}</p>
+                <p className="font-['Cormorant_Garamond',serif] text-[0.55rem] text-[#7a6a5a]/50 mt-1">
+                  {new Date(notif.createdAt).toLocaleDateString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
                 </div>
               )}
 
@@ -285,12 +329,61 @@ export default function Navbar() {
                 </button>
 
                 {/* DROPDOWN MENU - keep as is */}
-                {dropdownOpen && (
-                  <div className="dropdown-anim absolute top-full right-0 mt-2.5 w-60 z-[100] rounded-2xl overflow-hidden border border-[#C87D87]/20 shadow-[0_16px_48px_rgba(58,48,39,0.18)]"
-                    style={{ background:'#FBEAD6' }}>
-                    {/* ... dropdown content ... */}
-                  </div>
-                )}
+               {dropdownOpen && (
+  <div className="dropdown-anim absolute top-full right-0 mt-2.5 w-60 z-[100] rounded-2xl overflow-hidden border border-[#C87D87]/20 shadow-[0_16px_48px_rgba(58,48,39,0.18)]"
+    style={{ background:'#FBEAD6' }}>
+    
+    <div className="p-3 border-b border-[#C87D87]/10">
+      <div className="flex items-center gap-3">
+        <Avatar size={10} textSize="text-base"/>
+        <div className="flex-1 min-w-0">
+          <p className="font-['Playfair_Display',serif] italic text-[#3a3027] text-sm truncate">{displayName}</p>
+          <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] text-[#7a6a5a] truncate">{user?.email}</p>
+        </div>
+      </div>
+    </div>
+
+    <Link href="/account" 
+      onClick={() => setDropdownOpen(false)}
+      className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#C87D87]/10 transition-all duration-200">
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+      </svg>
+      <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.12em] uppercase text-[#3a3027]">My Account</span>
+    </Link>
+
+    <Link href="/account#bookings"
+      onClick={() => setDropdownOpen(false)}
+      className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#C87D87]/10 transition-all duration-200">
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.12em] uppercase text-[#3a3027]">My Bookings</span>
+    </Link>
+
+    {isAdmin && (
+      <Link href="/admin"
+        onClick={() => setDropdownOpen(false)}
+        className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#C87D87]/10 transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#C87D87]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
+        </svg>
+        <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.12em] uppercase text-[#3a3027]">Admin Dashboard</span>
+      </Link>
+    )}
+
+    <div className="border-t border-[#C87D87]/10 mt-1 pt-1">
+      <button onClick={handleLogout}
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
+        </svg>
+        <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.12em] uppercase text-red-500">Log Out</span>
+      </button>
+    </div>
+  </div>
+)}
               </div>
 
             </div>
