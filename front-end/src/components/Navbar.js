@@ -28,8 +28,13 @@ export default function Navbar() {
 
     const fetchNotifications = async () => {
       try {
+        const token = localStorage.getItem('token');
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications`, {
           credentials: 'include',
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json',
+          },
         });
         if (res.ok) {
           setNotifications(await res.json());
@@ -113,8 +118,14 @@ export default function Navbar() {
 
   const markAsRead = async (id) => {
     try {
+      const token = localStorage.getItem('token');
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/${id}/read`, {
-        method: 'PATCH', credentials: 'include',
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
       });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch (e) {
@@ -124,8 +135,14 @@ export default function Navbar() {
 
   const markAllAsRead = async () => {
     try {
+      const token = localStorage.getItem('token');
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/read-all`, {
-        method: 'PATCH', credentials: 'include',
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
       });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch (e) {
