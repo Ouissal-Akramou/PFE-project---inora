@@ -12,7 +12,7 @@ export const getMyProfile = async (req, res) => {
         id: true, 
         fullName: true, 
         email: true,
-        phone: true,
+        //phone: true,
         avatarUrl: true, 
         role: true, 
         createdAt: true,
