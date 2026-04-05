@@ -1,20 +1,19 @@
 'use client';
-import { Suspense } from 'react';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 
-function LoginContent() {
-  const router = useRouter();
+export default function Login() {
+  const router       = useRouter();
   const searchParams = useSearchParams();
-  const isSuspended = searchParams.get('suspended') === 'true';
+  const isSuspended  = searchParams.get('suspended') === 'true';
 
   const { login, loading } = useAuth();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form,         setForm]         = useState({ email: '', password: '' });
   const [selectedRole, setSelectedRole] = useState('user');
-  const [adminCode, setAdminCode] = useState('');
-  const [error, setError] = useState('');
+  const [adminCode,    setAdminCode]    = useState('');
+  const [error,        setError]        = useState('');
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -24,7 +23,7 @@ function LoginContent() {
       return;
     }
     try {
-      const data = await login(form.email, form.password, selectedRole, adminCode);
+      const data       = await login(form.email, form.password, selectedRole, adminCode);
       const actualRole = data?.user?.role || data?.role;
       if (actualRole !== selectedRole) {
         setError(`You are not registered as ${selectedRole}`);
@@ -56,14 +55,15 @@ function LoginContent() {
           -webkit-text-fill-color: #3a3027;
         }
 
+        /* Mobile optimizations */
         @media (max-width: 640px) {
           input, button {
-            font-size: 16px !important;
+            font-size: 16px !important; /* Prevents zoom on focus in iOS */
           }
         }
       `}</style>
 
-      {/* NOISE */}
+      {/* NOISE - Reduced opacity on mobile */}
       <div
         className="absolute inset-0 opacity-[0.02] sm:opacity-[0.03] pointer-events-none"
         style={{
@@ -72,7 +72,7 @@ function LoginContent() {
         }}
       />
 
-      {/* ORBS */}
+      {/* ORBS - Smaller on mobile */}
       <div
         className="absolute -top-10 -left-10 w-40 sm:w-64 h-40 sm:h-64 rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle,rgba(251,234,214,0.08) 0%,transparent 70%)', animation: 'floatOrb 10s ease-in-out infinite', filter: 'blur(15px)' }}
@@ -82,7 +82,7 @@ function LoginContent() {
         style={{ background: 'radial-gradient(circle,rgba(200,125,135,0.1) 0%,transparent 70%)', animation: 'floatOrb 13s ease-in-out infinite 2s', filter: 'blur(18px)' }}
       />
 
-      {/* SVG LACE - Simplified for mobile */}
+      {/* Simplified SVG for mobile - hidden on very small screens */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none hidden md:block"
         viewBox="0 0 1440 900"
@@ -213,7 +213,7 @@ function LoginContent() {
         ))}
       </svg>
 
-      {/* FORM */}
+      {/* ── FORM ── */}
       <div
         className="relative z-10 w-full max-w-[370px] sm:max-w-[400px]"
         style={{ animation: 'formIn 0.9s cubic-bezier(.4,0,.2,1) forwards 0.2s', opacity: 0 }}
@@ -225,7 +225,7 @@ function LoginContent() {
           <div className="absolute inset-0 rounded-2xl border border-[#C87D87]/12 pointer-events-none" />
           <div className="absolute inset-[3px] sm:inset-[5px] rounded-xl border border-[#C87D87]/8 pointer-events-none" />
 
-          {/* Header */}
+          {/* ── Header ── */}
           <div className="text-center mb-4 sm:mb-5">
             <Link
               href="/"
@@ -254,7 +254,7 @@ function LoginContent() {
             </h2>
           </div>
 
-          {/* Role selector */}
+          {/* ── Role selector ── */}
           <div className="mb-4">
             <p className="font-['Cormorant_Garamond',serif] text-[0.65rem] sm:text-xs tracking-[0.16em] sm:tracking-[0.18em] uppercase text-[#5a4a3a]/65 font-semibold mb-2 text-center">
               Sign in as
@@ -298,7 +298,7 @@ function LoginContent() {
             </div>
           </div>
 
-          {/* Suspended banner */}
+          {/* ── Suspended banner ── */}
           {isSuspended && !error && (
             <div
               className="mb-4 flex items-start gap-2 border border-[#C87D87]/35 bg-[#C87D87]/8 px-3 py-2 rounded-lg"
@@ -311,7 +311,7 @@ function LoginContent() {
             </div>
           )}
 
-          {/* Error */}
+          {/* ── Error ── */}
           {error && (
             <div
               className="mb-4 flex items-start gap-2 border border-[#C87D87]/25 bg-[#C87D87]/6 px-3 py-2 rounded-lg"
@@ -322,7 +322,7 @@ function LoginContent() {
             </div>
           )}
 
-          {/* Fields */}
+          {/* ── Fields ── */}
           <div className="space-y-3">
             {[
               { label: 'Email',    key: 'email',    type: 'email',    placeholder: 'you@example.com'      },
@@ -346,7 +346,7 @@ function LoginContent() {
               </div>
             ))}
 
-            {/* Admin code */}
+            {/* ── Admin code ── */}
             {selectedRole === 'admin' && (
               <div style={{ animation: 'adminSlide 0.35s cubic-bezier(.4,0,.2,1) forwards' }}>
                 <div className="flex items-center gap-2 my-2 sm:my-3">
@@ -379,7 +379,7 @@ function LoginContent() {
             )}
           </div>
 
-          {/* Forgot password */}
+          {/* ── Forgot password ── */}
           <div className="mt-2 text-right">
             <Link
               href="/forgot-password"
@@ -389,7 +389,7 @@ function LoginContent() {
             </Link>
           </div>
 
-          {/* Submit */}
+          {/* ── Submit ── */}
           <button
             type="submit"
             disabled={loading}
@@ -405,7 +405,7 @@ function LoginContent() {
             <div className="absolute inset-0 bg-white/0 group-hover:bg-white/8 transition-colors duration-300 rounded-xl" />
           </button>
 
-          {/* Footer */}
+          {/* ── Footer ── */}
           <div className="flex items-center gap-3 mt-4 mb-3">
             <div className="flex-1 h-px bg-[#C87D87]/12" />
           </div>
@@ -421,27 +421,5 @@ function LoginContent() {
         </form>
       </div>
     </div>
-  );
-}
-
-// PAGE PRINCIPALE avec Suspense
-export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center"
-        style={{ background: 'linear-gradient(150deg,#4e5a3c 0%,#6B7556 45%,#5a6347 80%,#4a5535 100%)' }}>
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 rounded-full border border-[#FBEAD6]/20"/>
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#FBEAD6] animate-spin"/>
-          </div>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/70 tracking-[0.35em] text-xs uppercase">
-            Chargement...
-          </p>
-        </div>
-      </div>
-    }>
-      <LoginContent />
-    </Suspense>
   );
 }

@@ -171,12 +171,14 @@ const exportSinglePDF = (booking) => {
     const amtPaid   = booking.advancePaid ?? (isFullPay ? total : 0);
     const dueOnDay  = isFullPay ? 0 : total - amtPaid;
 
+    // Header
     doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(58, 48, 39);
     doc.text('Inora', 20, 22);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(200, 125, 135);
     doc.text('Booking Confirmation', 20, 30);
     doc.setDrawColor(200, 125, 135); doc.setLineWidth(0.4); doc.line(20, 35, 190, 35);
 
+    // Activity title
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(58, 48, 39);
     doc.text(`${booking.activity || booking.activityType || 'Activity'}`, 20, 46);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120, 100, 90);
@@ -185,6 +187,7 @@ const exportSinglePDF = (booking) => {
     doc.text(`Status: ${s}`, 20, 61);
     doc.setDrawColor(230, 215, 200); doc.setLineWidth(0.2); doc.line(20, 66, 190, 66);
 
+    // Rows
     const rows = [
       ['Activity',          booking.activity || booking.activityType || '—'],
       ['Theme',    booking.activityTheme || '—'],
@@ -220,6 +223,7 @@ const exportSinglePDF = (booking) => {
       y += lines.length > 1 ? lines.length * 6 : 4 + 10;
     });
 
+    // Footer
     doc.setDrawColor(200, 125, 135); doc.setLineWidth(0.3); doc.line(20, 270, 190, 270);
     doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(160, 130, 110);
     doc.text(`Booked on ${new Date(booking.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}`, 20, 276);
@@ -263,6 +267,7 @@ export default function AccountPage() {
   const { user, setUser }     = useAuth();
   const router                = useRouter();
   const [activeSection, setActiveSection] = useState('personal');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed]         = useState(false);
   const [profile, setProfile]             = useState(null);
   const [loading, setLoading]             = useState(true);
@@ -317,15 +322,10 @@ export default function AccountPage() {
     if (['personal','bookings','security','danger'].includes(hash)) setActiveSection(hash);
   }, []);
 
-  // ✅ Avatar upload - khdam mzyan
   const handleAvatar = async (e) => {
-    const file = e.target.files[0]; 
-    if (!file) return;
-    
+    const file = e.target.files[0]; if (!file) return;
     setAvatarLoading(true);
-    const formData = new FormData(); 
-    formData.append('avatar', file);
-    
+    const formData = new FormData(); formData.append('avatar', file);
     try {
       const res  = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/avatar`, { method: 'PATCH', credentials: 'include', body: formData });
       const data = await res.json();
@@ -417,13 +417,26 @@ export default function AccountPage() {
 
   const displayName = profile?.fullName ?? user?.fullName ?? 'Member';
   const avatarUrl   = profile?.avatarUrl ?? user?.avatarUrl ?? null;
-  const sideW       = collapsed ? 'w-[72px]' : 'w-64';
-  const mainML      = collapsed ? 'ml-[72px]' : 'ml-64';
+
+  // Mobile: sidebar hidden by default, toggle via hamburger
+  // Desktop: sidebar visible, collapsible
+  const isDesktop = typeof window !== 'undefined' ? window.innerWidth >= 768 : true;
+  const [isDesktopView, setIsDesktopView] = useState(true);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktopView(window.innerWidth >= 768);
+      if (window.innerWidth >= 768) setMobileMenuOpen(false);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (loading) return <LoadingScreen/>;
   if (error)   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(160deg,#6B7556 0%,#5a6347 100%)' }}>
-      <p className="font-['Cormorant_Garamond',serif] italic text-white/80 text-lg">{error}</p>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(160deg,#6B7556 0%,#5a6347 100%)' }}>
+      <p className="font-['Cormorant_Garamond',serif] italic text-white/80 text-lg text-center">{error}</p>
     </div>
   );
 
@@ -443,7 +456,7 @@ export default function AccountPage() {
 
       {/* MODALS */}
       {showDeleteModal && <DeleteModal onConfirm={confirmDelete} onCancel={() => setShowDeleteModal(false)}/>}
-      {cancelTarget && <CancelBookingModal booking={cancelTarget} onConfirm={handleCancelBooking} onCancel={() => setCancelTarget(null)}/>}
+      {cancelTarget    && <CancelBookingModal booking={cancelTarget} onConfirm={handleCancelBooking} onCancel={() => setCancelTarget(null)}/>}
 
       <div className="min-h-screen flex" style={{ animation: 'fadeIn .4s ease both' }}>
 
@@ -452,86 +465,139 @@ export default function AccountPage() {
           <aside className={`green-sidebar fixed top-0 left-0 h-full z-40 flex flex-col transition-all duration-300 ${collapsed ? 'w-[72px]' : 'w-64'} overflow-hidden flex-shrink-0`} style={{ boxShadow: '6px 0 32px rgba(107,117,86,0.30)' }}>
             <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[#C87D87]/50 to-transparent"/>
 
-          {/* Header */}
-          <div className={`flex items-center border-b border-white/10 flex-shrink-0 ${collapsed ? 'justify-center px-0 py-5' : 'justify-between px-6 py-5'}`}>
-            {!collapsed && (
-              <Link href="/" className="group logo">
-                <p className="font-['Cormorant_Garamond',serif] italic text-[0.5rem] tracking-[0.4em] uppercase text-white/50">My Account</p>
-                <h1 className="font-['Playfair_Display',serif] italic text-2xl text-white leading-tight group-hover:[.logo_&]:text-[#FBEAD6] transition-colors">Inora</h1>
-              </Link>
-            )}
-            <button onClick={() => setCollapsed(c => !c)} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all flex-shrink-0" title={collapsed ? 'Expand' : 'Collapse'}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                {collapsed ? <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/> : <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>}
-              </svg>
-            </button>
-          </div>
+            {/* Header */}
+            <div className={`flex items-center border-b border-white/10 flex-shrink-0 ${collapsed ? 'justify-center px-0 py-5' : 'justify-between px-6 py-5'}`}>
+              {!collapsed && (
+                <Link href="/" className="group logo">
+                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.5rem] tracking-[0.4em] uppercase text-white/50">My Account</p>
+                  <h1 className="font-['Playfair_Display',serif] italic text-2xl text-white leading-tight group-hover:[.logo_&]:text-[#FBEAD6] transition-colors">Inora</h1>
+                </Link>
+              )}
+              <button onClick={() => setCollapsed(c => !c)} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all flex-shrink-0" title={collapsed ? 'Expand' : 'Collapse'}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  {collapsed ? <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/> : <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>}
+                </svg>
+              </button>
+            </div>
 
-          {/* Avatar */}
-          {!collapsed && (
-            <div className="px-5 py-4 border-b border-white/8 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <label htmlFor="avatar-upload" className="cursor-pointer group-av flex-shrink-0 relative">
+            {/* Avatar */}
+            {!collapsed && (
+              <div className="px-5 py-4 border-b border-white/8 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <label htmlFor="avatar-upload" className="cursor-pointer group-av flex-shrink-0 relative">
+                    {avatarUrl
+                      ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 transition-opacity hover:opacity-70"/>
+                      : <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm">{displayName.charAt(0).toUpperCase()}</div>
+                    }
+                    {avatarLoading && <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center"><span className="text-white text-[0.5rem] animate-pulse">…</span></div>}
+                    <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} disabled={avatarLoading}/>
+                  </label>
+                  <div className="min-w-0">
+                    <p className="font-['Cormorant_Garamond',serif] text-sm text-white font-semibold truncate">{displayName}</p>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-white/50 truncate">{profile?.email}</p>
+                  </div>
+                </div>
+                {avatarMsg.text && (
+                  <p className={`font-['Cormorant_Garamond',serif] italic text-[0.6rem] mt-2 flex items-center gap-1 ${avatarMsg.type === 'success' ? 'text-[#FBEAD6]/80' : 'text-[#C87D87]/80'}`}>
+                    {avatarMsg.text}
+                  </p>
+                )}
+              </div>
+            )}
+            {collapsed && (
+              <div className="flex justify-center py-3 border-b border-white/8 flex-shrink-0">
+                <label htmlFor="avatar-upload-c" className="cursor-pointer" title="Change photo">
                   {avatarUrl
-                    ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 transition-opacity hover:opacity-70"/>
-                    : <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm">{displayName.charAt(0).toUpperCase()}</div>
+                    ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 hover:opacity-70 transition-opacity"/>
+                    : <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm hover:opacity-70 transition-opacity">{displayName.charAt(0).toUpperCase()}</div>
                   }
-                  {avatarLoading && <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center"><span className="text-white text-[0.5rem] animate-pulse">…</span></div>}
-                  <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} disabled={avatarLoading}/>
+                  <input id="avatar-upload-c" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} disabled={avatarLoading}/>
                 </label>
-                <div className="min-w-0">
-                  <p className="font-['Cormorant_Garamond',serif] text-sm text-white font-semibold truncate">{displayName}</p>
-                  <p className="font-['Cormorant_Garamond',serif] italic text-[0.58rem] text-white/50 truncate">{profile?.email}</p>
+              </div>
+            )}
+
+            {/* Nav */}
+            <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-hidden">
+              {sideNav.map(item => (
+                <button key={item.id} onClick={() => setActiveSection(item.id)} title={collapsed ? item.label : undefined}
+                  className={`w-full flex items-center rounded-xl text-left relative transition-all duration-200 group ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'} ${activeSection === item.id ? (item.id === 'danger' ? 'bg-red-500/20' : 'bg-white/18') : 'hover:bg-white/10'}`}>
+                  {activeSection === item.id && <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full ${item.id === 'danger' ? 'bg-red-400' : 'bg-[#C87D87]'}`}/>}
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`flex-shrink-0 w-5 h-5 transition-colors ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-300' : 'text-white') : (item.id === 'danger' ? 'text-red-300/50 group-hover:text-red-300' : 'text-white/50 group-hover:text-white/80')}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                    <path strokeLinecap="round" strokeLinejoin="round" d={item.icon}/>
+                  </svg>
+                  {!collapsed && (
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-['Cormorant_Garamond',serif] text-[0.72rem] tracking-[0.15em] uppercase transition-colors ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-200' : 'text-white') : (item.id === 'danger' ? 'text-red-300/60 group-hover:text-red-200' : 'text-white/55 group-hover:text-white/85')}`}>{item.label}</p>
+                      <p className={`font-['Cormorant_Garamond',serif] italic text-[0.6rem] truncate ${item.id === 'danger' ? 'text-red-300/40' : 'text-white/30'}`}>{item.sub}</p>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </nav>
+
+            {/* Logout */}
+            <div className="border-t border-white/8 py-3 px-2 flex-shrink-0">
+              <button onClick={handleLogout} title="Log out" className={`w-full flex items-center rounded-xl text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-all group ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 flex-shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
+                </svg>
+                {!collapsed && <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.15em] uppercase">Log Out</span>}
+              </button>
+            </div>
+          </aside>
+        )}
+
+        {/* ── MOBILE SIDEBAR (Drawer) ── */}
+        {!isDesktopView && mobileMenuOpen && (
+          <>
+            <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setMobileMenuOpen(false)}/>
+            <aside className="green-sidebar fixed top-0 left-0 h-full z-50 w-72 flex flex-col animate-[slideIn_0.3s_ease]">
+              <div className="flex justify-end p-3">
+                <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="px-5 py-4 border-b border-white/8">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    {avatarUrl
+                      ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-white/20"/>
+                      : <div className="w-12 h-12 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-lg">{displayName.charAt(0).toUpperCase()}</div>
+                    }
+                  </div>
+                  <div>
+                    <p className="font-['Cormorant_Garamond',serif] text-base text-white font-semibold">{displayName}</p>
+                    <p className="font-['Cormorant_Garamond',serif] italic text-xs text-white/60">{profile?.email}</p>
+                  </div>
                 </div>
               </div>
-              {avatarMsg.text && (
-                <p className={`font-['Cormorant_Garamond',serif] italic text-[0.6rem] mt-2 flex items-center gap-1 ${avatarMsg.type === 'success' ? 'text-[#FBEAD6]/80' : 'text-[#C87D87]/80'}`}>
-                  {avatarMsg.text}
-                </p>
-              )}
-            </div>
-          )}
-          {collapsed && (
-            <div className="flex justify-center py-3 border-b border-white/8 flex-shrink-0">
-              <label htmlFor="avatar-upload-c" className="cursor-pointer" title="Change photo">
-                {avatarUrl
-                  ? <img src={`${process.env.NEXT_PUBLIC_API_URL}${avatarUrl}`} alt="avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-white/20 hover:opacity-70 transition-opacity"/>
-                  : <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white font-bold text-sm hover:opacity-70 transition-opacity">{displayName.charAt(0).toUpperCase()}</div>
-                }
-                <input id="avatar-upload-c" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} disabled={avatarLoading}/>
-              </label>
-            </div>
-          )}
-
-          {/* Nav */}
-          <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-hidden">
-            {sideNav.map(item => (
-              <button key={item.id} onClick={() => setActiveSection(item.id)} title={collapsed ? item.label : undefined}
-                className={`w-full flex items-center rounded-xl text-left relative transition-all duration-200 group ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'} ${activeSection === item.id ? (item.id === 'danger' ? 'bg-red-500/20' : 'bg-white/18') : 'hover:bg-white/10'}`}>
-                {activeSection === item.id && <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full ${item.id === 'danger' ? 'bg-red-400' : 'bg-[#C87D87]'}`}/>}
-                <svg xmlns="http://www.w3.org/2000/svg" className={`flex-shrink-0 w-5 h-5 transition-colors ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-300' : 'text-white') : (item.id === 'danger' ? 'text-red-300/50 group-hover:text-red-300' : 'text-white/50 group-hover:text-white/80')}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={item.icon}/>
-                </svg>
-                {!collapsed && (
-                  <div className="min-w-0 flex-1">
-                    <p className={`font-['Cormorant_Garamond',serif] text-[0.72rem] tracking-[0.15em] uppercase transition-colors ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-200' : 'text-white') : (item.id === 'danger' ? 'text-red-300/60 group-hover:text-red-200' : 'text-white/55 group-hover:text-white/85')}`}>{item.label}</p>
-                    <p className={`font-['Cormorant_Garamond',serif] italic text-[0.6rem] truncate ${item.id === 'danger' ? 'text-red-300/40' : 'text-white/30'}`}>{item.sub}</p>
-                  </div>
-                )}
-              </button>
-            ))}
-          </nav>
-
-          {/* Logout */}
-          <div className="border-t border-white/8 py-3 px-2 flex-shrink-0">
-            <button onClick={handleLogout} title="Log out" className={`w-full flex items-center rounded-xl text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-all group ${collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 flex-shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
-              </svg>
-              {!collapsed && <span className="font-['Cormorant_Garamond',serif] text-[0.7rem] tracking-[0.15em] uppercase">Log Out</span>}
-            </button>
-          </div>
-        </aside>
+              <nav className="flex-1 px-3 py-4 space-y-1">
+                {sideNav.map(item => (
+                  <button key={item.id} onClick={() => { setActiveSection(item.id); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 transition-all ${activeSection === item.id ? (item.id === 'danger' ? 'bg-red-500/20' : 'bg-white/18') : 'hover:bg-white/10'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-300' : 'text-white') : (item.id === 'danger' ? 'text-red-300/60' : 'text-white/60')}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={item.icon}/>
+                    </svg>
+                    <div className="text-left">
+                      <p className={`font-['Cormorant_Garamond',serif] text-sm tracking-wide ${activeSection === item.id ? (item.id === 'danger' ? 'text-red-200' : 'text-white') : (item.id === 'danger' ? 'text-red-300/70' : 'text-white/70')}`}>{item.label}</p>
+                      <p className={`font-['Cormorant_Garamond',serif] italic text-xs ${item.id === 'danger' ? 'text-red-300/40' : 'text-white/40'}`}>{item.sub}</p>
+                    </div>
+                  </button>
+                ))}
+              </nav>
+              <div className="border-t border-white/8 p-4">
+                <button onClick={handleLogout} className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-white/50 hover:text-red-300 hover:bg-red-500/10 transition-all">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
+                  </svg>
+                  <span className="font-['Cormorant_Garamond',serif] text-sm tracking-wide">Log Out</span>
+                </button>
+              </div>
+            </aside>
+          </>
+        )}
 
         {/* ── MAIN ── */}
         <main className={`flex-1 min-h-screen dash-bg transition-all duration-300 ${isDesktopView ? (collapsed ? 'ml-[72px]' : 'ml-64') : 'ml-0'}`}>
@@ -627,8 +693,8 @@ export default function AccountPage() {
 
                 {!bookingsLoading && !bookingsError && bookings.length > 0 && (
                   <>
-                    {/* Filter chips */}
-                    <div className="flex flex-wrap gap-2">
+                    {/* Filter chips - horizontal scroll on mobile */}
+                    <div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 -mx-1 px-1 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0">
                       {['all', ...Object.keys(bookings.reduce((acc, b) => { acc[b.status?.toLowerCase() ?? 'unknown'] = 1; return acc; }, {}))].map(status => {
                         const s = status === 'all'
                           ? { label: 'All', dot: 'bg-[#C87D87]', text: 'text-[#C87D87]', bg: 'bg-[#C87D87]/10', border: 'border-[#C87D87]/25' }
@@ -727,7 +793,6 @@ export default function AccountPage() {
                                       </p>
                                     )}
 
-                                    {/* ✅ UPDATED: Payment badge — full pay vs advance */}
                                     <PaymentBadge booking={booking}/>
 
                                     {/* Pay now */}

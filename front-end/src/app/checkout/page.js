@@ -1,5 +1,4 @@
 'use client';
-import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -193,7 +192,8 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
         >
           How would you like to pay?
         </p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3 sm:gap-4">
+
           {/* Option A — Advance only */}
           <button
             type="button"
@@ -214,7 +214,6 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
                   : 'none',
             }}
           >
-            {/* selected dot */}
             <div
               className="absolute top-3 right-3 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all duration-200"
               style={{
@@ -266,7 +265,6 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
                   : 'none',
             }}
           >
-            {/* selected dot */}
             <div
               className="absolute top-3 right-3 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all duration-200"
               style={{
@@ -549,9 +547,9 @@ function PaymentForm({ booking, bookingId, onSuccess }) {
 }
 
 // ════════════════════════════════════════
-//  PAGE CONTENT (with useSearchParams)
+//  PAGE
 // ════════════════════════════════════════
-function CheckoutContent() {
+export default function CheckoutPage() {
   const { user, loading } = useAuth();
   const searchParams = useSearchParams();
   const router       = useRouter();
@@ -814,24 +812,5 @@ function CheckoutContent() {
         </Elements>
       </main>
     </div>
-  );
-}
-
-// ════════════════════════════════════════
-//  MAIN PAGE (with Suspense boundary)
-// ════════════════════════════════════════
-export default function CheckoutPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center"
-        style={{ background: 'linear-gradient(150deg,#4e5a3c 0%,#6B7556 45%,#5a6347 80%,#4a5535 100%)' }}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#FBEAD6]/30 border-t-[#FBEAD6] rounded-full animate-spin" />
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/60 text-sm">Loading payment...</p>
-        </div>
-      </div>
-    }>
-      <CheckoutContent />
-    </Suspense>
   );
 }

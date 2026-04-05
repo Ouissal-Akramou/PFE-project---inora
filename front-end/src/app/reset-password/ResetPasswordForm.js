@@ -1,20 +1,9 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-<<<<<<<<< Temporary merge branch 1
-// ✅ NOUVEAU : Composant qui utilise useSearchParams
-function ResetPasswordContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [token, setToken] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [passwordVisible, setPasswordVisible] = useState(false);
-=========
 /* ─── lace SVG background ────────────────────────────────────── */
 function LaceSVG() {
   return (
@@ -233,9 +222,6 @@ export default function ResetPasswordForm() {
   const [loading,      setLoading]      = useState(false);
   const [done,         setDone]         = useState(false);
   const [tokenChecked, setTokenChecked] = useState(false);
->>>>>>>>> Temporary merge branch 2
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'; // ✅ AJOUT
 
   useEffect(() => {
     const t = searchParams.get('token');
@@ -244,10 +230,10 @@ export default function ResetPasswordForm() {
   }, [searchParams]);
 
   if (!tokenChecked) return null;
-  if (!token) return <InvalidToken />;
-  if (done) return <SuccessScreen />;
+  if (!token)        return <InvalidToken />;
+  if (done)          return <SuccessScreen />;
 
-  const strength = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3;
+  const strength      = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3;
   const strengthLabel = ['', 'Too short', 'Good', 'Strong'][strength];
   const strengthColor = ['', '#C87D87', '#d19900', '#6B7556'][strength];
   const strengthWidth = [0, 33, 66, 100][strength];
@@ -259,19 +245,11 @@ export default function ResetPasswordForm() {
 
     setLoading(true);
     try {
-<<<<<<<<< Temporary merge branch 1
-      const res = await fetch(`${API_URL}/api/auth/reset-password`, { // ✅ CORRIGÉ
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json' 
-        },
-=========
       const res  = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password`, {
         method:      'POST',
         headers:     { 'Content-Type': 'application/json' },
->>>>>>>>> Temporary merge branch 2
         credentials: 'include',
-        body: JSON.stringify({ token, password }),
+        body:        JSON.stringify({ token, password }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.message || 'Reset failed. Please try again.'); return; }
@@ -395,29 +373,4 @@ export default function ResetPasswordForm() {
       </div>
     </Background>
   );
-<<<<<<<<< Temporary merge branch 1
-}
-
-// ✅ PAGE PRINCIPALE avec Suspense
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center px-4"
-        style={{ background: 'linear-gradient(-45deg, #FBEAD6, #C87D87, #6B7556, #C87D87)' }}>
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 rounded-full border border-[#FBEAD6]/20"/>
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#FBEAD6] animate-spin"/>
-          </div>
-          <p className="font-['Cormorant_Garamond',serif] italic text-[#FBEAD6]/70 tracking-[0.35em] text-xs uppercase">
-            Chargement...
-          </p>
-        </div>
-      </div>
-    }>
-      <ResetPasswordContent />
-    </Suspense>
-  );
-=========
->>>>>>>>> Temporary merge branch 2
 }

@@ -4,12 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState('');
+  const [email,   setEmail]   = useState('');
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -18,24 +16,16 @@ export default function ForgotPassword() {
     setIsError(false);
 
     try {
-      const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json' 
-        },
-=========
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`, {
         method:      'POST',
         headers:     { 'Content-Type': 'application/json' },
->>>>>>>>> Temporary merge branch 2
         credentials: 'include',
-        body: JSON.stringify({ email }),
+        body:        JSON.stringify({ email }),
       });
       setMessage('If this email is registered, check your inbox for reset instructions.');
-    } catch (err) {
+    } catch {
       setIsError(true);
       setMessage('Something went wrong. Please try again.');
-      console.error(err);
     } finally {
       setLoading(false);
     }

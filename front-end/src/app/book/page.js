@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -20,9 +19,9 @@ const TIME_SLOTS = [
 ];
 
 const SETTINGS = [
-  { key: 'wildflowers', label: 'Wild Flowers',     desc: 'Fresh stems & scattered petals', icon: '✿' },
-  { key: 'candlelight', label: 'Candlelight Only', desc: 'Warm glow, no harsh lighting',   icon: '◍' },
-  { key: 'minimal',     label: 'Clean & Minimal',  desc: 'Neutral tones, no fuss',         icon: '❦' },
+  { key: 'wildflowers',      label: 'Wild Flowers',     desc: 'Fresh stems & scattered petals', icon: '✿' },
+  { key: 'candlelight',      label: 'Candlelight Only', desc: 'Warm glow, no harsh lighting',   icon: '◍' },
+  { key: 'minimal',          label: 'Clean & Minimal',  desc: 'Neutral tones, no fuss',         icon: '❦' },
 ];
 
 const CONTACT_PREFS = ['telephone', 'email', 'whatsapp'];
@@ -39,20 +38,15 @@ const EMPTY_FORM = {
 
 const STEPS = ['Activity', 'Details', 'Preferences', 'Review'];
 
-const CROSSHATCH_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cline x1='0' y1='1' x2='18' y2='1' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='1' y1='0' x2='1' y2='18' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3C/svg%3E")`;
+const CROSSHATCH_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cline x1='0' y1='1' x2='18' y2='1' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='1' y1='0' x2='1' y2='18' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='80' y1='1' x2='62' y2='1' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='79' y1='0' x2='79' y2='18' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='0' y1='79' x2='18' y2='79' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='1' y1='80' x2='1' y2='62' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='80' y1='79' x2='62' y2='79' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Cline x1='79' y1='80' x2='79' y2='62' stroke='%23C87D87' stroke-width='0.8' stroke-opacity='0.18'/%3E%3Crect x='2' y='2' width='3.5' height='3.5' transform='rotate(45 3.75 3.75)' fill='none' stroke='%23C87D87' stroke-width='0.7' stroke-opacity='0.35'/%3E%3Crect x='73.5' y='2' width='3.5' height='3.5' transform='rotate(45 75.25 3.75)' fill='none' stroke='%23C87D87' stroke-width='0.7' stroke-opacity='0.35'/%3E%3Crect x='2' y='73.5' width='3.5' height='3.5' transform='rotate(45 3.75 75.25)' fill='none' stroke='%23C87D87' stroke-width='0.7' stroke-opacity='0.35'/%3E%3Crect x='73.5' y='73.5' width='3.5' height='3.5' transform='rotate(45 75.25 75.25)' fill='none' stroke='%23C87D87' stroke-width='0.7' stroke-opacity='0.35'/%3E%3Ccircle cx='3.75' cy='3.75' r='0.8' fill='%23C87D87' fill-opacity='0.25'/%3E%3Ccircle cx='76.25' cy='3.75' r='0.8' fill='%23C87D87' fill-opacity='0.25'/%3E%3Ccircle cx='3.75' cy='76.25' r='0.8' fill='%23C87D87' fill-opacity='0.25'/%3E%3Ccircle cx='76.25' cy='76.25' r='0.8' fill='%23C87D87' fill-opacity='0.25'/%3E%3C/svg%3E")`;
 
 // ─── Pricing helper ────────────────────────────────────────────────
 function getPricing(participants) {
-  if (participants <= 2) return { rate: 150, label: null };
-  if (participants <= 6) return { rate: 120, label: 'small group rate' };
-  return { rate: 100, label: 'large group rate' };
+  if (participants < MIN_PARTICIPANTS) return { rate: 150, label: null, error: true };
+  if (participants <= 2) return { rate: 150, label: null, error: false };
+  if (participants <= 6) return { rate: 120, label: 'small group rate', error: false };
+  return { rate: 100, label: 'large group rate', error: false };
 }
-
-// ─── Auth headers helper (for useDraft which is outside AuthContext) ───
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
-};
 
 // ─── Draft hook ────────────────────────────────────────────────────
 function useDraft() {
@@ -63,54 +57,42 @@ function useDraft() {
 
   const loadDraft = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/drafts`, {
-        credentials: 'include',
-        headers: { ...getAuthHeaders() },
-      });
+      const res = await fetch(`${API}/api/drafts`, { credentials: 'include' });
       if (!res.ok) return null;
       const data = await res.json();
       if (data?.id) { setDraftId(data.id); return data.formData || null; }
-    } catch (err) {
-      console.error('Load draft error:', err);
-      return null;
-    }
+    } catch {}
     return null;
-  }, [authFetch]);
+  }, []);
 
   const saveDraft = useCallback((formData) => {
     clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       setSaving(true);
       try {
-        const res = await authFetch(`${API}/api/drafts`, {
-          method: 'POST',
+        const res = await fetch(`${API}/api/drafts`, {
+          method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ formData }),
         });
         if (!res.ok) return;
         const data = await res.json();
         if (data?.id) { setDraftId(data.id); setLastSaved(new Date()); }
-      } catch (err) {
-        console.error('Save draft error:', err);
       } finally { setSaving(false); }
     }, 1200);
-  }, [authFetch]);
+  }, []);
 
   const submitBooking = useCallback(async (bookingId) => {
-    const res = await authFetch(`${API}/api/bookings/${bookingId}/submit`, {
-      method: 'PATCH',
+    const res = await fetch(`${API}/api/bookings/${bookingId}/submit`, {
+      method: 'PATCH', credentials: 'include',
     });
     if (!res.ok) throw new Error('Submit failed');
     return res.json();
-  }, [authFetch]);
+  }, []);
 
   const deleteDraft = useCallback(async (id) => {
     if (!id) return;
-    await fetch(`${API}/api/drafts/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: { ...getAuthHeaders() },
-    });
+    await fetch(`${API}/api/drafts/${id}`, { method: 'DELETE', credentials: 'include' });
   }, []);
 
   return { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft };
@@ -196,16 +178,14 @@ function LoadingScreen() {
 }
 
 // ─── Page ──────────────────────────────────────────────────────────
-function BookContent() {
-  const router = useRouter();
+export default function BookPage() {
+  const router       = useRouter();
   const searchParams = useSearchParams();
-
-  const { user, loading, authFetch } = useAuth();
-  const { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft } = useDraft(authFetch);
+  const { user, loading } = useAuth();
 
   const preselectedActivity = searchParams.get('activity') || '';
 
-  const [form,        setForm]        = useState({ ...EMPTY_FORM, activity: preselectedActivity });
+  const [form,        setForm]        = useState({ ...EMPTY_FORM, activity: preselectedActivity, participants: MIN_PARTICIPANTS });
   const [step,        setStep]        = useState(preselectedActivity ? 1 : 0);
   const [submitting,  setSubmitting]  = useState(false);
   const [error,       setError]       = useState(null);
@@ -213,17 +193,16 @@ function BookContent() {
 
   const { draftId, saving, lastSaved, loadDraft, saveDraft, submitBooking, deleteDraft } = useDraft();
 
-  useEffect(() => { 
-    if (!loading && !user) router.push('/sign-up'); 
-  }, [user, loading, router]);
+  useEffect(() => { if (!loading && !user) router.push('/sign-up'); }, [user, loading, router]);
 
+  // ── Auto-fill from auth + merge draft ──────────────────────────
   useEffect(() => {
     if (!user) return;
 
     const userDefaults = {
       fullName: user.name || user.fullName || '',
-      email: user.email || '',
-      phone: user.phone || user.phoneNumber || '',
+      email:    user.email || '',
+      phone:    user.phone || user.phoneNumber || '',
     };
 
     loadDraft().then(saved => {
@@ -234,8 +213,8 @@ function BookContent() {
           ...saved,
           participants: saved.participants || MIN_PARTICIPANTS,
           fullName: saved.fullName || userDefaults.fullName,
-          email: saved.email || userDefaults.email,
-          phone: saved.phone || userDefaults.phone,
+          email:    saved.email    || userDefaults.email,
+          phone:    saved.phone    || userDefaults.phone,
           activity: preselectedActivity || saved.activity || '',
         });
         if (!preselectedActivity && saved.activity) setStep(1);
@@ -244,7 +223,7 @@ function BookContent() {
       }
       setDraftLoaded(true);
     });
-  }, [user, loadDraft, preselectedActivity]);
+  }, [user]);
 
   const handleChange = (field, value) => {
     const updated = { ...form, [field]: value };
@@ -261,8 +240,8 @@ function BookContent() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await authFetch(`${API}/api/bookings`, {
-        method: 'POST',
+      const res = await fetch(`${API}/api/bookings`, {
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, isDraft: true }),
       });
@@ -297,7 +276,7 @@ function BookContent() {
       <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C87D87]/30 to-transparent z-50"/>
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-40 px-5 py-3 flex items-center justify-between"
+      <header className="sticky top-0 z-40 px-3 sm:px-5 py-3 flex items-center justify-between"
         style={{
           backgroundColor: '#6B7556',
           boxShadow: '0 2px 20px rgba(40,50,30,0.18)',
@@ -338,12 +317,13 @@ function BookContent() {
         </nav>
       </header>
 
+      {/* ── Gap between header and content ── */}
       <div className="h-5" style={{ background: 'linear-gradient(to bottom, rgba(107,117,86,0.10), transparent)' }}/>
 
       {/* ── Main ── */}
-      <main className="w-full px-4 sm:px-8 pb-16 relative z-10">
+      <main className="w-full px-3 sm:px-4 md:px-8 pb-16 relative z-10">
 
-        {/* STEP 0 — Activity */}
+        {/* ══ STEP 0 — Activity ══ */}
         {step === 0 && (
           <div className="step-enter">
             <div className="flex items-start justify-between mb-6 sm:mb-8 px-1">
@@ -390,7 +370,7 @@ function BookContent() {
           </div>
         )}
 
-        {/* STEP 1 — Details */}
+        {/* ══ STEP 1 — Details ══ */}
         {step === 1 && (
           <div className="step-enter">
             <div className="flex items-start justify-between mb-6 sm:mb-8 px-1">
@@ -407,7 +387,7 @@ function BookContent() {
             </div>
 
             {/* Activity pill */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 mb-6 rounded-xl"
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 mb-6 rounded-xl flex-wrap"
               style={{ background: 'rgba(107,117,86,0.09)', border: '1px solid rgba(107,117,86,0.18)' }}>
               <span className="text-[#6B7556] text-sm sm:text-base">{ACTIVITIES.find(a => a.title === form.activity)?.icon || '◈'}</span>
               <span className="font-['Cormorant_Garamond',serif] italic text-[#3a3027]/85 text-[0.85rem] sm:text-[1rem]">{form.activity}</span>
@@ -418,21 +398,19 @@ function BookContent() {
               </button>
             </div>
 
-            <div className="space-y-6">
-              {/* Guests + Date */}
-              <div className="grid grid-cols-[auto_1fr] gap-8 items-start">
-                <div>
-                  <Label>Guests</Label>
-                  <div className="flex items-center gap-3 mt-1">
-                    <button type="button"
-                      onClick={() => handleChange('participants', Math.max(1, form.participants - 1))}
-                      className="w-9 h-9 rounded-xl border border-[#3a3027]/10 bg-white/70 flex items-center justify-center text-[#3a3027]/55 hover:border-[#C87D87]/40 hover:text-[#C87D87] transition-all text-lg leading-none">−</button>
-                    <span className="font-['Playfair_Display',serif] italic text-[#3a3027] text-3xl w-7 text-center leading-none">{form.participants}</span>
-                    <button type="button"
-                      onClick={() => handleChange('participants', Math.min(12, form.participants + 1))}
-                      className="w-9 h-9 rounded-xl border border-[#3a3027]/10 bg-white/70 flex items-center justify-center text-[#3a3027]/55 hover:border-[#C87D87]/40 hover:text-[#C87D87] transition-all text-lg leading-none">+</button>
-                    <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/40 text-sm">max 12</span>
-                  </div>
+            <div className="space-y-5 sm:space-y-6">
+              {/* Guests */}
+              <div>
+                <Label>Group Size</Label>
+                <div className="flex items-center gap-2 sm:gap-3 mt-1">
+                  <button type="button"
+                    onClick={() => handleChange('participants', Math.max(MIN_PARTICIPANTS, form.participants - 1))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-[#3a3027]/10 bg-white/70 flex items-center justify-center text-[#3a3027]/55 hover:border-[#C87D87]/40 hover:text-[#C87D87] transition-all text-base sm:text-lg leading-none">−</button>
+                  <span className="font-['Playfair_Display',serif] italic text-[#3a3027] text-2xl sm:text-3xl w-6 sm:w-7 text-center leading-none">{form.participants}</span>
+                  <button type="button"
+                    onClick={() => handleChange('participants', Math.min(MAX_PARTICIPANTS, form.participants + 1))}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-[#3a3027]/10 bg-white/70 flex items-center justify-center text-[#3a3027]/55 hover:border-[#C87D87]/40 hover:text-[#C87D87] transition-all text-base sm:text-lg leading-none">+</button>
+                  <span className="font-['Cormorant_Garamond',serif] italic text-[#7a6a5a]/40 text-[0.65rem] sm:text-sm">min {MIN_PARTICIPANTS} · max {MAX_PARTICIPANTS}</span>
                 </div>
                 {form.participants < MIN_PARTICIPANTS && (
                   <p className="font-['Cormorant_Garamond',serif] italic text-[0.7rem] sm:text-[0.72rem] text-red-400 mt-2 flex items-center gap-1.5">
@@ -450,7 +428,7 @@ function BookContent() {
                   className={inputCls}/>
               </div>
 
-              {/* Time slots */}
+              {/* Time slots - responsive grid */}
               <div>
                 <Label>Preferred Time</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 mt-1">
@@ -474,15 +452,16 @@ function BookContent() {
                 </div>
               </div>
 
+              {/* Divider */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-[#3a3027]/6"/>
                 <svg width="8" height="8" viewBox="0 0 8 8"><rect x="1" y="1" width="6" height="6" transform="rotate(45 4 4)" fill="none" stroke="#C87D87" strokeWidth="0.7" strokeOpacity="0.38"/></svg>
                 <div className="flex-1 h-px bg-[#3a3027]/6"/>
               </div>
 
-              {/* Decoration + Location */}
-              <div className="grid grid-cols-[1fr_1.3fr] gap-6 items-start">
-                <div>
+              {/* Decoration + Location - responsive stack */}
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex-1">
                   <Label>Decoration Style</Label>
                   <div className="flex flex-col gap-2 mt-1">
                     {SETTINGS.map(d => (
@@ -538,7 +517,7 @@ function BookContent() {
           </div>
         )}
 
-        {/* STEP 2 — Personal Info */}
+        {/* ══ STEP 2 — Personal Info ══ */}
         {step === 2 && (
           <div className="step-enter">
             <div className="flex items-start justify-between mb-6 sm:mb-8 px-1">
@@ -641,7 +620,7 @@ function BookContent() {
           </div>
         )}
 
-        {/* STEP 3 — Review */}
+        {/* ══ STEP 3 — Review ══ */}
         {step === 3 && (
           <div className="step-enter">
             <div className="flex items-start justify-between mb-6 sm:mb-8 px-1">
@@ -657,9 +636,9 @@ function BookContent() {
               <span className="font-['Playfair_Display',serif] italic text-[3rem] sm:text-[5rem] text-[#C87D87]/8 leading-none select-none mt-1 hidden sm:block">04</span>
             </div>
 
-            <div className="grid grid-cols-[1.1fr_0.9fr] gap-4 mb-5">
+            <div className="flex flex-col lg:flex-row gap-4 mb-5">
               {/* Booking info */}
-              <div className="rounded-2xl overflow-hidden"
+              <div className="flex-1 rounded-2xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(58,48,39,0.08)', boxShadow: '0 1px 8px rgba(58,48,39,0.04)' }}>
                 <div className="px-4 sm:px-5 py-3" style={{ background: 'rgba(255,255,255,0.40)', borderBottom: '1px solid rgba(58,48,39,0.06)' }}>
                   <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.22em] font-semibold" style={{ color: 'rgba(90,74,58,0.60)' }}>Booking</p>
@@ -667,11 +646,11 @@ function BookContent() {
                 <div>
                   {[
                     { l: 'Activity',   v: form.activity },
+                    { l: 'Group Size', v: `${form.participants} ${form.participants === 1 ? 'person' : 'people'}` },
                     { l: 'Date',       v: form.date ? new Date(form.date + 'T00:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—' },
-                    { l: 'Time',       v: (() => { const t = TIME_SLOTS.find(t => t.hours === form.timeSlot); return t ? `${t.icon} ${t.label} · ${t.hours}` : '—'; })() },
-                    { l: 'Guests',     v: `${form.participants} ${form.participants === 1 ? 'person' : 'people'}` },
+                    { l: 'Time',       v: (() => { const t = TIME_SLOTS.find(t => t.hours === form.timeSlot); return t ? `${t.icon} ${t.label}` : '—'; })() },
                     { l: 'Decoration', v: (() => { const d = SETTINGS.find(d => d.key === form.setting); return d ? `${d.icon} ${d.label}` : '—'; })() },
-                    { l: 'Location',   v: form.location || '—' },
+                    { l: 'Location',   v: form.location?.substring(0, 50) + (form.location?.length > 50 ? '…' : '') || '—' },
                   ].map(({ l, v }, idx, arr) => (
                     <div key={l} className="flex justify-between items-baseline px-4 sm:px-5 py-2 sm:py-2.5"
                       style={{ borderBottom: idx < arr.length - 1 ? '1px solid rgba(58,48,39,0.05)' : 'none' }}>
@@ -683,17 +662,17 @@ function BookContent() {
               </div>
 
               {/* Contact + Notes */}
-              <div className="flex flex-col gap-3">
+              <div className="flex-1 flex flex-col gap-3">
                 {[
                   { title: 'Contact', rows: [
-                    { l: 'Name', v: form.fullName },
+                    { l: 'Name',  v: form.fullName },
                     { l: 'Email', v: form.email },
                     { l: 'Phone', v: form.phone },
-                    { l: 'Via', v: form.preferredContact },
+                    { l: 'Via',   v: form.preferredContact },
                   ]},
                   { title: 'Notes', rows: [
                     { l: 'Allergies', v: form.allergies || '—' },
-                    { l: 'Requests',  v: form.specialRequests || '—' },
+                    { l: 'Requests',  v: form.specialRequests?.substring(0, 50) + (form.specialRequests?.length > 50 ? '…' : '') || '—' },
                     { l: 'Theme',     v: form.activityTheme || '—' },
                   ]},
                 ].map(({ title, rows }) => (
@@ -714,11 +693,31 @@ function BookContent() {
               </div>
             </div>
 
-            {/* ── Price (tiered group discount) ── */}
+            {/* Price */}
             {(() => {
-              const { rate, label } = getPricing(form.participants);
+              const { rate, label, error } = getPricing(form.participants);
               const total  = form.participants * rate;
               const saved  = form.participants > 2 ? form.participants * (150 - rate) : 0;
+              
+              if (error || form.participants < MIN_PARTICIPANTS) {
+                return (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 mb-5 rounded-xl gap-3"
+                    style={{ background: 'rgba(200,125,135,0.08)', border: '1px solid rgba(200,125,135,0.25)' }}>
+                    <div>
+                      <p className="font-['Cormorant_Garamond',serif] text-[0.6rem] sm:text-[0.65rem] tracking-[0.22em] uppercase font-semibold" style={{ color: '#C87D87' }}>
+                        Invalid Group Size
+                      </p>
+                      <p className="font-['Cormorant_Garamond',serif] italic text-[0.85rem] sm:text-[0.9rem] mt-1" style={{ color: '#C87D87' }}>
+                        Minimum {MIN_PARTICIPANTS} participants required for a gathering
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-['Playfair_Display',serif] italic text-[1.8rem] sm:text-[2rem] leading-none" style={{ color: '#C87D87' }}>—</p>
+                    </div>
+                  </div>
+                );
+              }
+              
               return (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 mb-5 rounded-xl gap-3"
                   style={{ background: 'linear-gradient(135deg,rgba(107,117,86,0.09),rgba(107,117,86,0.05))', border: '1px solid rgba(107,117,86,0.14)' }}>
@@ -782,8 +781,8 @@ function BookContent() {
       </main>
 
       {/* ── Draft indicator ── */}
-      <div className="fixed bottom-5 right-5 z-50 flex items-center gap-1.5
-        bg-[#FBEAD6]/92 border border-[#3a3027]/8 rounded-xl px-4 py-2.5
+      <div className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-50 flex items-center gap-1.5
+        bg-[#FBEAD6]/92 border border-[#3a3027]/8 rounded-lg sm:rounded-xl px-2 py-1.5 sm:px-4 sm:py-2.5
         shadow-[0_2px_12px_rgba(58,48,39,0.07)] backdrop-blur-sm
         font-['Cormorant_Garamond',serif] italic text-[0.65rem] sm:text-[0.78rem] text-[#7a6a5a]/60">
         {saving ? (
@@ -796,13 +795,5 @@ function BookContent() {
       </div>
 
     </div>
-  );
-}
-
-export default function BookPage() {
-  return (
-    <Suspense fallback={<LoadingScreen />}>
-      <BookContent />
-    </Suspense>
   );
 }
