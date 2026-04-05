@@ -171,14 +171,12 @@ const exportSinglePDF = (booking) => {
     const amtPaid   = booking.advancePaid ?? (isFullPay ? total : 0);
     const dueOnDay  = isFullPay ? 0 : total - amtPaid;
 
-    // Header
     doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(58, 48, 39);
     doc.text('Inora', 20, 22);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(200, 125, 135);
     doc.text('Booking Confirmation', 20, 30);
     doc.setDrawColor(200, 125, 135); doc.setLineWidth(0.4); doc.line(20, 35, 190, 35);
 
-    // Activity title
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(58, 48, 39);
     doc.text(`${booking.activity || booking.activityType || 'Activity'}`, 20, 46);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(120, 100, 90);
@@ -187,7 +185,6 @@ const exportSinglePDF = (booking) => {
     doc.text(`Status: ${s}`, 20, 61);
     doc.setDrawColor(230, 215, 200); doc.setLineWidth(0.2); doc.line(20, 66, 190, 66);
 
-    // Rows
     const rows = [
       ['Activity',          booking.activity || booking.activityType || '—'],
       ['Theme',    booking.activityTheme || '—'],
@@ -223,7 +220,6 @@ const exportSinglePDF = (booking) => {
       y += lines.length > 1 ? lines.length * 6 : 4 + 10;
     });
 
-    // Footer
     doc.setDrawColor(200, 125, 135); doc.setLineWidth(0.3); doc.line(20, 270, 190, 270);
     doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(160, 130, 110);
     doc.text(`Booked on ${new Date(booking.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}`, 20, 276);
@@ -322,19 +318,40 @@ export default function AccountPage() {
     if (['personal','bookings','security','danger'].includes(hash)) setActiveSection(hash);
   }, []);
 
+  // ✅ FIXED: Avatar upload without authFetch (to avoid Content-Type JSON)
   const handleAvatar = async (e) => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = e.target.files[0]; 
+    if (!file) return;
+    
     setAvatarLoading(true);
-    const formData = new FormData(); formData.append('avatar', file);
+    const formData = new FormData(); 
+    formData.append('avatar', file);
+    
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/avatar`, { method: 'PATCH', body: formData });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/me/avatar`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`
+          // ❌ No Content-Type header (browser will set multipart/form-data)
+        },
+        body: formData
+      });
       const data = await res.json();
-      if (!res.ok) { setAvatarMsg({ type: 'error', text: data.message }); return; }
+      if (!res.ok) { 
+        setAvatarMsg({ type: 'error', text: data.message }); 
+        return; 
+      }
       setProfile(prev => ({ ...prev, avatarUrl: data.avatarUrl }));
       setUser(prev => ({ ...prev, avatarUrl: data.avatarUrl }));
       setAvatarMsg({ type: 'success', text: 'Photo updated!' });
       setTimeout(() => setAvatarMsg({ type: '', text: '' }), 4000);
-    } finally { setAvatarLoading(false); }
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      setAvatarMsg({ type: 'error', text: 'Upload failed' });
+    } finally { 
+      setAvatarLoading(false); 
+    }
   };
 
   const handleName = async (e) => {
