@@ -1,5 +1,5 @@
 import express      from 'express';
-import { protect, isAdmin } from '../Middlewares/auth.js'; // ✅
+import { protect, isAdmin } from '../Middlewares/auth.js';
 import {
   getApprovedReviews,
   getPendingReviews,
@@ -11,14 +11,14 @@ import {
 const router = express.Router();
 
 // ── Public ──
-router.get('/approved',       getApprovedReviews);
+router.get('/approved', getApprovedReviews);
 
-// ── Static routes before /:id ──
-router.get('/pending',        isAdmin,  getPendingReviews);  // ✅ isAdmin not just protect
-router.patch('/:id/approve',  isAdmin,  approveReview);      // ✅ isAdmin
-router.delete('/:id',         isAdmin,  deleteReview);       // ✅ isAdmin
+// ── Admin routes (protect + isAdmin) ──
+router.get('/pending', protect, isAdmin, getPendingReviews);      // ← زيد protect
+router.patch('/:id/approve', protect, isAdmin, approveReview);    // ← زيد protect
+router.delete('/:id', protect, isAdmin, deleteReview);            // ← زيد protect
 
 // ── User ──
-router.post('/',              protect,  createReview);
+router.post('/', protect, createReview);
 
 export default router;
